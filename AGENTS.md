@@ -1,4 +1,4 @@
-# GRID-X engineering rules
+# OmniCompile Core engineering rules
 
 The existing MySQL-backed workspace is authoritative. Read `docs/engineering/PROJECT_STATUS.md`, `IMPLEMENTATION_PLAN.md`, `DECISIONS.md`, `USER_REQUIREMENT_OVERRIDES.md`, and the preserved master specification before continuing implementation. Explicit later user overrides take precedence over conflicting master clauses.
 

@@ -1,11 +1,11 @@
-# GRID-X native Android worker
+# OmniCompile Core native Android worker
 
 Native task contribution has passed physical Android 10 acceptance against an
 isolated coordinator/MySQL fixture. See docs/engineering/PHASE8_VERIFICATION.md
 for exact evidence and release boundaries; this is not a signed production release.
 
-The app follows the device light/dark setting automatically, including native
-window/system-bar colors. It uses paired readable palettes, not blind inversion;
+The app uses the permanent high-contrast carbon/coral product palette, including
+readable native window/system-bar colors under either device light/dark setting.
 Android force-dark is disabled where supported to avoid double inversion.
 
 Wrapper provenance: Gradle v8.13.0 upstream scripts and wrapper JAR. JAR SHA-256

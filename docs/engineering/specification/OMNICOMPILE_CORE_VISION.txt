@@ -1,0 +1,988 @@
+# OmniCompile Core — Complete Product Vision, System Expectations & End-Product Specification
+
+
+
+Consolidated system vision
+
+Software Engineering + Compiler Design
+
+
+
+# 1. What I understand you are actually trying to build
+
+You are not trying to build just a compiler, a distributed computing application, a device-monitoring dashboard, or a website that assigns random tasks to connected computers.
+
+You are trying to build a cross-platform, security-aware, fault-tolerant distributed compilation and computing system that uses heterogeneous devices to execute computational workloads intelligently.
+
+The compiler is the primary purpose of the product. Distributed computing is the execution and resource-utilization architecture that extends the compiler beyond the machine on which it is running.
+
+The system should accept source programs, process them through appropriate compiler pipelines, identify computational work that can be distributed safely, coordinate participating devices, execute eligible tasks across those devices, verify the returned results, recover from failures, and present the entire operation through a professional control interface.
+
+In simple terms:
+
+A user submits a program → the system compiles and analyzes it → eligible workloads are identified → the coordinator distributes suitable tasks to participating devices → devices execute those tasks → results are verified and consolidated → the system produces the final output and performance evidence.
+
+This is the central identity of the product.
+
+# OmniCompile Core
+
+A Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous Edge-to-Cloud Orchestration
+
+[Manage GitHub Copilot Sessions Remotely Across Devices - Tech Radar - UniQubit](https://images.openai.com/static-rsc-4/POjvYpBZkZhyz9gy1TVbQGUXUqi4e5ZHy7_Fos8coS9KSs8C5K5ZMH6UDr6RE4EC8-LBX_r47da1ug5OjV_d4Rn1pAs62WmfumL1tX4qRS9KcrPOcqn4qzi3EHeYnP2Sk4JW-5_Kk68d2beMElTrT1HP4bg15CDnccJECh1qGpU?purpose=inline)
+
+[uniqubit.ca](https://www.uniqubit.ca/tech-radar/manage-github-copilot-sessions-remotely-across-devices?utm_source=chatgpt.com)
+
+Compiler intelligence
+
+Source analysis, intermediate representation, optimization and code generation.
+
+Distributed execution
+
+Workload decomposition, scheduling, remote execution and aggregation.
+
+Security and integrity
+
+Device trust, task validation, authorization and result verification.
+
+Fault tolerance
+
+Failure detection, retries, reassignment and execution recovery.
+
+The important distinction is that these are not four separate applications. They are four interconnected capabilities of one software product.
+
+# 2. What the final product must actually be
+
+I expect the final deliverable to be a complete software ecosystem with one central platform and three categories of participating execution clients.
+
+It should have four major deliverables.
+
+## A. Central web application — The command and control platform
+
+[slurm-aio-gui 1.0.9 on PyPI - Libraries.io - security & maintenance data for open source software](https://images.openai.com/static-rsc-4/RgIkf-XMOukwKtRM2cSvVUxC_VYAUXODzrpUuLePud5CpqedZio_2KnkDq7GkjaR_pSr2tY4n-pJsuXxh5ty7h6-_EVtTJKRbjGJc_Y9kfnf3Si-qTGN5gUKrYBMT8TtcT3FR47KiS2HZe1bZiD5kJItOb5zgXAGqsKn_GBBIow?purpose=inline)
+
+[libraries.io](https://libraries.io/pypi/slurm-aio-gui?utm_source=chatgpt.com)
+
+This is the main application through which the administrator and users interact with the system.
+
+It should not merely display information. It must provide actual control over the distributed computing environment.
+
+Its responsibilities include:
+
+- User authentication and session management.
+- Compiler workspace and source-code submission.
+- Compilation pipeline visualization.
+- Worker registration and device enrollment.
+- Live worker availability and resource monitoring.
+- Distributed job creation and execution monitoring.
+- Task assignment and scheduling visibility.
+- Result verification and compilation output.
+- Failure detection and recovery visibility.
+- Security events, audit records and worker trust information.
+- Historical performance metrics and reports.
+
+The interface should be dark, professional, technically informative and consistent with your black/red visual direction.
+
+It should have meaningful operational states, not fabricated dashboard numbers or decorative charts.
+
+## B. Windows worker application
+
+[Cluster | Kaisar AI Ops | Kaisar](https://images.openai.com/static-rsc-4/7_3uw-zvbKGozuUXL5JSY8iq6dnrCEq6r3IYhhTDZBaDwR_H7wrv8DV99E4aFYRCM4n1RZstsZi5Qjs25jxFXIJTyUdxQtzepkpObvxplB6MYk58Y7_7QH4r84aJL_IaKonJr_DpGqTEQ9cwAc_ajEJI-Z9-sVhHQxzlG_Q-Wj8?purpose=inline)
+
+[docs.kaisar.io](https://docs.kaisar.io/kaisar-network/kaisar-ai-ops/deep-learning-platform/cluster?utm_source=chatgpt.com)
+
+This is a genuine Windows execution client.
+
+It should:
+
+- Connect to the central coordinator over the internet.
+- Authenticate and register itself as a Windows worker.
+- Report its actual capabilities and resource availability.
+- Receive tasks compatible with its environment.
+- Execute authorized workloads.
+- Return task outputs and execution metadata.
+- Send periodic heartbeat messages.
+- Report failures and execution status.
+- Allow the user to pause, resume, disconnect or leave the network.
+
+It must operate independently of the developer's laptop and should not require the web dashboard to remain open.
+
+## C. Android worker application — Native APK
+
+[Silica Cluster - Decentralized Mobile AI | Product Hunt Launch Dashboard](https://images.openai.com/static-rsc-4/_UcsojEsTOSuOVpqXrpFIL-WtOcdgH9MK-PgcRSA3rU43gJVtZjRLcRCQlWGIBJ4FFyMyMLHXa5b6HuFN9ma5E9M83_xNl9NpAZ8wARH7oaupgx6HLMRLJAQegYTxbbVSRsCEuxWNHrvP14GlyndFrpHvBJQh0MzI7fGwVy18BY?purpose=inline)
+
+[hunted.space](https://hunted.space/dashboard/silica-cluster?utm_source=chatgpt.com)
+
+This is one of the most important deliverables because Android must be a real execution platform, not simply a mobile webpage or a Windows worker disguised as an Android device.
+
+It should be a native Android application, using Kotlin and Jetpack Compose.
+
+Its responsibilities include:
+
+- Registering the Android device as an independent worker.
+- Reporting actual Android device capabilities.
+- Checking battery level, thermal condition and available resources.
+- Receiving only Android-compatible and explicitly permitted tasks.
+- Executing bounded, portable workloads.
+- Returning verified execution results.
+- Showing current workload and connection status.
+- Supporting pause, resume, disconnect and leave controls.
+
+Critical restriction: The Android application should never receive arbitrary shell commands or unrestricted executable code. It should execute only explicitly supported, bounded and validated workload types.
+
+The system must respect Android background execution restrictions, battery health and thermal conditions.
+
+## D. Browser-based worker
+
+[Polkadot AI Mesh | Devpost](https://images.openai.com/static-rsc-4/Sz36NNOG8O9LG6e5rhtdmN8oauLjTqCNOwY4oSapuPfGj9TIkDpifnR57n_7dv89lA7ZUCYz9bJzbo6-g7oByPbDYbSeM8e7qhr943uuIR_JJRG1YUcib8YuEA0cF764aTFxf4IQ3gw5Jmq-BXdqxaEbA6MHy0kBHjHaI1sYIgM?purpose=inline)
+
+[devpost.com](https://devpost.com/software/polkadot-ai-mesh?utm_source=chatgpt.com)
+
+A browser should be able to participate as an actual worker.
+
+It should:
+
+- Join through a generated enrollment link.
+- Establish an authenticated connection.
+- Register its browser and execution capabilities.
+- Receive supported browser-compatible tasks.
+- Execute them within browser security restrictions.
+- Return results.
+- Report heartbeats and disconnect status.
+
+A closed browser tab or terminated session must result in the worker becoming disconnected or unavailable after the appropriate heartbeat timeout.
+
+# 3. The central idea: One coordinator, heterogeneous workers
+
+The architecture should be centralized for orchestration but distributed for execution.
+
+This is an important architectural decision.
+
+The Windows, Android and browser clients should not independently coordinate the network. They should communicate through one central coordinator.
+
+[Distributed System Design Lab.](https://images.openai.com/static-rsc-4/vGjOHHTHLxF8CwjTxy00mhWmF-3HE0tPY6OZF8tNWIDdVjdusLE4ZHOiwnX7X4PufTutPXEl3uBGTJR-W9f8GPHP-gfayt1NvC1_1-ncy066VCZCU-BcMPAIwf99L0rGsPD3C62vrwxClJdWYRNFrDzdJC4WrmDhty49Jw5MRuY?purpose=inline)
+
+[cc.okayama-u.ac.jp](https://www.cc.okayama-u.ac.jp/~eng_dist/info_eng.html?utm_source=chatgpt.com)
+
+The coordinator is responsible for deciding:
+
+- Which jobs are accepted.
+- Which tasks can be distributed.
+- Which devices are eligible.
+- Which device should receive each task.
+- Whether a task has timed out.
+- Whether a failed task can safely be reassigned.
+- Whether returned results are valid.
+- When the complete job can be marked successful.
+
+The participating devices are execution resources, not independent administrators.
+
+This gives the system a consistent control plane while allowing execution across different hardware and operating systems.
+
+The network must work across different internet connections.
+
+For example:
+
+- The coordinator runs on a hosted server.
+- A Windows worker connects from one home network.
+- An Android worker connects using mobile data.
+- A browser worker connects from a university network.
+
+All should be able to participate without requiring a common Wi-Fi network, LAN discovery or inbound port forwarding on the worker devices.
+
+The workers should establish outbound authenticated connections to the coordinator.
+
+# 4. How the system must work — Complete operational lifecycle
+
+This is the most important part of the product specification.
+
+I would divide the system into ten interconnected operational stages.
+
+## End-to-end system workflow
+
+1. User submits source code
+
+   The user uploads or pastes a C, Python or Java program, selects the language and submits it for processing.
+2. Compiler analyzes the program
+
+   The relevant language pipeline performs lexical analysis, parsing, semantic analysis and intermediate representation generation where supported.
+3. Optimization and workload analysis
+
+   The system performs applicable compiler optimizations and identifies computational operations that can be safely separated into independent tasks.
+4. Task decomposition
+
+   Eligible work is converted into bounded, identifiable tasks with defined inputs, requirements, execution limits and expected output formats.
+5. Worker discovery and selection
+
+   The coordinator evaluates registered workers and selects devices based on compatibility, availability, capacity, trust and resource conditions.
+6. Secure task distribution
+
+   The coordinator issues authorized tasks to selected workers through the common worker communication protocol.
+7. Remote execution
+
+   Windows, Android and browser workers execute compatible tasks within their respective execution environments.
+8. Result validation
+
+   The coordinator validates returned outputs, task identity, completion state, execution metadata and expected result structure.
+9. Failure recovery and aggregation
+
+   Failed or timed-out tasks are handled through safe retries or reassignment. Successful outputs are consolidated.
+10. Final output and performance report
+
+    The user receives the compilation result, execution status, relevant artifacts, errors and measurable system-performance information.
+
+There is one important technical distinction: the compiler must not assume that every program can be distributed.
+
+A normal sequential C program cannot automatically be divided into independent pieces and executed on arbitrary devices without considering data dependencies, shared state, side effects and execution order.
+
+Therefore, the system must have a distribution eligibility and dependency analysis stage.
+
+If a workload is not safely distributable, the compiler should process it locally rather than pretending that distributed execution occurred.
+
+That distinction will make your project technically credible.
+
+# 5. The compiler must remain the flagship component
+
+The distributed platform should extend the compiler, not overshadow it.
+
+Your system must genuinely perform compiler-related work rather than simply upload source code and send arbitrary calculations to connected devices.
+
+## 5.1 Supported programming languages
+
+| Language | Expected compiler responsibilities                                                                                                    |
+| -------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| C        | Lexical analysis, parsing, semantic validation, intermediate representation, optimization, code generation and executable generation. |
+| Python   | Syntax validation, program analysis, supported optimization and execution through an appropriate runtime.                             |
+| Java     | Syntax and semantic validation, supported optimization, bytecode generation and JVM-compatible execution.                             |
+
+The implementation depth can differ between languages, but all three should have genuine processing pipelines.
+
+For example, C can have a more explicitly developed compiler pipeline, while Python and Java can use their appropriate language toolchains and runtime infrastructure.
+
+Do not force Python and Java through a C compiler pipeline.
+
+## 5.2 C compilation pipeline
+
+[Part 6: Compilers & Program Translation | Computer Architecture & OS Mastery - Wasil Zafar](https://images.openai.com/static-rsc-4/TWliTwxGEBoq1EnOZ0T9p6IsnyuO-wFIOAtHRPFrvthxWIKJJicJ1VfaHVD5o0w_z57knzFb_Z8_LOhB0a2SVC1OUHHZpyYRYTC6vg3QwEslmILUrPphbQ9sBvH5zj3QFuKcuKUMeUDuS3IYwcGNq3L8Hem-vcO8udcpPzdMfeE?purpose=inline)
+
+[wasilzafar.com](https://www.wasilzafar.com/pages/series/computer-architecture/comp-arch-compilers.html?utm_source=chatgpt.com)
+
+The C compiler should implement the following sequence:
+
+| Stage                       | What it must accomplish                                                                                             |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Source input                | Accept C source code and validate the input.                                                                        |
+| Lexical analysis            | Convert source code into tokens.                                                                                    |
+| Syntax analysis             | Build and validate the program's syntactic structure.                                                               |
+| Semantic analysis           | Identify type errors, undeclared identifiers and semantic inconsistencies.                                          |
+| Intermediate representation | Convert the program into a structured representation suitable for further processing.                               |
+| Optimization                | Apply supported optimizations such as constant folding, dead-code elimination and common subexpression elimination. |
+| Distribution analysis       | Identify independent and eligible computation regions.                                                              |
+| Code generation             | Generate the appropriate executable or intermediate execution artifact.                                             |
+| Compilation validation      | Check compilation status, errors and generated output.                                                              |
+
+The user should be able to inspect the progress of these stages.
+
+I would make the compiler pipeline a first-class section of the application, rather than hiding it behind a single Compile button.
+
+## 5.3 Intermediate representation is particularly important
+
+Your intermediate representation (IR) should act as a bridge between the compiler and distributed execution engine.
+
+It should help the system:
+
+- Represent program operations in a structured form.
+- Identify dependencies between operations.
+- Recognize independent computation regions.
+- Determine which operations can be converted into distributed tasks.
+- Preserve the relationship between task outputs and the original program.
+- Support optimization before task execution.
+
+This is one of the most important integration points between your Compiler Design and Software Engineering components.
+
+## 5.4 What should actually be distributed?
+
+I recommend three workload categories.
+
+1. Independent computational workloads: Tasks that can execute independently, such as separate input batches or independent mathematical computations.
+2. Data-parallel workloads: A supported computation divided into bounded data partitions, with each worker processing a different partition.
+3. Compiler-generated eligible tasks: Computation units extracted from the supported intermediate representation and packaged with explicit dependencies and execution requirements.
+
+The coordinator should not distribute the entire original source program indiscriminately to every worker.
+
+Instead, it should distribute task packages.
+
+A task package should contain:
+
+- Unique task ID.
+- Parent job ID.
+- Task type and protocol version.
+- Required execution capability.
+- Input data or approved artifact reference.
+- Execution constraints and resource limits.
+- Task expiry and authorization information.
+- Expected output structure.
+- Integrity information.
+
+This gives you a much more defensible distributed execution architecture.
+
+# 6. The distributed computing engine
+
+This is the component that turns your compiler into a multi-device system.
+
+## 6.1 Worker registration and enrollment
+
+I understand that you want one administrator-generated joining link through which participating devices can choose their platform.
+
+The flow should be:
+
+[Manual iOS device enrollment - LogMeIn Resolve MDM Support](https://images.openai.com/static-rsc-4/F6rWfvJ6_llTqpuXj7eGh7aMCVub7ieBGhPSVszyZirSDq3ln3QpdbZLli-Sm4-XUa68aMUfhMvF-4_WH-oa8XYRe9nvzvx_Ch5LlGFosH9kQmZ-HofL5BjLI5g-SJM6aZH4Lh63-ZHRZSoiSw8QSGfIioRHED9acyj8mKd5B6I?purpose=inline)
+
+[support.logmein.com](https://support.logmein.com/resolve-mdm/help/manual-ios-device-enrollment?utm_source=chatgpt.com)
+
+1. Administrator generates an enrollment invitation.
+2. The invitation contains a secure, expiring enrollment token.
+3. The participant opens the invitation.
+4. The participant selects Windows, Android or Browser.
+5. The corresponding application or worker interface opens.
+6. The device authenticates and registers.
+7. The coordinator validates the enrollment.
+8. The device appears in the Workers section.
+9. The device becomes eligible for tasks after successful capability and policy checks.
+
+The same enrollment architecture should support all three platforms.
+
+However, the joining link must not be a permanent, unrestricted access credential.
+
+## 6.2 Worker capability registry
+
+Every device should register its actual execution capabilities.
+
+For example:
+
+| Information                   | Purpose                                           |
+| ----------------------------- | ------------------------------------------------- |
+| Worker ID                     | Unique device identification within the platform. |
+| Platform                      | Windows, Android or Browser.                      |
+| CPU architecture              | Execution compatibility.                          |
+| Available processing capacity | Resource-aware assignment.                        |
+| Available memory              | Task eligibility.                                 |
+| Supported task types          | Workload compatibility.                           |
+| Connection status             | Online, offline or disconnected.                  |
+| Battery and thermal status    | Mobile execution eligibility.                     |
+| Software/protocol version     | Compatibility and security validation.            |
+| Trust status                  | Authorization and task eligibility.               |
+
+Only collect the device information necessary for the system's operation.
+
+The participant should know what information is collected and why.
+
+## 6.3 Resource-aware scheduling
+
+This should be one of the system's most important features.
+
+The coordinator should not simply distribute tasks to whichever device connects first.
+
+It should determine whether the device is appropriate for the workload.
+
+For example:
+
+- A computationally intensive task may require a Windows worker with sufficient available resources.
+- A small portable task may be suitable for Android.
+- A lightweight supported computation may be suitable for a browser.
+- A device experiencing excessive thermal conditions should not receive additional work.
+- An offline or unresponsive worker must not receive new tasks.
+
+I would define worker eligibility using five principal dimensions:
+
+1. Platform and task compatibility.
+2. Available CPU and memory capacity.
+3. Device health and execution constraints.
+4. Network connectivity and responsiveness.
+5. Worker authorization and trust status.
+
+The scheduler should make its decision explainable. An administrator should be able to see why a device was selected or rejected.
+
+## 6.4 Common Worker Protocol
+
+All three worker types must communicate using a common, versioned protocol.
+
+This is essential.
+
+Windows, Android and Browser should not each have completely different task-management logic.
+
+They should implement the same fundamental communication contract:
+
+| Message       | Purpose                                  |
+| ------------- | ---------------------------------------- |
+| REGISTER      | Register a new worker.                   |
+| HEARTBEAT     | Report that the worker remains active.   |
+| CAPABILITIES  | Report supported execution capabilities. |
+| TASK_ASSIGN   | Receive a task assignment.               |
+| TASK_ACCEPT   | Confirm task acceptance.                 |
+| TASK_PROGRESS | Report execution progress.               |
+| TASK_RESULT   | Return task output.                      |
+| TASK_FAILED   | Report execution failure.                |
+| TASK_CANCEL   | Receive cancellation instructions.       |
+| WORKER_PAUSE  | Pause new task acceptance.               |
+| WORKER_LEAVE  | Gracefully leave the network.            |
+
+HTTP and WebSockets are appropriate for the coordinator's API and live communication.
+
+The protocol should also define message authentication, validation, version compatibility, timeouts and error handling.
+
+# 7. Security must be part of the architecture, not a decorative feature
+
+Your project title explicitly promises zero-trust and security awareness.
+
+Therefore, security must affect how the system operates.
+
+It should not be limited to a Security Dashboard showing a few green indicators.
+
+I would expect the following.
+
+## 7.1 Authentication and access control
+
+- Secure administrator and user authentication.
+- Role-based access control.
+- Protected administrative operations.
+- Secure session handling.
+- Password hashing.
+- Expiring enrollment invitations.
+- Worker authorization before task assignment.
+
+## 7.2 Worker trust
+
+A connected device should not automatically be considered trustworthy just because it registered successfully.
+
+The coordinator should validate:
+
+- Worker identity and enrollment.
+- Session authenticity.
+- Protocol compatibility.
+- Task authorization.
+- Message integrity.
+- Task completion and result consistency.
+
+A worker can be registered but temporarily ineligible for execution.
+
+That distinction is important.
+
+## 7.3 Task security
+
+Every distributed task should be:
+
+- Authorized for the receiving worker.
+- Bound to a specific task and job.
+- Protected against unauthorized modification.
+- Validated before execution.
+- Restricted by execution and resource limits.
+- Associated with an expiry or execution deadline.
+
+## 7.4 Result integrity
+
+A worker returning a successful response does not automatically prove that the computation is correct.
+
+The coordinator must validate the result.
+
+I would implement:
+
+- Task ID and job ID matching.
+- Input/output schema validation.
+- Cryptographic hashes for artifact and payload integrity.
+- Execution-state validation.
+- Deterministic result comparison or recomputation for selected tasks.
+- Detection of duplicate or stale responses.
+
+An important qualification: hashes prove that data matches a particular digest; they do not prove that a worker performed the correct computation.
+
+For stronger computational verification, selected deterministic tasks can be independently recomputed or executed redundantly and their outputs compared.
+
+The system should distinguish integrity checking from computational correctness verification.
+
+## 7.5 Execution isolation
+
+The platform must never become an unrestricted remote code execution service.
+
+The execution environment should enforce:
+
+- Task allowlisting.
+- Execution time limits.
+- Memory/resource limits.
+- Restricted filesystem access.
+- Controlled input/output.
+- Appropriate process isolation.
+- Platform-specific execution restrictions.
+
+Android should use its native application sandbox and approved bounded computation methods.
+
+Windows execution should use an appropriately restricted environment.
+
+Browser execution should remain within browser security boundaries.
+
+# 8. Fault tolerance — The system must survive device failures
+
+A distributed platform becomes meaningful when it can handle devices that disappear, fail or become unavailable.
+
+Consider this situation:
+
+There are four connected workers. The coordinator assigns tasks to all four. The Android device overheats and stops responding while one Windows worker loses its internet connection.
+
+The system should not simply mark the entire job as failed.
+
+It should:
+
+1. Detect missing heartbeats or task timeouts.
+2. Mark the affected workers as unavailable or degraded.
+3. Identify their unfinished tasks.
+4. Determine whether the tasks are safe to retry.
+5. Reassign eligible tasks to other compatible workers.
+6. Reject stale results from previous attempts.
+7. Continue monitoring remaining tasks.
+8. Consolidate successful results.
+9. Report any unrecoverable tasks accurately.
+
+[Unveiling the Principles of Kafka Migration Tool MirrorMaker2 | AutoMQ Blog](https://images.openai.com/static-rsc-4/Mfmw7XaWujxtvlSC6M8xf8ajJs8qlNfRoOpa_6n-caMGYX9lhxeRAeplclAvKdNxRWIdCqIKbZ9YiLlj7i5gP6Poqm9wyKwu6hkfSGyGwJFBWH9ZrpDIFmxarLmF1PllanYk9veS4qGljsMzLIq1iwSur9oPgJAl9wrv6kzVfkY?purpose=inline)
+
+[automq.com](https://www.automq.com/blog/unveiling-the-principles-of-kafka-migration-tool-mirrormaker2?utm_source=chatgpt.com)
+
+There are several concepts I expect you to implement:
+
+| Capability           | Expected behaviour                                                           |
+| -------------------- | ---------------------------------------------------------------------------- |
+| Heartbeat monitoring | Detect unresponsive workers.                                                 |
+| Task timeout         | Prevent tasks from remaining indefinitely active.                            |
+| Retry management     | Retry eligible failed tasks within defined limits.                           |
+| Task reassignment    | Move unfinished tasks to another compatible worker.                          |
+| Duplicate protection | Prevent duplicate results from corrupting job aggregation.                   |
+| Worker reconnection  | Restore a worker's session through controlled re-enrollment or reconnection. |
+| Job state management | Maintain accurate job status during failures.                                |
+
+One technical detail matters: retries and reassignment should not automatically repeat operations with external side effects.
+
+Your distributed tasks should be designed around bounded, deterministic or idempotent execution wherever possible.
+
+# 9. How the complete application should be organized
+
+I would organize the web platform around the following sections.
+
+OmniCompile Core
+
+Target UI structure
+
+1\. Command Center
+
+System overview, active jobs, worker status, resource availability, recent events and operational health.
+
+2\. Compiler Workspace
+
+Source editor, language selection, compilation, intermediate representation, optimization, pipeline execution and generated artifacts.
+
+3\. Distributed Execution
+
+Job creation, task decomposition, task assignment, worker allocation, progress and result aggregation.
+
+4\. Workers
+
+Registered devices, platform, capabilities, connectivity, resource health, eligibility, enrollment and controls.
+
+5\. Security & Trust
+
+Authentication, authorization, worker trust, task integrity, validation, security incidents and audit events.
+
+6\. Performance & Analytics
+
+Execution time, throughput, task success, recovery performance, resource utilization and comparative execution reports.
+
+7\. Logs & Audit
+
+Chronological system events, job histories, worker activity, errors, security events and administrative actions.
+
+8\. Administration & Configuration
+
+Users, roles, enrollment settings, scheduling policies, execution limits, system configuration and service health.
+
+These are functional sections, not eight disconnected dashboards.
+
+For example, when a job is submitted in Compiler Workspace, its execution should appear in Distributed Execution, its participating devices should appear in Workers, its events should appear in Logs, and its results should contribute to Performance & Analytics.
+
+That interconnected experience is what makes it one product.
+
+# 10. The five metrics that must demonstrate that the system works
+
+You previously wanted only a small number of meaningful performance metrics rather than a dashboard overloaded with numbers.
+
+I agree. The following five should form the primary system-performance evaluation.
+
+## Core system performance indicators
+
+1\. Task Execution Success Rate
+
+# — %
+
+Percentage of assigned tasks that complete successfully and pass result validation.
+
+\\[ \frac{\text{Validated successful tasks}}{\text{Total completed task attempts}}\times100 \\]
+
+2\. Distributed Execution Performance
+
+# — ms / s
+
+Measures actual task execution time and compares eligible workloads against a local execution baseline.
+
+\\[ \text{Speedup}=\frac{\text{Local execution time}}{\text{Distributed execution time}} \\]
+
+3\. Resource Utilization Efficiency
+
+# — %
+
+Measures the actual CPU and memory utilization of participating workers while executing tasks.
+
+4\. Fault Recovery Performance
+
+# — s
+
+Measures how long the system takes to detect a failed worker, reassign eligible tasks and resume progress.
+
+5\. Result Integrity Rate
+
+# — %
+
+Measures the percentage of returned task results that pass the system's integrity and correctness-validation procedures.
+
+These must be calculated from real execution records.
+
+For a meaningful comparison, the system should run the same eligible workload locally and across distributed workers using comparable input data. It should also report network and coordination overhead.
+
+A distributed execution that takes longer than local execution is not necessarily a failed experiment. It is valuable evidence about the conditions under which distribution is beneficial.
+
+The application should never manufacture performance improvements to make the project look successful.
+
+# 11. Technical architecture I expect behind the product
+
+Based on the architecture and implementation direction established in your previous project work, I would retain the following technical foundation.
+
+[ByteQuest · GitHub](https://images.openai.com/static-rsc-4/4j7wzAX-6UYIrNq0NfptICjUkMsFDauSVMrwZ9LykT5tI5IEXjwurtwWGOqoaI9x1YVxNwzP7XQotONh1oTn_IcyA50gOoFo9QnMeZLGfJwf5YQbCQ_4mFB7mrf3Jxasv9GSRGg7neziWxFXMo1_M64AAkpYkJXzid93lpvfsBI?purpose=inline)
+
+[github.com](https://github.com/Byte-Quest-Website?utm_source=chatgpt.com)
+
+| Component                   | Technology / responsibility                                                    |
+| --------------------------- | ------------------------------------------------------------------------------ |
+| Web frontend                | React + Vite + TypeScript                                                      |
+| Coordinator                 | Node.js + TypeScript + Fastify                                                 |
+| Communication               | HTTP APIs + WebSockets                                                         |
+| Database                    | MySQL                                                                          |
+| Windows worker              | Independent native Windows execution client                                    |
+| Android worker              | Kotlin + Jetpack Compose                                                       |
+| Browser worker              | Browser-based execution client                                                 |
+| Compiler engine             | Language-specific compiler pipelines and toolchains                            |
+| Intermediate representation | Structured compiler representation and dependency analysis                     |
+| Task engine                 | Task decomposition, execution and aggregation                                  |
+| Scheduler                   | Capability-aware, resource-aware worker selection                              |
+| Security                    | Authentication, RBAC, signed/authorized task messages, validation and auditing |
+| Deployment                  | Containerized services with Kubernetes as the intended deployment environment  |
+
+The architecture should have clear internal boundaries.
+
+## Recommended logical architecture
+
+\#chatgpt-mermaid-\_r_i8\_{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;fill:rgb(237, 237, 237);}@keyframes edge-animation-frame{from{stroke-dashoffset:0;}}@keyframes dash{to{stroke-dashoffset:0;}}#chatgpt-mermaid-\_r_i8\_ .edge-animation-slow{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 50s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-\_r_i8\_ .edge-animation-fast{stroke-dasharray:9,5!important;stroke-dashoffset:900;animation:dash 20s linear infinite;stroke-linecap:round;}#chatgpt-mermaid-\_r_i8\_ .error-icon{fill:rgb(48, 48, 48);}#chatgpt-mermaid-\_r_i8\_ .error-text{fill:rgb(237, 237, 237);stroke:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .edge-thickness-normal{stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .edge-thickness-thick{stroke-width:3.5px;}#chatgpt-mermaid-\_r_i8\_ .edge-pattern-solid{stroke-dasharray:0;}#chatgpt-mermaid-\_r_i8\_ .edge-thickness-invisible{stroke-width:0;fill:none;}#chatgpt-mermaid-\_r_i8\_ .edge-pattern-dashed{stroke-dasharray:3;}#chatgpt-mermaid-\_r_i8\_ .edge-pattern-dotted{stroke-dasharray:2;}#chatgpt-mermaid-\_r_i8\_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_i8\_ .marker.cross{stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_i8\_ svg{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:16px;}#chatgpt-mermaid-\_r_i8\_ p{margin:0;}#chatgpt-mermaid-\_r_i8\_ .label{font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .cluster-label text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .cluster-label span{color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .cluster-label span p{background-color:transparent;}#chatgpt-mermaid-\_r_i8\_ .label text,#chatgpt-mermaid-\_r_i8\_ span{fill:rgb(237, 237, 237);color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .node rect,#chatgpt-mermaid-\_r_i8\_ .node circle,#chatgpt-mermaid-\_r_i8\_ .node ellipse,#chatgpt-mermaid-\_r_i8\_ .node polygon,#chatgpt-mermaid-\_r_i8\_ .node path{fill:rgb(9, 23, 44);stroke:rgb(31, 78, 148);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .rough-node .label text,#chatgpt-mermaid-\_r_i8\_ .node .label text,#chatgpt-mermaid-\_r_i8\_ .image-shape .label,#chatgpt-mermaid-\_r_i8\_ .icon-shape .label{text-anchor:middle;}#chatgpt-mermaid-\_r_i8\_ .node .katex path{fill:#000;stroke:#000;stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .rough-node .label,#chatgpt-mermaid-\_r_i8\_ .node .label,#chatgpt-mermaid-\_r_i8\_ .image-shape .label,#chatgpt-mermaid-\_r_i8\_ .icon-shape .label{text-align:center;}#chatgpt-mermaid-\_r_i8\_ .node.clickable{cursor:pointer;}#chatgpt-mermaid-\_r_i8\_ .root .anchor path{fill:rgb(175, 175, 175)!important;stroke-width:0;stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_i8\_ .arrowheadPath{fill:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_i8\_ .edgePath .path{stroke:rgb(175, 175, 175);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .flowchart-link{stroke:rgb(175, 175, 175);fill:none;}#chatgpt-mermaid-\_r_i8\_ .edgeLabel{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-\_r_i8\_ .edgeLabel p{background-color:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_i8\_ .edgeLabel rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_i8\_ .labelBkg{background-color:rgba(0, 0, 0, 0.5);}#chatgpt-mermaid-\_r_i8\_ .cluster rect{fill:rgb(48, 48, 48);stroke:rgba(255, 255, 255, 0.15);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .cluster text{fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ .cluster span{color:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ div.mermaidTooltip{position:absolute;text-align:center;max-width:200px;padding:2px;font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";font-size:12px;background:rgb(48, 48, 48);border:1px solid rgba(255, 255, 255, 0.15);border-radius:2px;pointer-events:none;z-index:100;}#chatgpt-mermaid-\_r_i8\_ .flowchartTitleText{text-anchor:middle;font-size:18px;fill:rgb(237, 237, 237);}#chatgpt-mermaid-\_r_i8\_ rect.text{fill:none;stroke-width:0;}#chatgpt-mermaid-\_r_i8\_ .icon-shape,#chatgpt-mermaid-\_r_i8\_ .image-shape{background-color:rgb(0, 0, 0);text-align:center;}#chatgpt-mermaid-\_r_i8\_ .icon-shape p,#chatgpt-mermaid-\_r_i8\_ .image-shape p{background-color:rgb(0, 0, 0);padding:2px;}#chatgpt-mermaid-\_r_i8\_ .icon-shape .label rect,#chatgpt-mermaid-\_r_i8\_ .image-shape .label rect{opacity:0.5;background-color:rgb(0, 0, 0);fill:rgb(0, 0, 0);}#chatgpt-mermaid-\_r_i8\_ .label-icon{display:inline-block;height:1em;overflow:visible;vertical-align:-0.125em;}#chatgpt-mermaid-\_r_i8\_ .node .label-icon path{fill:currentColor;stroke:revert;stroke-width:revert;}#chatgpt-mermaid-\_r_i8\_ .node .neo-node{stroke:rgb(31, 78, 148);}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node rect,#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].cluster rect,#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node polygon{stroke:url(#chatgpt-mermaid-\_r_i8\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].swimlane.cluster rect{filter:none;}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node path{stroke:url(#chatgpt-mermaid-\_r_i8\_-gradient);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node .outer-path{filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node .neo-line path{stroke:rgb(31, 78, 148);filter:none;}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node circle{stroke:url(#chatgpt-mermaid-\_r_i8\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].node circle .state-start{fill:#000000;}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].icon-shape .icon{fill:url(#chatgpt-mermaid-\_r_i8\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_i8\_ [data-look="neo"].icon-shape .icon-neo path{stroke:url(#chatgpt-mermaid-\_r_i8\_-gradient);filter:drop-shadow( 1px 2px 2px rgba(185,185,185,1));}#chatgpt-mermaid-\_r_i8\_ .node text{font-size:14px;font-weight:600;letter-spacing:normal;fill:rgb(153, 206, 255);}#chatgpt-mermaid-\_r_i8\_ .edgeLabels text{font-size:13px;font-weight:600;letter-spacing:-0.08px;fill:rgb(153, 206, 255);}#chatgpt-mermaid-\_r_i8\_ .node tspan[font-weight="normal"],#chatgpt-mermaid-\_r_i8\_ .edgeLabels tspan[font-weight="normal"]{font-weight:600;}#chatgpt-mermaid-\_r_i8\_ .edgeLabel .label rect{opacity:1;rx:13px;ry:13px;fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .node rect,#chatgpt-mermaid-\_r_i8\_ .node circle,#chatgpt-mermaid-\_r_i8\_ .node ellipse,#chatgpt-mermaid-\_r_i8\_ .node polygon,#chatgpt-mermaid-\_r_i8\_ .node path{fill:rgb(0, 40, 77);stroke:rgba(255, 255, 255, 0.1);stroke-width:1px;}#chatgpt-mermaid-\_r_i8\_ .node rect{rx:16px;ry:16px;}#chatgpt-mermaid-\_r_i8\_ .mermaid-decision .label-container{fill:rgb(0, 14, 26);stroke:rgb(26, 62, 95);stroke-dasharray:2,2;}#chatgpt-mermaid-\_r_i8\_ .edgePaths .flowchart-link{stroke:rgb(175, 175, 175);stroke-width:1px;stroke-linecap:round;stroke-linejoin:round;}#chatgpt-mermaid-\_r_i8\_ .marker{fill:rgb(175, 175, 175);stroke:rgb(175, 175, 175);}#chatgpt-mermaid-\_r_i8\_ :root{--mermaid-font-family:-apple-system-body,ui-sans-serif,-apple-system,system-ui,"Segoe UI",Helvetica,"Apple Color Emoji",Arial,sans-serif,"Segoe UI Emoji","Segoe UI Symbol";}Users / AdministratorReact Web ApplicationFastify Coordinator APIMySQL DatabaseWebSocket CommunicationLayerCompiler EngineIntermediate RepresentationOptimization & DependencyAnalysisTask Decomposition EngineResource-Aware SchedulerWindows WorkerNative Android WorkerBrowser WorkerResult Validation &AggregationSecurity, Trust & Audit
+
+The most important design principle is that the coordinator owns orchestration, while the worker applications own their platform-specific execution.
+
+The compiler engine should also be a well-defined subsystem rather than a collection of frontend actions.
+
+## Database responsibilities
+
+MySQL should persist the information necessary to reconstruct system activity.
+
+I would expect entities/tables covering:
+
+- Users and roles.
+- Worker registrations and capabilities.
+- Enrollment invitations.
+- Worker sessions and heartbeat records.
+- Compilation jobs.
+- Source/artifact metadata.
+- Intermediate representation and compilation stages where persistence is required.
+- Distributed jobs and task records.
+- Task attempts and assignments.
+- Task results and verification records.
+- Security and audit events.
+- Performance measurements.
+- System configuration.
+
+The database must distinguish a job from its individual tasks and distinguish a task from its individual execution attempts.
+
+That is important for reliable retry management and historical analysis.
+
+# 12. What the system must accomplish in a real demonstration
+
+I would not consider the product complete merely because all the applications open successfully.
+
+The following demonstration should be possible from beginning to end.
+
+## Expected end-to-end demonstration
+
+Target acceptance scenario
+
+Step 1 — Start the platform
+
+Start the hosted coordinator and database. Open the web application and authenticate as administrator.
+
+[NuNet 🌐 (@nunet_global) on X](https://images.openai.com/static-rsc-4/tuAnqayX2gWfqzhc9dSs33CsqLrp_VrRTF5kaq51yMA7bTMDOOgyQnYEpG49THZ1nyKGopzqEF9SB9mhY2DEd_IPeRLEmwkWUtC2wlCozG9PIQRLEmrrRpOuckZrSc2XQtnnVeh0idx742x687ka14iYBfXyIQEVvzG_6_UEfRo?purpose=inline)
+
+[x.com](https://x.com/nunet_global/status/2028666681459884257?utm_source=chatgpt.com)
+
+Step 2 — Connect three different platforms
+
+Generate one enrollment invitation. Connect a Windows computer, an Android phone and a browser worker. Confirm that all three register independently.
+
+[Dalkia mise sur Google pour booster sa transformation digitale](https://images.openai.com/static-rsc-4/j-f0mwHvrYsIsk9iOIBNUUd7WvZBN3pAi11my8VeLUWs7jBCwKFUVZpXfaFPkoHTABbSIBlYKr6ChX7vmGocXY9tvM1hMfcoV2CfdrUdWv6KMc5h8CAr6ja3A3iZkzRog0nWTEfbfjA98ywb1bVUPVG3HqHDOnU8L5l68MwojkM?purpose=inline)
+
+[journaldunet.com](https://www.journaldunet.com/solutions/dsi/1155471-dalkia-mise-sur-google-pour-booster-sa-transformation-digitale/?utm_source=chatgpt.com)
+
+Step 3 — Submit a program
+
+Upload a supported C program. Run the compiler and inspect its compilation stages, intermediate representation and optimization results.
+
+Step 4 — Identify distributable work
+
+Submit a supported workload with independent computation units. Inspect how the compiler or workload engine identifies eligible tasks and creates task packages.
+
+Step 5 — Distribute work
+
+Allow the scheduler to select compatible devices. Observe tasks being assigned to Windows, Android and browser workers.
+
+Step 6 — Observe actual execution
+
+Open each worker application and verify that it receives and executes its assigned workload. Inspect task progress and returned results.
+
+Step 7 — Simulate failure
+
+Disconnect one worker during execution. Verify that the coordinator detects the failure and safely reassigns eligible unfinished work.
+
+Step 8 — Verify results
+
+Confirm that returned outputs are validated, aggregated and associated with their original tasks.
+
+Step 9 — Evaluate performance
+
+Compare local and distributed execution time, resource utilization, task success and recovery behaviour.
+
+Step 10 — Inspect audit records
+
+Show the history of compilation, enrollment, assignment, execution, failure recovery and result verification.
+
+This is the demonstration that would convince an evaluator that they are looking at a genuine integrated compiler and distributed computing platform.
+
+# 13. What the product must NOT become
+
+I want to distinguish your intended product from several implementations that might superficially look similar but would weaken the project.
+
+| Do not build                                                    | What you should build instead                                                        |
+| --------------------------------------------------------------- | ------------------------------------------------------------------------------------ |
+| A dashboard that only displays connected devices                | Actual device registration, task execution and lifecycle management.                 |
+| A compiler interface that simply forwards everything to GCC     | A genuine compiler pipeline with analysis, IR, optimization and compilation outputs. |
+| A system that distributes arbitrary source files to all devices | A dependency-aware, compatibility-checked task distribution engine.                  |
+| A fake scheduler that assigns tasks randomly                    | An actual capability-aware resource scheduler.                                       |
+| Android as a WebView wrapper                                    | A native Android execution worker.                                                   |
+| A worker that only sends heartbeat messages                     | A worker that receives, executes and returns eligible tasks.                         |
+| A security page with decorative indicators                      | Security checks that actually govern access and execution.                           |
+| A recovery system that only changes a status label              | Real timeout detection, safe retry and task reassignment.                            |
+| Artificial performance statistics                               | Measurements obtained from actual runs.                                              |
+| A product dependent on the developer's laptop                   | An independently deployable coordinator and independently connecting workers.        |
+
+There is another distinction worth making.
+
+Zero-trust does not mean trusting nobody and refusing every device. It means that every device, session, task and result must be validated according to defined authorization and verification rules.
+
+Similarly, fault tolerance does not mean that every possible failure can be recovered from. It means that the system identifies failures, applies appropriate recovery procedures and accurately reports unrecoverable conditions.
+
+# 14. Development and deployment expectations
+
+Your target is a near-industry-grade development and deployment experience, not necessarily a commercially published enterprise service.
+
+I interpret that as the following requirements.
+
+Development
+
+- Modular TypeScript monorepo.
+- Separate frontend, coordinator, compiler and worker modules.
+- Versioned communication protocol.
+- Consistent API contracts.
+- Database migrations and persistent storage.
+- Automated unit, integration and end-to-end tests.
+- Structured application logging.
+- Environment-based configuration.
+- Reproducible builds.
+
+Deployment
+
+- Independently hosted coordinator.
+- Persistent MySQL database.
+- Containerized backend services.
+- Kubernetes-based deployment as the intended hosting approach.
+- HTTPS and secure WebSocket communication.
+- Environment-specific secrets and configuration.
+- Windows application packaging.
+- Signed or otherwise controlled Android APK distribution.
+- Browser worker accessible through the hosted website.
+- Workers able to connect from different networks without requiring the developer's machine to remain online.
+
+Docker remains useful for local development and building container images. Kubernetes is the intended deployment orchestration layer, rather than presenting Docker Compose as the final hosting architecture.
+
+Testing
+
+The system needs tests for:
+
+1. Compiler correctness and generated artifacts.
+2. Worker registration and protocol compatibility.
+3. Task assignment and execution across all three platforms.
+4. Authentication, authorization and task validation.
+5. Worker disconnection, timeout and reassignment.
+6. Result integrity and aggregation.
+7. Resource monitoring and scheduling decisions.
+8. Performance comparison between local and distributed execution.
+
+A particularly important acceptance condition is that the Android and Windows workers must be tested as actual independently running applications, not merely as development simulations.
+
+# 15. What I would prioritize to make this a successful product
+
+There is a risk in a project of this size: trying to implement every advanced capability simultaneously can result in many partially working modules.
+
+I would divide the final implementation into four levels.
+
+| Level                         | Priority  | What must be delivered                                                                                             |
+| ----------------------------- | --------- | ------------------------------------------------------------------------------------------------------------------ |
+| 1. Core functionality         | Essential | Compiler pipelines, coordinator, MySQL, job/task lifecycle and actual execution.                                   |
+| 2. Cross-platform integration | Essential | Working Windows, Android APK and browser workers using a common protocol.                                          |
+| 3. Reliability and security   | Essential | Authentication, worker authorization, result validation, resource-aware scheduling, fault recovery and audit logs. |
+| 4. Evaluation and deployment  | Essential | Kubernetes deployment, automated testing, real performance measurements, reporting and reproducible builds.        |
+
+I would not treat the last three levels as optional enhancements. They are part of the promised product.
+
+Advanced features such as predictive scheduling, machine-learning-based resource allocation, sophisticated compiler optimizations and additional hardware backends can remain future extensions.
+
+## 16. The final acceptance criteria
+
+This is the checklist I would use to decide whether OmniCompile Core is genuinely finished.
+
+Product completion tracker
+
+0/17 completed
+
+Compiler
+
+C, Python and Java have working language-appropriate processing pipelines.
+
+Compiler
+
+C supports the intended lexer, parser, semantic analysis, IR, optimization and code generation stages.
+
+Compiler
+
+The system identifies eligible distributed workloads and preserves computation dependencies.
+
+Coordinator
+
+A central coordinator manages users, jobs, tasks and workers.
+
+Windows
+
+An independently running Windows worker registers, executes tasks and returns results.
+
+Android
+
+A native APK independently registers, executes approved workloads and returns results.
+
+Browser
+
+A browser worker can register, execute supported tasks and disconnect correctly.
+
+Protocol
+
+All workers implement a compatible, versioned communication protocol.
+
+Scheduling
+
+The scheduler considers platform compatibility, resources, health and trust.
+
+Security
+
+Authentication, authorization, task restrictions and result validation are operational.
+
+Recovery
+
+Worker failures trigger detection and safe task retry or reassignment.
+
+Aggregation
+
+Results are validated and consolidated into the correct parent job.
+
+Monitoring
+
+The dashboard displays actual worker, job, task and system states.
+
+Metrics
+
+All five performance indicators are calculated from real execution data.
+
+Database
+
+MySQL persists the required records and supports reliable job histories.
+
+Deployment
+
+The coordinator is independently deployable and all three worker types connect remotely.
+
+Testing
+
+Cross-platform, failure, security and integration tests pass with documented evidence.
+
+Reset checklist
+
+# 17. My final understanding of your expectations
+
+I want to emphasize five things that I believe define your project.
+
+1\. It must be a real compiler product.
+
+The compiler must accept source code, process it through genuine language-specific pipelines, perform optimization and generate appropriate outputs. Distributed execution must be connected to this compiler functionality.
+
+2\. It must demonstrate genuine heterogeneous computing.
+
+A Windows computer, an Android phone and a browser must be able to independently join the same computing network and perform actual supported work. They must not be simulated versions of one another.
+
+3\. It must be intelligent in its resource management, without requiring AI.
+
+The platform should make rule-based, capability-aware decisions about task placement, device availability, execution compatibility and recovery. It should behave intelligently through deterministic algorithms and measurable system logic.
+
+4\. It must be secure and resilient by design.
+
+Untrusted workers, unauthorized tasks, invalid results, disconnected devices and execution failures must be handled through actual mechanisms, not just displayed as dashboard notifications.
+
+5\. It must be demonstrable, measurable and independently deployable.
+
+You should be able to start the central platform, connect devices from different networks, compile a program, distribute eligible workloads, observe actual execution, disconnect a device, recover tasks and produce measurable performance evidence.
+
+## The one-sentence product definition
+
+## OmniCompile Core
+
+A security-aware, fault-tolerant distributed compiler platform that transforms supported source programs into optimized execution workloads, intelligently orchestrates eligible computations across heterogeneous Windows, Android and browser devices, verifies execution results, and provides reliable, measurable and centrally managed compilation and distributed computing.
+
+## One final architectural distinction I would preserve
+
+I would make sure the project is built around this hierarchy:
+
+- Compiler = Intelligence: Understands, analyzes, optimizes and prepares programs.
+- Coordinator = Control: Manages the entire computing network.
+- Scheduler = Decision-making: Determines where eligible work should execute.
+- Workers = Execution: Perform the assigned computation.
+- Security and verification = Assurance: Establishes whether operations and results are authorized and valid.
+- Fault recovery = Resilience: Keeps eligible workloads progressing when devices fail.
+- Dashboard = Visibility and control: Lets users understand and manage the complete system.
+
+That is the product I believe you have been working towards, rather than two university projects joined together.
+
+My strongest recommendation is to preserve this architecture and resist expanding the scope with unrelated features. Make the compiler-to-distributed-execution connection exceptionally solid. A working three-platform execution network with a genuine compiler, secure task distribution, verifiable results and demonstrated failure recovery is already a substantial and technically meaningful software engineering product.

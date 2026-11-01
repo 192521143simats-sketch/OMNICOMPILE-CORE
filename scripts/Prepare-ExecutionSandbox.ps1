@@ -12,9 +12,9 @@ try {
 } finally {$ErrorActionPreference=$savedPreference}
 if($inspectExit -eq 0){
   $imageInfo=($imageJson -join "`n") | ConvertFrom-Json
-  if($imageInfo[0].Config.Labels.'gridx.execution.source' -eq $identity){Write-Host 'Reusing verified GRID-X execution image.';exit 0}
+  if($imageInfo[0].Config.Labels.'gridx.execution.source' -eq $identity){Write-Host 'Reusing verified OmniCompile Core execution image.';exit 0}
 }
-Write-Host 'Preparing isolated GRID-X execution environment (first build needs Internet)...'
+Write-Host 'Preparing isolated OmniCompile Core execution environment (first build needs Internet)...'
 $runtime=Join-Path $ProjectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
 $build=Start-Process -FilePath 'docker.exe' -ArgumentList @('build','--quiet','--label',"gridx.execution.source=$identity",'-t','gridx-execution:1',"`"$context`"") -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtime 'sandbox-build.log') -RedirectStandardError (Join-Path $runtime 'sandbox-build-error.log')
@@ -23,4 +23,4 @@ $deadline=[DateTime]::UtcNow.AddMinutes(10)
 while(-not $build.WaitForExit(10000)){if([DateTime]::UtcNow -gt $deadline){$build.Kill();throw 'Execution image build timed out. See .runtime\sandbox-build-error.log.'};Write-Host 'Execution image build is still working...'}
 $build.WaitForExit()
 if($build.ExitCode -ne 0){throw 'Execution image build failed. See .runtime\sandbox-build-error.log.'}
-Write-Host 'GRID-X isolated execution image is ready.'
+Write-Host 'OmniCompile Core isolated execution image is ready.'

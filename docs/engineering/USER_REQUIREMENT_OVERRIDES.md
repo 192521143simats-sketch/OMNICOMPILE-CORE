@@ -1,5 +1,27 @@
 # Explicit user requirement overrides
 
+## 2026-11-01 — OmniCompile Core and owner-scoped live indicators
+
+The product and faculty-approved research title is now **OmniCompile Core: A
+Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous
+Edge-to-Cloud Orchestration**. This supersedes GRID-X/C-OptiForge presentation,
+not the existing architecture or data. Retain compatibility-sensitive package,
+database, protocol, installed-app, credential, environment and path identifiers.
+Historical specifications/evidence retain their original names.
+
+The five user-screen metrics are task success, dispatch-to-receipt completion
+time, participating-worker availability, separate CPU/RAM utilization, and result
+verification. Explicit formulas in the November request supersede the differing
+five-item list in the attached vision. The user confirmed: only a user's own jobs;
+administrators do not receive user-job metrics. Render under Compile and optimize,
+not inside build artifacts. Unavailable measurements are null, never invented zero.
+Keep genuine language-specific pipelines and accurate capability boundaries;
+zero trust is enforced validation, not a guarantee against every malicious result.
+
+Full supplied vision: `specification/OMNICOMPILE_CORE_VISION.txt`. The source's
+sample checklist percentages and copied diagram CSS are retained as source text,
+not execution evidence or application instructions.
+
 ## 2026-10-16 — Phase9 terminal identity and deployment approval boundary
 
 The new Phase9 master/addendum requires the permanent dark terminal palette

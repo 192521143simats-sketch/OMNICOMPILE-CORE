@@ -1,5 +1,20 @@
 # Authoritative conflict resolutions
 
+2026-11-01: OmniCompile Core is the new presentation/research identity; preserve
+existing installed application IDs, credential stores, database/package/protocol
+names and distribution filenames for compatibility. No second platform or schema
+reset is introduced. Migration0011 appends verification, execution telemetry and
+availability history. Metric SQL joins both direct compilation tasks and C batch
+tasks to the authenticated USER owner. ADMIN is explicitly forbidden from this
+endpoint. Task totals count tasks once, not attempts; verification totals count
+each check separately. Native artifact-format acceptance and independent source
+recompilation are separately named checks. Coordinator receipt time is captured
+before the worker message queue, never inferred from worker execution claims.
+Sampling runs outside the recovery loop and on lifecycle transitions. Future
+source-clock telemetry is excluded; stale source observations cannot become fresh
+just because they were recently received. No new compiler/toolchain capability is
+claimed by adding product branding or metrics.
+
 2026-10-16 Phase9: reuse the existing network/enrollment/node and protocol-v1
 systems. Add a separate approval attribute through append-only migration0010;
 preserve old enrollments. Credential replacement retains the same identity and

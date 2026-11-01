@@ -1,6 +1,6 @@
-# C-OptiForge / GRID-X architecture
+# OmniCompile Core architecture
 
-The research project is C-OptiForge; its application UI is GRID-X.
+The product and research title is OmniCompile Core: A Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous Edge-to-Cloud Orchestration. C-OptiForge and GRID-X remain historical and compatibility-sensitive engineering identifiers only.
 
 ## Components
 

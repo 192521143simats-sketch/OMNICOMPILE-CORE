@@ -1,6 +1,6 @@
-# GRID-X operations
+# OmniCompile Core operations
 
-Run `START-C-OPTIFORGE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts GRID-X. Repeated starts reuse healthy services.
+Run `START-C-OPTIFORGE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
 
 Run `STOP-C-OPTIFORGE.bat` to stop application processes and containers without deleting `c-optiforge_mysql_data`.
 

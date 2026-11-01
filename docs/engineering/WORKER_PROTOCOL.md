@@ -1,4 +1,4 @@
-# GRID-X worker protocol v1
+# OmniCompile Core worker protocol v1
 
 Transport: authenticated `/ws/worker`. Browser enrollment uses a scoped HttpOnly cookie and validated Origin; native clients send `Authorization: Bearer <scoped credential>` over WSS outside local development. No credentials in URLs. `/version` advertises application/protocol version. Every envelope includes integer `protocolVersion: 1`; unsupported/missing versions receive `PROTOCOL_INCOMPATIBLE` then close 1008. Old pages/agents must reload/update, not silently send legacy messages.
 

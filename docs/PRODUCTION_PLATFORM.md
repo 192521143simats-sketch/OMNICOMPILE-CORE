@@ -1,8 +1,8 @@
-# GRID-X production platform
+# OmniCompile Core production platform
 
 ## Architecture
 
-GRID-X has one React/Vite application, one Fastify coordinator, browser/native worker clients, shared compiler packages, and one authoritative MySQL database. Authentication uses server-side sessions represented by Secure-in-production, HttpOnly, SameSite cookies. The coordinator—not the frontend—enforces ADMIN/USER authorization and artifact ownership.
+OmniCompile Core has one React/Vite application, one Fastify coordinator, browser/native worker clients, shared compiler packages, and one authoritative MySQL database. Authentication uses server-side sessions represented by Secure-in-production, HttpOnly, SameSite cookies. The coordinator—not the frontend—enforces ADMIN/USER authorization and artifact ownership.
 
 The domain model separates:
 

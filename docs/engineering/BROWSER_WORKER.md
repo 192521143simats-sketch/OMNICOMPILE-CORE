@@ -1,4 +1,4 @@
-# GRID-X browser contribution
+# OmniCompile Core browser contribution
 
 For a physical Android test when MIUI blocks automated taps, run PowerShell
 `$env:GRID_X_ANDROID_MANUAL='1'; npm run verify:android-browser` and follow the

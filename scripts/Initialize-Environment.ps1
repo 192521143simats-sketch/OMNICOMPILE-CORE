@@ -16,7 +16,7 @@ if (Test-Path -LiteralPath $environmentPath) {
     if ($existing -notmatch '(?m)^SESSION_TTL_HOURS=') { $additions += 'SESSION_TTL_HOURS=12' }
     if ($existing -notmatch '(?m)^RESET_TTL_MINUTES=') { $additions += 'RESET_TTL_MINUTES=20' }
     if ($additions.Count) { [IO.File]::AppendAllText($environmentPath, "`r`n" + ($additions -join "`r`n") + "`r`n", [Text.UTF8Encoding]::new($false)) }
-    Write-Host 'Environment file already exists; preserved credentials and added any missing GRID-X settings.'
+    Write-Host 'Environment file already exists; preserved credentials and added any missing OmniCompile Core settings.'
     exit 0
 }
 

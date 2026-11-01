@@ -1,5 +1,17 @@
 {
   "schemaVersion": 1,
+  "currentProduct": "OmniCompile Core",
+  "additionalRequirements": [
+    {"id":"U:20261101:identity","requirement":"Faculty product/research rename without changing working architecture or installed identities","status":"IMPLEMENTED","implementation":"web/native presentation, reports, package display metadata and current documentation","evidence":["OMNICOMPILE_METRICS.md","OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:ownership","requirement":"Only USER own compilation metrics; no administrator job metrics","status":"VERIFIED_LOCAL","implementation":"server.ts /api/user/compiler-metrics and compiler-metrics.ts owner SQL joins","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:success","requirement":"Terminal task success with separate failures/timeouts/cancellation/pending/running and UTC trend","status":"VERIFIED_LOCAL","implementation":"compiler-metrics.ts SQL aggregates and compiler-metrics.tsx","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:duration","requirement":"Actual dispatch-to-WebSocket-receipt successful duration with language/platform filters","status":"VERIFIED_LOCAL","implementation":"server receipt timestamp, result_verifications and grouped timing SQL","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:availability","requirement":"Live active participating worker availability, states, policy eligibility and persisted history","status":"VERIFIED_LOCAL","implementation":"CompilerMetrics, scheduler evaluateNode, lifecycle samples and job_worker_availability","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:resources","requirement":"Separate actual supported CPU/RAM, no unavailable-zero substitution, platform breakdown and freshness","status":"VERIFIED_LOCAL","implementation":"worker_telemetry, explicit measurement flags and source observation times","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:verification","requirement":"Durable named verification checks, accepted/rejected/failed/pending counts and own-job audit history","status":"VERIFIED_LOCAL","implementation":"result_verifications, atomic task acceptance and independent native-source verification records","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:screen","requirement":"Five live indicators below compile action, not build artifacts","status":"VERIFIED_LOCAL","implementation":"CompilerMetrics component, abort-safe polling and actual web product verifier","evidence":["OMNICOMPILE_ACCEPTANCE.md"]},
+    {"id":"U:20261101:vision","requirement":"Cumulative complete product vision including genuine compiler, zero-trust, fault tolerance and hosted cross-platform acceptance","status":"IN_PROGRESS","implementation":"Existing pipelines and Phase9–11 backlog; preserved specification/OMNICOMPILE_CORE_VISION.txt","evidence":["OMNICOMPILE_METRICS.md","PROJECT_STATUS.md"]}
+  ],
   "sourceSha256": "1f3b1ab2fa8ff06b9bb0096a83d82dfc651d6f9008330609178171605412f227",
   "sourceLineCount": 5823,
   "policy": "Every nonblank line retained. NOT_STARTED means acceptance not established, even if related legacy code exists. M2 governs conflicts; examples are not fabricated measurements.",

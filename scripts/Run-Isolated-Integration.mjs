@@ -9,7 +9,7 @@ import {terminateOwnedTestProcess} from './Owned-Test-Process.mjs';
 import {localDistributionManifest} from './Local-Distribution.mjs';
 
 const mode=process.argv[2]??'all';
-if(!['all','platform','artifacts','enrollment','reusable','execution','results','leases','recovery','cancellation','phase4','compute','web','settings','browser','android-browser','android-native','windows','windows-install','mixed','phase9'].includes(mode)) throw new Error('Unknown isolated integration mode.');
+if(!['all','platform','artifacts','enrollment','reusable','execution','results','leases','recovery','cancellation','phase4','compute','web','settings','browser','android-browser','android-native','windows','windows-install','mixed','phase9','metrics'].includes(mode)) throw new Error('Unknown isolated integration mode.');
 const root=process.cwd(),instance=randomBytes(8).toString('hex'),container=`gridx-test-${instance}`,database=`gridx_test_${instance}`;
 const password=randomBytes(32).toString('base64url'),rootPassword=randomBytes(32).toString('base64url');
 const startedAt=new Date().toISOString(),evidence=resolve(root,'.runtime','integration',instance);
@@ -108,6 +108,7 @@ try {
   const scripts=mode==='windows-install'?['Verify-Windows-Installation.mjs']:mode==='windows'?['Verify-Windows-Worker.mjs']:mode==='android-browser'?['Verify-Android-Browser.mjs']:mode==='browser'?['Verify-Browser-Worker.mjs']:mode==='settings'?['Verify-Settings.mjs']:mode==='web'?['Verify-Web-Product.mjs']:mode==='compute'?['Verify-Compute-Tasks.mjs']:mode==='phase4'?['Verify-Phase4-Closure.mjs']:mode==='cancellation'?['Verify-Task-Cancellation.mjs']:mode==='recovery'?['Verify-Task-Recovery.mjs']:mode==='leases'?['Verify-Task-Leases.mjs']:mode==='results'?['Verify-Migrations.mjs','Verify-Task-Results.mjs']:mode==='execution'?['Verify-Migrations.mjs','Verify-Execution.mjs']:mode==='reusable'?['Verify-Reusable-Link.mjs']:mode==='enrollment'?['Verify-Migrations.mjs','Verify-Enrollment.mjs']:['Verify-Migrations.mjs','Verify-MySQL-Concurrency.mjs','Verify-Protocol.mjs',...(mode==='all'?['Verify-Task-Results.mjs','Verify-Platform.mjs','Verify-Artifacts.mjs']:[mode==='platform'?'Verify-Platform.mjs':'Verify-Artifacts.mjs'])];
   if(mode==='android-native')scripts.splice(0,scripts.length,'Verify-Android-Native.mjs');
   if(mode==='mixed')scripts.splice(0,scripts.length,'Verify-Mixed-Workers.mjs');
+  if(mode==='metrics')scripts.splice(0,scripts.length,'Verify-Compiler-Metrics.mjs');
   if(mode==='phase9')scripts.splice(0,scripts.length,'Verify-Phase9.mjs');
   for(const script of scripts){
     console.log(`Running ${script} against isolated test MySQL and coordinator...`);

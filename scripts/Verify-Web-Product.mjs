@@ -102,6 +102,11 @@ try{
           await page.getByLabel('Upload source file').setInputFiles(resolve(item.file));
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
           await expect(page.getByRole('heading',{name:'Generated artifacts'})).toBeVisible({timeout:120000});
+          const liveMetrics=page.getByTestId('compiler-metrics');
+          await expect(liveMetrics.getByRole('heading',{name:'Live performance · your jobs'})).toBeVisible();
+          await expect(liveMetrics.locator('article')).toHaveCount(5);
+          await expect(liveMetrics.getByText('1 / 1 completed outcomes successful',{exact:true})).toBeVisible({timeout:15000});
+          await expect(liveMetrics.getByText('0 / 0 completed verification attempts verified',{exact:true})).toHaveCount(0);
           const compileButton=await page.getByRole('button',{name:'Compile and optimize',exact:true}).boundingBox();expect(compileButton?.height).toBeLessThan(80);
           await screenshot(page,`ui-compiler-${item.language}-desktop.png`);
           const reports=page.locator('.artifact-list li').filter({hasText:'Build report (JSON)'});

@@ -17,7 +17,7 @@ export class ProductIntegrations{
   const c=this.config.email;if(!c?.enabled)return 'disabled';const origin=httpsOrigin(c.publicBaseUrl);
   if(!c.apiKey||!mailbox(c.from)||!origin)return 'unconfigured';if(!mailbox(to)||!token||token.length>512)return 'rejected';
   const link=new URL('/reset-password',origin);link.searchParams.set('token',token);
-  const response=await this.post('https://api.resend.com/emails',{from:c.from,to:[to],subject:'Reset your GRID-X password',text:`A password reset was requested for your GRID-X account. Use this expiring, single-use link: ${link.href}\nIf you did not request this, ignore this email.`},{Authorization:`Bearer ${c.apiKey}`,'Idempotency-Key':`password-reset/${createHash('sha256').update(token).digest('hex')}`},c.timeoutMs);
+  const response=await this.post('https://api.resend.com/emails',{from:c.from,to:[to],subject:'Reset your OmniCompile Core password',text:`A password reset was requested for your OmniCompile Core account. Use this expiring, single-use link: ${link.href}\nIf you did not request this, ignore this email.`},{Authorization:`Bearer ${c.apiKey}`,'Idempotency-Key':`password-reset/${createHash('sha256').update(token).digest('hex')}`},c.timeoutMs);
   return typeof response?.id==='string'&&response.id.length>0?'accepted':'failed';
  }
  async capture(event:string,consented:boolean,properties:Record<string,unknown>={}):Promise<IntegrationOutcome>{
@@ -32,9 +32,9 @@ export class ProductIntegrations{
   if(!c.apiKey||!mailbox(c.from)||!httpsOrigin(c.publicBaseUrl))return 'unconfigured';
   if(!mailbox(to)||!['PASSWORD_RESET_COMPLETED','SESSION_REVOKED'].includes(event))return 'rejected';
   const text=event==='PASSWORD_RESET_COMPLETED'
-   ?'Your GRID-X password was changed. Existing login sessions have been revoked. If you did not make this change, contact your administrator.'
-   :'A login session for your GRID-X account was revoked. If you did not make this change, contact your administrator.';
-  const response=await this.post('https://api.resend.com/emails',{from:c.from,to:[to],subject:'GRID-X account security notification',text},{Authorization:`Bearer ${c.apiKey}`,'Idempotency-Key':`security-notification/${randomUUID()}`},c.timeoutMs);
+   ?'Your OmniCompile Core password was changed. Existing login sessions have been revoked. If you did not make this change, contact your administrator.'
+   :'A login session for your OmniCompile Core account was revoked. If you did not make this change, contact your administrator.';
+  const response=await this.post('https://api.resend.com/emails',{from:c.from,to:[to],subject:'OmniCompile Core account security notification',text},{Authorization:`Bearer ${c.apiKey}`,'Idempotency-Key':`security-notification/${randomUUID()}`},c.timeoutMs);
   return typeof response?.id==='string'&&response.id.length>0?'accepted':'failed';
  }
 }

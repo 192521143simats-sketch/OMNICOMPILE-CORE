@@ -60,6 +60,12 @@ try{
   await poll(()=>detail(disconnectId),value=>value.attempts[0]?.status==='INTERRUPTED');await connect(gamma,'valid');assert.deepEqual((await complete(disconnectId)).attempts.map(row=>row.status),['INTERRUPTED','COMPLETED']);
   const [results]=await pool.execute('SELECT task_id,COUNT(*) count FROM results WHERE task_id IN (?,?,?) GROUP BY task_id',[id,outageId,disconnectId]);assert.equal(results.length,3);assert.ok(results.every(row=>Number(row.count)===1));
   const delta=await network('Disconnect during MySQL outage'),lost=await connect(delta),lostId=await submit(delta);await running(lostId);
+  // This case deliberately blocks the disconnect UPDATE behind a held node row.
+  // Stop this fixture's unrelated periodic sender before taking that lock;
+  // otherwise an incidental heartbeat can own the serialized socket queue first,
+  // and the test waits for an UPDATE it has itself prevented from starting.
+  // Other cases above exercise actual heartbeats during database interruption.
+  clearInterval(lost.timer);await pause(200);
   const closeBlocker=await pool.getConnection();await closeBlocker.beginTransaction();await closeBlocker.execute('SELECT id FROM nodes WHERE id=? FOR UPDATE',[lost.nodeId]);
   let renewedClient;
   try{

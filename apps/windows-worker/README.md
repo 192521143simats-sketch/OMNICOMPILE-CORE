@@ -1,4 +1,4 @@
-# GRID-X Windows worker
+# OmniCompile Core Windows worker
 
 Build from the repository root on Windows x64:
 
@@ -16,7 +16,7 @@ their own temporary MySQL fixture, not the developer database.
 
 The installer is generated under `.runtime/windows-worker/releases/`. It is an
 **unsigned development build**, not a signed production release. Install it,
-open GRID-X Worker, paste an active network join link, explicitly consent and
+open OmniCompile Core Worker, paste an active network join link, explicitly consent and
 join. No terminal or global Node/npm installation is required on the worker PC.
 Use HTTPS outside a trusted local network. No public deployment is created by
 the package command.

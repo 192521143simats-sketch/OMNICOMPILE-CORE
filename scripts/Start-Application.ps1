@@ -4,7 +4,7 @@ $runtimeDirectory = Join-Path $ProjectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtimeDirectory | Out-Null
 if($env:GRID_X_EXECUTION_MODE -ne 'disabled'){
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot 'scripts\Prepare-ExecutionSandbox.ps1') -ProjectRoot $ProjectRoot
-    if($LASTEXITCODE -ne 0){throw 'GRID-X execution environment preparation failed.'}
+    if($LASTEXITCODE -ne 0){throw 'OmniCompile Core execution environment preparation failed.'}
 }
 
 # A phone's localhost is the phone itself. Publish join links with this PC's
@@ -27,7 +27,7 @@ function Test-Endpoint([string]$Uri) {
 $coordinatorReady = Test-Endpoint 'http://localhost:4100/ready'
 $webReady = Test-Endpoint 'http://localhost:5173/'
 if ($coordinatorReady -and $webReady) {
-    Write-Host 'GRID-X application services are already running; reusing them.'
+    Write-Host 'OmniCompile Core application services are already running; reusing them.'
     exit 0
 }
 
@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot 'node_modules'))) {
 }
 
 if ($coordinatorReady -or $webReady) {
-    throw 'Only part of GRID-X is already running. Run STOP-C-OPTIFORGE.bat, then start again.'
+    throw 'Only part of OmniCompile Core is already running. Run STOP-C-OPTIFORGE.bat, then start again.'
 }
 
 $stdout = Join-Path $runtimeDirectory 'application.log'
@@ -48,9 +48,9 @@ $process = Start-Process -FilePath 'npm.cmd' -ArgumentList @('run','dev') -Worki
 
 $deadline = [DateTime]::UtcNow.AddSeconds(90)
 do {
-    if ($process.HasExited) { throw "GRID-X exited during startup. See $stderr" }
+    if ($process.HasExited) { throw "OmniCompile Core exited during startup. See $stderr" }
     if ((Test-Endpoint 'http://localhost:4100/ready') -and (Test-Endpoint 'http://localhost:5173/')) { exit 0 }
     Start-Sleep -Seconds 2
 } while ([DateTime]::UtcNow -lt $deadline)
-throw "GRID-X did not become ready within 90 seconds. See $stdout and $stderr"
+throw "OmniCompile Core did not become ready within 90 seconds. See $stdout and $stderr"
 

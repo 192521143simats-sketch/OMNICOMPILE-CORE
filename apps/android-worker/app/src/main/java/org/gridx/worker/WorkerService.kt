@@ -12,7 +12,7 @@ class WorkerService:Service() {
         manager.createNotificationChannel(NotificationChannel("contribution","Resource contribution",NotificationManager.IMPORTANCE_LOW))
         val open=PendingIntent.getActivity(this,0,Intent(this,MainActivity::class.java),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
         val pause=PendingIntent.getService(this,1,Intent(this,WorkerService::class.java).setAction("PAUSE"),PendingIntent.FLAG_IMMUTABLE or PendingIntent.FLAG_UPDATE_CURRENT)
-        val notification=Notification.Builder(this,"contribution").setSmallIcon(android.R.drawable.ic_popup_sync).setContentTitle("GRID-X contribution controls").setContentText("Contributes only while your settings allow. Tap Pause to stop.").setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null,"Pause",pause).build()).build()
+        val notification=Notification.Builder(this,"contribution").setSmallIcon(android.R.drawable.ic_popup_sync).setContentTitle("OmniCompile Core contribution controls").setContentText("Contributes only while your settings allow. Tap Pause to stop.").setContentIntent(open).setOngoing(true).addAction(Notification.Action.Builder(null,"Pause",pause).build()).build()
         startForeground(101,notification)
         AndroidRuntime.start()
         return START_NOT_STICKY

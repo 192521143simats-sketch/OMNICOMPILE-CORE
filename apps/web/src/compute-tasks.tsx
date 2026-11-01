@@ -5,9 +5,9 @@ import {Notice} from "./notice.js";
 import {Pagination} from "./pagination.js";
 
 const templates:Record<TestTaskPayload["operation"],TestTaskPayload>={
-  sha256:{operation:"sha256",input:"GRID-X"},
+  sha256:{operation:"sha256",input:"OmniCompile Core"},
   prime_count:{operation:"prime_count",limit:10000},
-  sha256_chain:{operation:"sha256_chain",input:"GRID-X",iterations:1000},
+  sha256_chain:{operation:"sha256_chain",input:"OmniCompile Core",iterations:1000},
   matrix_multiply:{operation:"matrix_multiply",left:[[1,2],[3,4]],right:[[5,6],[7,8]]},
   portable_benchmark:{operation:"portable_benchmark",seed:42,iterations:10000}
 };
@@ -40,7 +40,7 @@ export function ComputeTasks(){
   }
   async function inspect(id:string){try{setSelected(await api(`/api/compute/tasks/${id}`));setError("");}catch(cause){setError(cause instanceof Error?cause.message:"Task details unavailable.");}}
   async function cancel(){if(!selected||posting.current)return;posting.current=true;setPending(true);try{await api(`/api/compute/tasks/${selected.id}/cancel`,{method:"POST"});setSelected(await api(`/api/compute/tasks/${selected.id}`));await refresh();}catch(cause){setError(cause instanceof Error?cause.message:"Cancellation failed.");}finally{posting.current=false;setPending(false);}}
-  return <><Notice error={error}/><p>Authorized portable workloads only. GRID-X selects a compatible network automatically and independently verifies worker results. No shell commands are accepted.</p><div className="grid two">
+  return <><Notice error={error}/><p>Authorized portable workloads only. OmniCompile Core selects a compatible network automatically and independently verifies worker results. No shell commands are accepted.</p><div className="grid two">
     <form className="card compiler-form" onSubmit={submit} aria-busy={pending}>
       <label>Workload<select aria-label="Workload" value={operation} disabled={pending||active} onChange={event=>{const next=event.target.value as TestTaskPayload["operation"];setOperation(next);setInput(JSON.stringify(templates[next],null,2));}}>{Object.keys(templates).map(value=><option key={value} value={value}>{value.replaceAll("_"," ")}</option>)}</select></label>
       <label>Workload parameters (JSON)<textarea rows={7} value={input} maxLength={410000} disabled={pending||active} onChange={event=>setInput(event.target.value)} spellCheck={false}/></label>

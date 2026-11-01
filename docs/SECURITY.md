@@ -1,4 +1,4 @@
-# GRID-X security model
+# OmniCompile Core security model
 
 - Passwords use Argon2id; session, reset, join, and worker credentials are random and stored as hashes.
 - Browser sessions and browser-worker enrollment use HttpOnly, SameSite cookies; production enables `Secure`.
@@ -13,6 +13,6 @@
 
 Compiler processes have 30-second timeouts, diagnostic-output ceilings, unique temporary workspaces, and guaranteed cleanup. Python compilation uses isolated mode without `site` initialization. Submitted programs are compiled, not executed, by production routes.
 
-Native Windows workers remain trusted development/deployment agents rather than kernel-grade hostile-code sandboxes. For untrusted multi-tenant native compilation, deploy workers as non-root disposable containers/VMs with CPU/memory limits, read-only base filesystem, isolated temporary volume, network denial, and process-tree termination. GRID-X does not claim this external isolation is already provided by a native host process.
+Native Windows workers remain trusted development/deployment agents rather than kernel-grade hostile-code sandboxes. For untrusted multi-tenant native compilation, deploy workers as non-root disposable containers/VMs with CPU/memory limits, read-only base filesystem, isolated temporary volume, network denial, and process-tree termination. OmniCompile Core does not claim this external isolation is already provided by a native host process.
 
 The public `/join/<token>` value identifies and authorizes enrollment into one network; it is intentionally reusable until the network is disabled, expired, or full. It is not an admin, database, node, or task credential. Each consenting device receives its own revocable enrollment credential via an HttpOnly cookie.

@@ -41,7 +41,7 @@ class MainActivity:ComponentActivity() {
         var enrollmentId by remember {mutableStateOf("")}
         val scope=rememberCoroutineScope()
         Column(Modifier.fillMaxSize().safeDrawingPadding().verticalScroll(rememberScrollState()).padding(20.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("GRID-X Worker",style=MaterialTheme.typography.headlineMedium)
+            Text("OmniCompile Core Worker",style=MaterialTheme.typography.headlineMedium)
             Text("Native Android contribution • ${BuildConfig.VERSION_NAME} • Protocol 1")
             Text("${Build.MANUFACTURER} ${Build.MODEL} · Android ${Build.VERSION.RELEASE} · ${Build.SUPPORTED_ABIS.firstOrNull()}")
             Text("${Runtime.getRuntime().availableProcessors()} CPU cores · Battery ${AndroidRuntime.device.batteryPercent().takeIf{it>=0}?:"not available"}% · ${AndroidRuntime.device.network()}")
@@ -106,7 +106,7 @@ class MainActivity:ComponentActivity() {
             OutlinedButton(onClick={logs=!logs}){Text("Recent activity and diagnostics")}
             if(logs)for(line in model.logs)Text(line,style=MaterialTheme.typography.bodySmall)
             HorizontalDivider()
-            Text("Privacy: only enrollment identity, capability/resource information and authorized task results are sent. No contacts, photos, location or microphone access. This app contributes resources under your consent; closing or force-stopping it may interrupt work. GRID-X does not promise uninterrupted background operation.",style=MaterialTheme.typography.bodySmall)
+            Text("Privacy: only enrollment identity, capability/resource information and authorized task results are sent. No contacts, photos, location or microphone access. This app contributes resources under your consent; closing or force-stopping it may interrupt work. OmniCompile Core does not promise uninterrupted background operation.",style=MaterialTheme.typography.bodySmall)
         }
     }
     @Composable private fun Toggle(label:String,value:Boolean,enabled:Boolean=true,onChange:(Boolean)->Unit) {Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween){Text(label,Modifier.weight(1f));Switch(checked=value,onCheckedChange=onChange,enabled=enabled,modifier=Modifier.semantics{contentDescription=label})}}

@@ -29,6 +29,7 @@
     "verify:windows": "node scripts/Run-Isolated-Integration.mjs windows",
     "verify:mixed": "node scripts/Run-Isolated-Integration.mjs mixed",
     "verify:phase9": "node scripts/Run-Isolated-Integration.mjs phase9",
+    "verify:metrics": "node scripts/Run-Isolated-Integration.mjs metrics",
     "verify:windows-install": "node scripts/Run-Isolated-Integration.mjs windows-install",
     "verify:cancellation": "node scripts/Run-Isolated-Integration.mjs cancellation",
     "sandbox:build": "docker build -t gridx-execution:1 infra/sandbox",

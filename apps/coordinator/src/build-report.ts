@@ -32,7 +32,7 @@ export async function buildReports(input:ReportInput):Promise<StoredArtifact[]>{
   const sourceLines=input.source.replace(/\r?\n$/,"").split(/\r?\n/).length;
   const purposes:Record<StoredArtifact["artifactType"],string>={SOURCE:"Original source code",GENERATED_SOURCE:"Final generated or optimized source code",EXECUTABLE:"Runnable compiled program",BYTECODE:input.language==="java"?"Compiled Java class":"Compiled Python bytecode",JAR:"Java archive",BUILD_REPORT_JSON:"Machine-readable build report",BUILD_REPORT_PDF:"This build report"};
   const report={
-    title:"GRID-X - Build Report",
+    title:"OmniCompile Core - Build Report",
     compilationSummary:{sourceFile:input.sourceName,language:input.language.toUpperCase(),compilationStatus:successful?"Successful":"Failed",dateTime:new Date().toLocaleString("en-GB",{day:"2-digit",month:"long",year:"numeric",hour:"2-digit",minute:"2-digit",hour12:true}),sourceSizeBytes:Buffer.byteLength(input.source),sourceLines},
     result:{status:!successful?"Compilation Failed":executionFailed?input.execution!.status==="UNAVAILABLE"?"Execution Unavailable - Compilation Successful":"Execution Failed - Compilation Successful":input.execution?.status==="SUCCEEDED"?"Compilation and Execution Successful":"Compilation Successful - Execution Not Performed",message:assessment,outputAvailable:[...names,"build-report.json","build-report.pdf"]},
     programInformation:{language:input.language.toUpperCase(),sourceFile:input.sourceName,sourceLines,compilation:successful?"Successful":"Failed",warnings:warnings.length,errors:errors.length,compilationErrors:compilationErrors.length,executionErrors:runtimeErrors.length,warningDetails:warnings},
@@ -44,7 +44,7 @@ export async function buildReports(input:ReportInput):Promise<StoredArtifact[]>{
     finalResult:{status:successful?"SUCCESS":"FAILED",message:successful?`Your ${input.language.toUpperCase()} program was successfully processed.`:`Your ${input.language.toUpperCase()} program could not be compiled.`,availableArtifacts:[...names,"build-report.json","build-report.pdf"]},
     ...(errors.length?{errors}:{}),
     optimizations:input.optimizations??[],
-    reportGeneratedBy:"GRID-X"
+    reportGeneratedBy:"OmniCompile Core"
   };
   Object.assign(report.output,{optimizedSource:input.artifacts.find(item=>item.artifactType==="GENERATED_SOURCE")?.bytes.toString("utf8")??null});
   if(successful&&input.execution){const execution=input.execution;Object.assign(report.programExecution,{...execution,output:execution.stdout,executionTimeSeconds:execution.durationMs===null?null:execution.durationMs/1000,memoryMeasurement:"Peak child process resident memory in the isolated Linux environment, not total compilation memory."});if(!["SUCCEEDED","NOT_RUN"].includes(execution.status)){report.finalResult.status="PARTIAL_SUCCESS";report.finalResult.message="Compilation succeeded, but execution was not successful. The generated artifacts and execution details are available.";report.recommendations.push(execution.status==="TIMED_OUT"?"Check termination conditions and computational cost; execution exceeded the allowed time.":execution.status==="OUTPUT_LIMIT"?"Reduce unbounded output or correct a repeating print loop.":execution.status==="UNAVAILABLE"?"Execution infrastructure was unavailable. Do not infer a program error from this result.":diagnosticAdvice(execution.stderr||execution.message));}}
@@ -57,7 +57,7 @@ export async function buildReports(input:ReportInput):Promise<StoredArtifact[]>{
 
 function renderPdf(report:BuildReport&{errors?:ReportDiagnostic[];optimizations:ReportOptimization[]}):Promise<Buffer>{
   return new Promise((resolve,reject)=>{
-    const document=new PDFDocument({size:"A4",margin:42,info:{Title:report.title,Author:"GRID-X"}}),chunks:Buffer[]=[];
+    const document=new PDFDocument({size:"A4",margin:42,info:{Title:report.title,Author:"OmniCompile Core"}}),chunks:Buffer[]=[];
     document.on("data",chunk=>chunks.push(Buffer.from(chunk)));document.on("error",reject);document.on("end",()=>resolve(Buffer.concat(chunks)));
     const heading=(number:number,title:string)=>{if(document.y>document.page.height-document.page.margins.bottom-100)document.addPage();document.moveDown(0.45).font("Helvetica-Bold").fontSize(12).text(`${number}. ${title}`).moveDown(0.2);document.font("Helvetica").fontSize(9);};
     const line=(label:string,value:unknown)=>document.text(`${label}: ${value===null||value===undefined?"Not available":String(value)}`);
@@ -74,7 +74,7 @@ function renderPdf(report:BuildReport&{errors?:ReportDiagnostic[];optimizations:
     heading(9,"Recommendations");files(report.recommendations);
     if(report.optimizations.length){document.text("Optimizations made:");report.optimizations.forEach(item=>document.text(`${item.line?`Line ${item.line}: `:""}${item.description}`));}
     if(document.y>document.page.height-document.page.margins.bottom-150)document.addPage();
-    heading(10,"Final Result");document.font("Helvetica-Bold").text(report.finalResult.status).font("Helvetica").text(report.finalResult.message).text("Available artifacts:");files(report.finalResult.availableArtifacts);document.moveDown().text("Report Generated By GRID-X");
+    heading(10,"Final Result");document.font("Helvetica-Bold").text(report.finalResult.status).font("Helvetica").text(report.finalResult.message).text("Available artifacts:");files(report.finalResult.availableArtifacts);document.moveDown().text("Report Generated By OmniCompile Core");
     document.end();
   });
 }

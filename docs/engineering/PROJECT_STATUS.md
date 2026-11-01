@@ -1,4 +1,38 @@
-# GRID-X master implementation status
+# OmniCompile Core master implementation status
+
+## 2026-11-01 — product identity and own-job live metrics
+
+Faculty title: **OmniCompile Core: A Zero-Trust, Fault-Tolerant Distributed Compiler
+Pipeline for Heterogeneous Edge-to-Cloud Orchestration**. Existing architecture,
+MySQL data, auth, compiler/worker contracts and installed identities are retained.
+Technical legacy names remain for compatibility, not as alternate product names.
+
+Five live user compiler indicators now use MySQL-backed owner-only aggregates,
+raw coordinator receipt times, scheduler-qualified participant availability,
+separate supported CPU/RAM observations, and durable named verification records.
+The USER-only endpoint rejects administrators and other owners. Indicators are
+below Compile and optimize, not in artifacts. See OMNICOMPILE_METRICS.md and
+OMNICOMPILE_ACCEPTANCE.md for formulas, scope, evidence and failed/retest history.
+
+Final full verification:364 tests and25 script checks pass, all workspace
+typechecks/builds pass. Actual web all-language workflow `4d86c82d4cd2c0c9`,
+artifact/migration regression `11f9c112a7d6bedb`, expanded metrics
+`f6e1da1b2fd71643`, leases `77ad922198a783d8` and recovery
+`0ec301f6eb8c4d0d` pass. Windows installer and Android debug/unsigned release
+APK/AAB/lint are built;27 Android JVM tests pass. Current phone absent, so no new
+physical installation or three-platform acceptance is claimed. Public hosting,
+production signing, universal host compiler containment and Phase9–11 external/
+operations/release gates remain open. No database reset or public publication.
+
+Final follow-ups: full suite364/25 again passes; current API fixture
+`0aac12a004c05870` additionally proves verification-gated native success, live
+socket qualification, shared-IP independent owner quotas and legacy ID syntax.
+Final web `5de7ef1b62d6540a`, packaged browser/Windows mixed
+`0fafabff7393e2ff`, all11 actual Docker execution unit tests, and final real-image
+smoke `c9b48d803078e719` pass. Read the acceptance record for failures and fixes;
+no phone/public Kubernetes acceptance is implied.
+
+The dated status sections below are historical evidence, not current branding.
 
 ## Phase9 local integration increment — 2026-10-17 (not globally sealed)
 
