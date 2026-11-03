@@ -2,7 +2,7 @@
 
 Run `START-OMNICOMPILE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
 
-Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `mysql-data`.
+Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `OMNICOMPILE-DATA` or stopping general-purpose `MYSQL`.
 
 ## Environment
 
@@ -13,11 +13,7 @@ Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without 
 - `SESSION_TTL_HOURS`, `RESET_TTL_MINUTES`
 - `HEARTBEAT_STALE_MS`, `HEARTBEAT_OFFLINE_MS`, `TASK_TIMEOUT_MS`
 
-Host processes use `127.0.0.1:3306`. The containerized coordinator uses Compose
-hostname `mysql:3306`; localhost inside that container is not MySQL. Local MySQL
-8.4 runs as container `MYSQL` with database `omnicompile`, root user and retained
-named volume `mysql-data`. Secrets stay in ignored `.env`; production Kubernetes
-uses separate application/migration credentials and Secret references.
+Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coordinator uses `database:3306`. Project container `OMNICOMPILE-DATA` stores schema `omnicompile` in volume `OMNICOMPILE-DATA`. General-purpose `MYSQL` uses `127.0.0.1:3306` and volume `mysql-data`. Keep secrets in the ignored local environment or Kubernetes Secret references.
 
 ## Full container startup and verification
 
@@ -30,7 +26,7 @@ docker compose ps
 docker compose stop
 ```
 
-`Verify-Compose.mjs` explicitly restarts MYSQL to verify persistence using only a
+`Verify-Compose.mjs` explicitly restarts the project MySQL to verify persistence using only a
 new random temporary database. It deletes that fixture database in finally and
 does not write application records. Run it during an agreed local test window.
 Normal stop/start never deletes the volume. The migration service runs the
@@ -48,11 +44,11 @@ Workers using newer source-level features still need a matching verifier. Host d
 uses the installed toolchains (this Windows host has JDK21).
 
 Kubernetes rendering and official-schema checks are described in
-`infra/kubernetes/DEPLOYMENT.md`. They are not proof of a live cluster deployment.
+[Kubernetes README](../infra/kubernetes/README.md). They are not proof of a live cluster deployment.
 
 ## Troubleshooting
 
-- Docker: `docker info`, then `docker compose ps` and `docker compose logs mysql`.
+- Docker: `docker info`, then `docker compose ps` and `docker compose logs database`.
 - Coordinator/dashboard: `.runtime/application.log` and `.runtime/application-error.log`.
 - No eligible worker: verify network match and required capability. Browser workers can optimize IR but cannot compile Python/Java or run GCC/JDK.
 - JDK: set `OMNICOMPILE_JDK_HOME` or `JAVA_HOME` to JDK 21 before starting a native worker.

@@ -1636,7 +1636,7 @@ Possible:
 
 ## Version Control
 
-* Git (https://github.com/192521143simats-sketch/PROJECT-OMNICOMPILE.git)
+* Git (https://github.com/192521143simats-sketch/OMNICOMPILE-CORE.git)
 
 The engineering team may choose alternatives when technically justified.
 
