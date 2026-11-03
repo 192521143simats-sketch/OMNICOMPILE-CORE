@@ -1,6 +1,6 @@
 import {execute} from './executor.js';
-import {workPayloadSchema} from '@c-optiforge/contracts';
-import {installParentDisconnectGuard} from '@c-optiforge/orchestration';
+import {workPayloadSchema} from '@omnicompile/contracts';
+import {installParentDisconnectGuard} from '@omnicompile/orchestration';
 const releaseParentGuard=installParentDisconnectGuard();
 
 process.once('message',async(message:any)=>{

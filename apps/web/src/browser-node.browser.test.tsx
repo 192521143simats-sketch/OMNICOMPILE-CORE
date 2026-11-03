@@ -3,7 +3,7 @@ import React,{act} from "react";
 import {createRoot} from "react-dom/client";
 import {afterEach,expect,it,vi} from "vitest";
 import {BrowserNode,browserProfile,browserResources} from "./browser-node.js";
-import {encodeProtocolMessage} from "@c-optiforge/contracts";
+import {encodeProtocolMessage} from "@omnicompile/contracts";
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
 let root:ReturnType<typeof createRoot>|undefined;
 afterEach(async()=>{if(root)await act(async()=>root!.unmount());root=undefined;document.body.replaceChildren();vi.unstubAllGlobals();sessionStorage.clear();});

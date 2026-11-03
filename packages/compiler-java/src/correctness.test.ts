@@ -29,7 +29,7 @@ describe("Java compilation correctness", () => {
       const diagnostics = (error as JavaFrontendError).diagnostics;
       expect(diagnostics[0]).toMatchObject({severity: "error", line: 2});
       expect(diagnostics[0]?.column).toBeGreaterThan(0);
-      expect(JSON.stringify(diagnostics)).not.toContain("c-optiforge-java-");
+      expect(JSON.stringify(diagnostics)).not.toContain("omnicompile-java-");
     }
   }, 30000);
   it("rejects unsafe filenames and oversized input", async () => {

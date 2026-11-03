@@ -1,6 +1,6 @@
 # Phase 4 v1 — coordinator / MySQL / fault-tolerance acceptance
 
-Status: **SEALED — Phase 4 v1 acceptance, 14 October 2026. 8/8 master exit obligations and 6/6 closure gates verified (100% of this phase's acceptance).** Implementation commit `01f3bd4397613b37e9e894106691113e7dd0ea4d` was pushed to the requested origin on `engineering/grid-x-release-foundation`; the remote branch hash matched. Full evidence: [RESULTS.md](evidence/2026-10-14-phase4-seal/RESULTS.md).
+Status: **SEALED — Phase 4 v1 acceptance, 14 October 2026. 8/8 master exit obligations and 6/6 closure gates verified (100% of this phase's acceptance).** Implementation commit `01f3bd4397613b37e9e894106691113e7dd0ea4d` was pushed to the requested origin on `engineering/omnicompile-release-foundation`; the remote branch hash matched. Full evidence: [RESULTS.md](evidence/2026-10-14-phase4-seal/RESULTS.md).
 
 Scope: preserved master B:20 Phase 4, lines 5474–5483, plus the six closure gates in PHASE4_CLOSURE_PLAN.md. This closes the existing task engine, not Windows/Android packaging or physical browser acceptance. Later phases retain their own requirements.
 
@@ -32,7 +32,7 @@ Scope: preserved master B:20 Phase 4, lines 5474–5483, plus the six closure ga
 From the project root with the bundled Node 24.21.0 directory on PATH:
 
 ```powershell
-$env:GRID_X_SANDBOX_TEST='1'
+$env:OMNICOMPILE_SANDBOX_TEST='1'
 npm test -- --maxWorkers=1
 npm run typecheck
 node --test scripts/*.test.mjs
@@ -44,7 +44,7 @@ foreach ($mode in @('phase4','leases','recovery','cancellation','execution','enr
 }
 ```
 
-`npm run verify:phase4` runs the dedicated closure fixture. Docker must be ready; execution tests use the existing `gridx-execution:1` image. Verifiers reject developer/remote targets and own labelled temporary containers. The restart fixture retains its data inside its own container writable layer; it creates no developer volume. No reset, volume deletion or production deployment is required.
+`npm run verify:phase4` runs the dedicated closure fixture. Docker must be ready; execution tests use the existing `oa-omnicompile-execution:local` image. Verifiers reject developer/remote targets and own labelled temporary containers. The restart fixture retains its data inside its own container writable layer; it creates no developer volume. No reset, volume deletion or production deployment is required.
 
 ## Next phases
 

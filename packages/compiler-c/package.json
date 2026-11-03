@@ -1,5 +1,5 @@
 {
-  "name": "@c-optiforge/compiler-c",
+  "name": "@omnicompile/compiler-c",
   "version": "0.1.0",
   "type": "module",
   "exports": {

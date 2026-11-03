@@ -8,7 +8,7 @@ afterEach(() => vi.unstubAllEnvs());
 describe("Kubernetes API contract (fake API, no cluster execution)", () => {
   const image = "registry.local/execution@sha256:" + "a".repeat(64);
   it("returns owned Pod logs and deletes only its Job UID", async () => {
-    vi.stubEnv("GRID_X_SANDBOX_RUNTIME_CLASS", "gvisor");
+    vi.stubEnv("OMNICOMPILE_SANDBOX_RUNTIME_CLASS", "gvisor");
     let jobName = "";
     const deleted: unknown[] = [];
     const output = await runKubernetesExecution(
@@ -67,7 +67,7 @@ describe("Kubernetes API contract (fake API, no cluster execution)", () => {
     ]);
   });
   it("cleans the owned Job when payload delivery fails", async () => {
-    vi.stubEnv("GRID_X_SANDBOX_RUNTIME_CLASS", "gvisor");
+    vi.stubEnv("OMNICOMPILE_SANDBOX_RUNTIME_CLASS", "gvisor");
     let removed = false;
     await expect(
       runKubernetesExecution("{}", image, undefined, async (method, path) => {
@@ -83,7 +83,7 @@ describe("Kubernetes API contract (fake API, no cluster execution)", () => {
     expect(removed).toBe(true);
   });
   it("cleans an aborted execution without using its aborted signal for cleanup", async () => {
-    vi.stubEnv("GRID_X_SANDBOX_RUNTIME_CLASS", "gvisor");
+    vi.stubEnv("OMNICOMPILE_SANDBOX_RUNTIME_CLASS", "gvisor");
     const controller = new AbortController();
     let removed = false;
     await expect(
@@ -110,7 +110,7 @@ describe("Kubernetes API contract (fake API, no cluster execution)", () => {
     expect(removed).toBe(true);
   });
   it("refuses unpinned images or absent sandbox runtime before API access", async () => {
-    vi.stubEnv("GRID_X_SANDBOX_RUNTIME_CLASS", "");
+    vi.stubEnv("OMNICOMPILE_SANDBOX_RUNTIME_CLASS", "");
     const api = vi.fn();
     await expect(
       runKubernetesExecution("{}", "execution:latest", undefined, api),
@@ -124,7 +124,7 @@ describe("Kubernetes API contract (fake API, no cluster execution)", () => {
 describe("Kubernetes execution transport", () => {
   it("preserves exact payload bytes across bounded ConfigMaps", () => {
     const payload = JSON.stringify({ source: "λ".repeat(700000) });
-    const maps = executionPayloads("gridx-test", payload, "owner");
+    const maps = executionPayloads("omnicompile-test", payload, "owner");
     expect(maps.length).toBeGreaterThan(1);
     expect(
       Buffer.concat(
@@ -135,12 +135,12 @@ describe("Kubernetes execution transport", () => {
   });
   it("rejects oversized payloads before creating resources", () => {
     expect(() =>
-      executionPayloads("gridx-test", "x".repeat(24000001), "owner"),
+      executionPayloads("omnicompile-test", "x".repeat(24000001), "owner"),
     ).toThrow();
   });
   it("isolates execution and provides bounded job lifetime and ephemeral storage", () => {
     const job = executionJob(
-      "gridx-test",
+      "omnicompile-test",
       "image@sha256:" + "a".repeat(64),
       "gvisor",
       2,

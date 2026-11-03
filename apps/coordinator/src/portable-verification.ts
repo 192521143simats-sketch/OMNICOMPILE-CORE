@@ -1,7 +1,7 @@
 import {createHash} from "node:crypto";
 import {setImmediate as yieldToIO} from "node:timers/promises";
 import {performance} from "node:perf_hooks";
-import {testTaskSchema,portableResultSchema,portableWorkloadCatalogue} from "@c-optiforge/contracts";
+import {testTaskSchema,portableResultSchema,portableWorkloadCatalogue} from "@omnicompile/contracts";
 import {z} from "zod";
 
 const resultSchema=portableResultSchema;

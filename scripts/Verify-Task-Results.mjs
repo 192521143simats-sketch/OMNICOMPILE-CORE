@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import mysql from 'mysql2/promise';
 import WebSocket from 'ws';
-import {encodeProtocolMessage,parseCoordinatorMessage} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
 import {execute} from '../apps/worker/src/executor.ts';
 import {Store} from '../apps/coordinator/src/database.ts';
 import {NetworkService} from '../apps/coordinator/src/networks.ts';
@@ -54,7 +54,7 @@ try{
   const alphaResponse=await request('/api/admin/networks',{name:'Portable integrity Alpha',maxNodes:2},cookie),betaResponse=await request('/api/admin/networks',{name:'Portable integrity Beta',maxNodes:2},cookie);
   assert.equal(alphaResponse.status,201);assert.equal(betaResponse.status,201);
   const alpha=alphaResponse.body,beta=betaResponse.body,worker=await connect(alpha),foreign=await connect(beta);
-  const payloads=[{operation:'sha256',input:'GRID-X: café 🔧'},{operation:'prime_count',limit:1000},{operation:'sha256_chain',input:'portable integrity',iterations:2500}];
+  const payloads=[{operation:'sha256',input:'OMNICOMPILE: café 🔧'},{operation:'prime_count',limit:1000},{operation:'sha256_chain',input:'portable integrity',iterations:2500}];
   for(const payload of payloads){
     worker.strategy='forge';const id=await submit(alpha,payload);
     const rejected=await poll(()=>detail(id),task=>['FAILED','COMPLETED'].includes(task.status));

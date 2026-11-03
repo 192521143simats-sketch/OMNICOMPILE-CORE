@@ -18,11 +18,11 @@ describe('OmniCompile Core product identity with stable engineering identities',
     expect(source('../../web/src/main.tsx')).toContain('<span>OC</span> OmniCompile Core');
     expect(source('../../windows-worker/index.html')).toContain('<title>OmniCompile Core Worker</title>');
     expect(source('../../android-worker/app/src/main/AndroidManifest.xml')).toContain('android:label="OmniCompile Core Worker"');
-    expect(source('../../android-worker/app/build.gradle.kts')).toContain('applicationId = if (isolatedAcceptance) "org.gridx.worker.acceptance" else "org.gridx.worker"');
+    expect(source('../../android-worker/app/build.gradle.kts')).toContain('applicationId = if (isolatedAcceptance) "org.omnicompile.worker.acceptance" else "org.omnicompile.worker"');
     const packaging=source('../../../scripts/Build-Windows-Worker.mjs');
     expect(packaging).toContain("productName:'OmniCompile Core Worker'");
-    expect(packaging).toContain("appId:'org.gridx.worker'");
-    expect(packaging).toContain("executableName:'GRID-X Worker'");
+    expect(packaging).toContain("appId:'org.omnicompile.worker'");
+    expect(packaging).toContain("executableName:'OMNICOMPILE Worker'");
     expect(packaging).toContain("letters=['01110 01111','10001 10000','10001 10000','10001 10000','01110 01111']");
   });
 });

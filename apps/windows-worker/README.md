@@ -21,7 +21,7 @@ join. No terminal or global Node/npm installation is required on the worker PC.
 Use HTTPS outside a trusted local network. No public deployment is created by
 the package command.
 
-Pause, Resume, Disconnect and Leave network control the existing protocol-v1
+Pause, Resume, Disconnect and Leave network control the existing protocol-v2
 native agent. Reopening the desktop restores its encrypted enrollment but does
 not start contribution until Connect is clicked. Windows DPAPI protects the
 saved credential for the current Windows account. Corrupt configuration is

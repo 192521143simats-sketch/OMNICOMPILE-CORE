@@ -8,10 +8,10 @@ import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Targ
 import {terminateOwnedTestProcess} from './Owned-Test-Process.mjs';
 
 const target=assertIsolatedTarget();await verifyIsolatedCoordinator(target);
-const evidence=process.env.GRID_X_TEST_EVIDENCE;if(!evidence)throw new Error('Owned evidence directory required.');
+const evidence=process.env.OMNICOMPILE_TEST_EVIDENCE;if(!evidence)throw new Error('Owned evidence directory required.');
 const apk=resolve('apps/android-worker/app/build/outputs/apk/debug/app-debug.apk'),testApk=resolve('apps/android-worker/app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk');
 await stat(apk);await stat(testApk);
-const adb=process.env.GRID_X_ADB??'adb';
+const adb=process.env.OMNICOMPILE_ADB??'adb';
 const run=args=>execFileSync(adb,args,{encoding:'utf8',windowsHide:true,timeout:60000,maxBuffer:2_000_000});
 const devices=run(['devices']).split(/\r?\n/).filter(line=>/^\S+\s+device$/.test(line.trim())).map(line=>line.split(/\s+/)[0]);
 const serial=process.env.ANDROID_SERIAL??(devices.length===1?devices[0]:undefined);
@@ -27,8 +27,8 @@ async function restart(){const id=crypto.randomUUID();await new Promise((resolve
 try {
   // Updating this app preserves its existing encrypted data. The device test
   // refuses an existing enrollment instead of resetting or leaving user work.
-  if(process.env.GRID_X_ANDROID_PREINSTALLED==='1'){
-    for(const [name,file]of [['org.gridx.worker',apk],['org.gridx.worker.test',testApk]]){
+  if(process.env.OMNICOMPILE_ANDROID_PREINSTALLED==='1'){
+    for(const [name,file]of [['org.omnicompile.worker',apk],['org.omnicompile.worker.test',testApk]]){
       const installed=phone('shell','pm','path',name).trim();assert.match(installed,/^package:\/data\/app\/[A-Za-z0-9_./=+~-]+\.apk$/);
       const remote=phone('shell','sha256sum',installed.slice('package:'.length)).trim().split(/\s+/)[0];
       assert.equal(remote,createHash('sha256').update(await readFile(file)).digest('hex'),'Installed APK differs from current verified build.');
@@ -39,7 +39,7 @@ try {
   assert.equal(new URL(network.joinUrl).origin,target.base);
   phone('reverse',mapping,mapping);createdReverse=true;
   db=await mysql.createConnection({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
-  instrument=spawn(adb,['-s',serial,'shell','am','instrument','-w','-e','class','org.gridx.worker.NativeNetworkTest','-e','gridxJoin',network.joinUrl,'-e','gridxInstance',target.instance,'org.gridx.worker.test/androidx.test.runner.AndroidJUnitRunner'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+  instrument=spawn(adb,['-s',serial,'shell','am','instrument','-w','-e','class','org.omnicompile.worker.NativeNetworkTest','-e','omnicompileJoin',network.joinUrl,'-e','omnicompileInstance',target.instance,'org.omnicompile.worker.test/androidx.test.runner.AndroidJUnitRunner'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
   instrument.stdout.on('data',chunk=>deviceLog+=chunk);instrument.stderr.on('data',chunk=>deviceLog+=chunk);
   exited=new Promise((resolve,reject)=>{instrument.once('error',reject);instrument.once('exit',code=>resolve(code));});
   const node=await poll(async()=>{const[rows]=await db.execute('SELECT * FROM nodes WHERE network_id=? AND worker_type=\'ANDROID\' AND status=\'AVAILABLE\'',[network.id]);return rows[0];},Boolean,90000);

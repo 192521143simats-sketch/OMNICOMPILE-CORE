@@ -55,7 +55,7 @@ without per-element assertion-framework overhead. No execution limits were enlar
 Verification uses `.runtime/toolchains/node-v24.21.0` prepended to PATH, not global
 Node 26.8.1. GCC 15.2.0, CPython 3.14.7, JDK 21.0.12.1 and Docker 29.8.2 present.
 
-- `$env:GRID_X_SANDBOX_TEST='1'; npm run verify`: exit 0. All eight workspace
+- `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify`: exit 0. All eight workspace
   typechecks/builds, 133 tests in 28 files (including ten genuine Docker tests),
   and three script safety tests passed on the final code. No Docker test was skipped.
 - `npm run verify:integration`: passed. Owned fixtures `3d83ebf810c47858`
@@ -104,5 +104,5 @@ Immutable leases, cancellation, durable coordinator recovery and larger task pol
 remain Phase 4. Windows installer/native Android APK/signatures/physical acceptance,
 browser UI/device tests and host compiler containment remain open release gates.
 
-Run development with `START-C-OPTIFORGE.bat`; MySQL persistence is unchanged.
+Run development with `START-OMNICOMPILE.bat`; MySQL persistence is unchanged.
 Manual development alternative: `npm run sandbox:build`, then `npm run dev`.

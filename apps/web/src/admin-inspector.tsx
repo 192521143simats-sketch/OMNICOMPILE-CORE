@@ -1,5 +1,5 @@
 import React,{useEffect,useState} from "react";
-import {networkPolicySchema} from "@c-optiforge/contracts";
+import {networkPolicySchema} from "@omnicompile/contracts";
 import {api} from "./api.js";
 import {Notice} from "./notice.js";
 

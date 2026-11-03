@@ -28,7 +28,7 @@ prevents a fresh-looking old registry row from implying connectivity after resta
 
 Legacy technical names remain deliberate compatibility identifiers: npm scopes,
 MySQL database configuration, application IDs, session/Keystore/DPAPI keys,
-protocol/IR kinds, GRID_X environment settings, START/STOP filenames, and existing
+protocol/IR kinds, OMNICOMPILE environment settings, START/STOP filenames, and existing
 installer/executable paths. Visible UI, report, installer/window, APK label,
 notification and current product documentation use OmniCompile Core. No user data
 or installed worker identity is reset to accomplish the rename.

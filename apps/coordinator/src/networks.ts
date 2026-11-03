@@ -1,6 +1,6 @@
 import {createHash,randomBytes,randomUUID} from "node:crypto";
 import type {Pool,PoolConnection,ResultSetHeader,RowDataPacket} from "mysql2/promise";
-import type {CapabilityProfile,NodeStatus,ResourceSnapshot} from "@c-optiforge/contracts";
+import type {CapabilityProfile,NodeStatus,ResourceSnapshot} from "@omnicompile/contracts";
 import {retryTransaction} from './transaction.js';
 
 export type WorkerType="BROWSER"|"NATIVE"|"ANDROID";

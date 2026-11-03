@@ -30,7 +30,7 @@ Spec: preserved MASTER_PROMPT.txt B:6.5–6.7 and the 2026-10-13 user five-item 
 - [x] Run `npm run verify` (Docker-enabled), isolated recovery, all integration/compiler artifacts, execution, enrollment and reusable-link regressions. Expected all pass; report every actual failure/retry.
 - [x] Fresh review of lease expiry/publication race, crash-after-result, outage, duplicate recovery, reconnect and immutable migration behavior; fix important findings with reproducing tests.
 - [x] Update project status, requirement ledger and evidence. Report recovery checklist as 5/5 only after verified; broader Phase 4 remains incomplete if policies/cancellation/catalogue gates remain.
-- [x] Commit coherent verified changes and push engineering/grid-x-release-foundation without force; verify remote hash and clean tree. Implementation commit `73396b963a6206f879e096ee30cbec4126441a49` matched the requested origin branch; tracked tree was clean after push.
+- [x] Commit coherent verified changes and push engineering/omnicompile-release-foundation without force; verify remote hash and clean tree. Implementation commit `73396b963a6206f879e096ee30cbec4126441a49` matched the requested origin branch; tracked tree was clean after push.
 
 Requested recovery acceptance: 5/5 (100%). This percentage is limited to the five
 2026-10-13 user requirements above. The full master Phase 4 is NOT complete:

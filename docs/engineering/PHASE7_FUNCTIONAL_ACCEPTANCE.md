@@ -27,10 +27,10 @@ this host is not represented as a clean-OS certification.
 
 ## Actual user workflow
 
-1. Start the existing project with `START-C-OPTIFORGE.bat`.
+1. Start the existing project with `START-OMNICOMPILE.bat`.
 2. Create/open an active network as admin and copy its reachable join link.
-3. Install `GRID-X-Worker-0.1.1-Windows-x64-Setup.exe` on a compatible Windows PC.
-4. Open GRID-X Worker, paste the link, explicitly consent and choose Become a Worker.
+3. Install `OMNICOMPILE-Worker-0.1.1-Windows-x64-Setup.exe` on a compatible Windows PC.
+4. Open OMNICOMPILE Worker, paste the link, explicitly consent and choose Become a Worker.
 5. The coordinator registers the native node and receives its heartbeat. Supported
    assignments execute in the actual native worker and results return to MySQL.
 6. Pause/Resume controls contribution; Leave revokes enrollment. Closing the app
@@ -62,7 +62,7 @@ it does not claim a retained revoked credential was tested during reinstall.
 
 Final functional rerun: `npm run verify:windows-install`, fixture
 `cb241f55ee0a452e`, exit 0, including actual uninstall/reinstall and final cleanup.
-Full regression: `$env:GRID_X_SANDBOX_TEST='1'; npm run verify`, exit 0: all
+Full regression: `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify`, exit 0: all
 327/327 tests, 15/15 script/settings checks, and all nine workspace builds and
 typechecks passed. No application/runtime source change was needed after the
 verified 80090d2 baseline. Installer SHA-256 remains

@@ -33,7 +33,7 @@ describe("bounded portable catalogue contracts",()=>{
   });
   it("authorizes new portable operations only for the existing compute task kind",()=>{
     const payload={operation:"matrix_multiply",left:[[1]],right:[[2]]};
-    const assignment={protocolVersion:1,type:"task_assignment",taskId:"matrix",attempt:1,taskKind:"TEST_COMPUTE",payload};
+    const assignment={protocolVersion:2,type:"task_assignment",taskId:"matrix",attempt:1,taskKind:"TEST_COMPUTE",payload};
     expect(contracts.parseCoordinatorMessage(assignment)).toMatchObject({payload});
     expect(()=>contracts.parseCoordinatorMessage({...assignment,taskKind:"C_COMPILE"})).toThrow("authorized operation");
   });

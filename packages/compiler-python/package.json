@@ -1,5 +1,5 @@
 {
-  "name": "@c-optiforge/compiler-python",
+  "name": "@omnicompile/compiler-python",
   "version": "0.1.0",
   "type": "module",
   "exports": "./src/index.ts",

@@ -5,7 +5,7 @@ import {installFixtureWithCleanup,closeFixtureApplication} from './Windows-Insta
 import {terminateOwnedTestProcess} from './Owned-Test-Process.mjs';
 
 test('installer failure after writing its target still removes the owned fixture',async()=>{
-  const directory=await mkdtemp(join(tmpdir(),'gridx-install-failure-')),marker=join(directory,'owned-installation');
+  const directory=await mkdtemp(join(tmpdir(),'omnicompile-install-failure-')),marker=join(directory,'owned-installation');
   try{await assert.rejects(installFixtureWithCleanup(async()=>{await writeFile(marker,'owned installer output');throw new Error('Installer failed after write');},()=>unlink(marker)),/Installer failed after write/);await assert.rejects(access(marker),{code:'ENOENT'});}finally{await rm(directory,{recursive:true,force:true});}
 });
 test('failed installer cleanup preserves both errors for investigation',async()=>{

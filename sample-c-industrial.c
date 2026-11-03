@@ -7,7 +7,7 @@
  * First submission should fail semantic analysis. After that single repair,
  * the program should return 0 (validated invoice total: 346625 cents).
  * Optimization candidates include constant arithmetic, x * 1, x + 0, and
- * unused pure expressions. The kernel uses GRID-X's supported C subset.
+ * unused pure expressions. The kernel uses OMNICOMPILE's supported C subset.
  * This is an industrial-style example, not a production accounting library.
  */
 

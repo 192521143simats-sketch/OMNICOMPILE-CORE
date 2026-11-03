@@ -61,7 +61,7 @@ tests cannot substitute for distribution signing or newer-API acceptance.
 
 ## Pre-flight evidence
 
-Clean engineering/grid-x-release-foundation; Xiaomi M2004J19C API29 authorized.
+Clean engineering/omnicompile-release-foundation; Xiaomi M2004J19C API29 authorized.
 JDK21.0.12.1; SDK platform37, build tools36/37 and platform-tools37.0.1 installed.
 SDK36 required by pinned AGP is being installed. No existing Gradle wrapper.
 Docker initially stopped; Desktop launched. C free25GB, D free14GB (approximate).

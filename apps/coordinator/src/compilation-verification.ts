@@ -1,6 +1,6 @@
-import {compileCSource,optimizeCIR,type IRFunction} from "@c-optiforge/compiler-c";
-import {compilePython} from "@c-optiforge/compiler-python";
-import {compileJava} from "@c-optiforge/compiler-java";
+import {compileCSource,optimizeCIR,type IRFunction} from "@omnicompile/compiler-c";
+import {compilePython} from "@omnicompile/compiler-python";
+import {compileJava} from "@omnicompile/compiler-java";
 import {isDeepStrictEqual} from "node:util";
 import {runCompilerProcess} from './compiler-process-control.js';
 type Source={language:"c"|"python"|"java";sourceName:string;sourceText:string};
@@ -25,7 +25,7 @@ export async function verifyCompilation(source:Source,worker:any,signal?:AbortSi
   return{operation:"java_compile",artifactBase64:compiled.jar.bytes.toString("base64"),fileName:compiled.jar.fileName,generatedSource:compiled.generatedSource,runnableJar:compiled.jar.runnable,classes:Object.entries(compiled.classes).map(([fileName,bytes])=>({fileName,contentBase64:bytes.toString("base64")})),diagnostics:compiled.diagnostics,verification,metrics:{jdkVersion:compiled.jdkVersion,...compiled.metrics,verification}};
 }
 export function verifyIROptimization(original:IRFunction,worker:any){
-  const expected=optimizeCIR({kind:"COptiForgeCIR",version:1,functions:[original]});
+  const expected=optimizeCIR({kind:"OmniCompileCIR",version:1,functions:[original]});
   // MySQL JSON normalizes key order; wire JSON also normalizes -0 to integer 0.
   if(worker.operation!=="c_optimize_ir"||!isDeepStrictEqual(JSON.parse(JSON.stringify(worker.function)),JSON.parse(JSON.stringify(expected.ir.functions[0]))))throw new Error("Worker optimization differs from the authoritative transformation");
   return{operation:"c_optimize_ir",function:expected.ir.functions[0],report:expected.report};

@@ -11,7 +11,9 @@ if (Test-Path -LiteralPath $environmentPath) {
     $existing = [IO.File]::ReadAllText($environmentPath)
     $additions = @()
     if ($existing -notmatch '(?m)^ADMIN_USERNAME=') { $additions += 'ADMIN_USERNAME=admin' }
-    if ($existing -notmatch '(?m)^ADMIN_PASSWORD=') { $additions += "ADMIN_PASSWORD=$(New-RandomSecret)" }
+    # A hash-only environment must remain hash-only: production rejects plaintext.
+    $hasPasswordHash = $existing -match '(?m)^ADMIN_PASSWORD_HASH\s*=\s*[''"]?\$argon2id\$'
+    if ($existing -notmatch '(?m)^ADMIN_PASSWORD=' -and -not $hasPasswordHash) { $additions += "ADMIN_PASSWORD=$(New-RandomSecret)" }
     if ($existing -notmatch '(?m)^ADMIN_PASSWORD_HASH=') { $additions += 'ADMIN_PASSWORD_HASH=' }
     if ($existing -notmatch '(?m)^SESSION_TTL_HOURS=') { $additions += 'SESSION_TTL_HOURS=12' }
     if ($existing -notmatch '(?m)^RESET_TTL_MINUTES=') { $additions += 'RESET_TTL_MINUTES=20' }
@@ -20,6 +22,7 @@ if (Test-Path -LiteralPath $environmentPath) {
     exit 0
 }
 
+$databaseSecret = New-RandomSecret
 $content = @"
 HOST=0.0.0.0
 PORT=4100
@@ -32,10 +35,10 @@ SESSION_TTL_HOURS=12
 RESET_TTL_MINUTES=20
 DB_HOST=127.0.0.1
 DB_PORT=3307
-DB_NAME=c_optiforge
-DB_USER=c_optiforge
-DB_PASSWORD=$(New-RandomSecret)
-MYSQL_ROOT_PASSWORD=$(New-RandomSecret)
+DB_NAME=omnicompile
+DB_USER=root
+DB_PASSWORD=$databaseSecret
+MYSQL_ROOT_PASSWORD=$databaseSecret
 HEARTBEAT_STALE_MS=15000
 HEARTBEAT_OFFLINE_MS=30000
 TASK_TIMEOUT_MS=30000

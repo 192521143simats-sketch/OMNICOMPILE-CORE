@@ -1,27 +1,110 @@
-name: c-optiforge
+name: omnicompile
+
+# The general MYSQL server on host3306 is managed separately by Start-Containers.
+# These three services are the application's single Compose project.
+x-database-environment: &database-environment
+  DB_HOST: database
+  DB_PORT: "3306"
+  DB_NAME: ${DB_NAME:-omnicompile}
+  DB_USER: root
+  DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the ignored .env file}
 
 services:
-  mysql:
-    image: mysql:8.4
-    container_name: c-optiforge-mysql
+  database:
+    image: db-omnicompile-database:8.4
+    container_name: OMNICOMPILE-DATA
     restart: unless-stopped
     ports:
-      - "127.0.0.1:${DB_PORT:-3307}:3306"
+      - "127.0.0.1:3307:3306"
     environment:
-      MYSQL_DATABASE: ${DB_NAME}
-      MYSQL_USER: ${DB_USER}
-      MYSQL_PASSWORD: ${DB_PASSWORD}
-      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${DB_NAME:-omnicompile}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the ignored .env file}
+      # Local development coordinator connects through the private Compose network.
+      MYSQL_ROOT_HOST: "%"
     volumes:
-      - mysql_data:/var/lib/mysql
+      - omnicompile-data:/var/lib/mysql
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -uroot -p$${MYSQL_ROOT_PASSWORD} --silent"]
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=TCP -h127.0.0.1 -uroot --execute='SELECT 1' \"$$MYSQL_DATABASE\" >/dev/null"]
       interval: 5s
       timeout: 5s
       retries: 30
-      start_period: 20s
+      start_period: 30s
+
+  backend:
+    image: be-omnicompile-coordinator:local
+    container_name: OMNICOMPILE-BACKEND
+    build:
+      context: .
+      dockerfile: infra/containers/coordinator.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m,mode=1777
+    volumes:
+      - type: bind
+        source: ./.runtime/distribution
+        target: /app/.runtime/distribution
+        read_only: true
+    stop_grace_period: 30s
+    environment:
+      <<: *database-environment
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: "4100"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:5173}
+      COORDINATOR_PUBLIC_URL: ${COORDINATOR_PUBLIC_URL:-http://localhost:4100}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      OMNICOMPILE_MIGRATION_MODE: check
+      OMNICOMPILE_REQUIRE_ADMIN_APPROVAL: "true"
+      # No privileged Docker socket is exposed to the control plane. This local
+      # profile compiles and distributes real work, but does not run user programs.
+      OMNICOMPILE_EXECUTION_MODE: disabled
+      RESEND_ENABLED: "false"
+      POSTHOG_ENABLED: "false"
+    ports:
+      - "4100:4100"
+    depends_on:
+      database:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4100/ready',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  frontend:
+    image: fe-omnicompile-frontend:local
+    container_name: OMNICOMPILE-FRONTEND
+    build:
+      context: .
+      dockerfile: infra/containers/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      COORDINATOR_UPSTREAM: backend:4100
+    ports:
+      - "5173:8080"
+    depends_on:
+      backend:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
 
 volumes:
-  mysql_data:
-    name: c-optiforge_mysql_data
-
+  omnicompile-data:
+    name: OMNICOMPILE-DATA

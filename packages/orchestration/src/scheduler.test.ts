@@ -1,6 +1,6 @@
 import {describe,expect,it} from "vitest";
 import {evaluateNode,selectNode,type SchedulableNode} from "./scheduler.js";
-import type {NetworkPolicy} from "@c-optiforge/contracts";
+import type {NetworkPolicy} from "@omnicompile/contracts";
 
 const node=(id:string,cpu:number,memory:number,runtimes={c:true,python:true,java:true},status="AVAILABLE"):SchedulableNode=>({id,status,profile:{workerType:"NATIVE",deviceType:"DESKTOP",cpuModel:"test",logicalCores:8,totalMemoryBytes:16_000,operatingSystem:"test",architecture:"x64",runtimes,toolchains:{c:{available:runtimes.c},python:{available:runtimes.python},java:{available:runtimes.java}},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:true}},resources:{cpuUtilizationPercent:cpu,freeMemoryBytes:8_000,memoryUtilizationPercent:memory,observedAt:new Date().toISOString()}});
 

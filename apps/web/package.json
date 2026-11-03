@@ -1,5 +1,5 @@
 {
-  "name": "@c-optiforge/web",
+  "name": "@omnicompile/web",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -9,8 +9,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@c-optiforge/compiler-c": "^0.1.0",
-    "@c-optiforge/contracts": "^0.1.0",
+    "@omnicompile/compiler-c": "^0.1.0",
+    "@omnicompile/contracts": "^0.1.0",
     "@noble/hashes": "^1.8.0",
     "@vitejs/plugin-react": "latest",
     "react": "^19.2.0",

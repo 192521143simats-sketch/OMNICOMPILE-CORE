@@ -1,7 +1,7 @@
 # Durable cancellation — verification evidence
 
 Date: 2026-10-13. Base: e85bae581d67c860677c83e362d98351c92dd0f2.
-Branch: engineering/grid-x-release-foundation. MySQL remains authoritative.
+Branch: engineering/omnicompile-release-foundation. MySQL remains authoritative.
 
 ## Implemented scope
 
@@ -24,7 +24,7 @@ Node 24.21.0, real GCC/CPython/JDK and Docker Linux execution environment.
 Commands ran serially because available physical RAM was below 1 GB.
 
 - `npm run typecheck`: all eight workspace checks passed.
-- `GRID_X_SANDBOX_TEST=1 npm test -- --run --maxWorkers=1`: 182/182 tests,
+- `OMNICOMPILE_SANDBOX_TEST=1 npm test -- --run --maxWorkers=1`: 182/182 tests,
   32 files passed, including real Docker execution and all three toolchains.
 - `node --test scripts/*.test.mjs`: 3/3 passed.
 - `npm run build`: all eight workspace builds passed, including web production
@@ -107,6 +107,6 @@ label-verified temporary containers; it never uses the developer volume.
 Implementation commit 7600330851d132384819467011fc3cca82a01b23:
 `feat: add durable task cancellation and worker termination` (28 files).
 Push to the requested GitHub origin succeeded. `git ls-remote origin
-refs/heads/engineering/grid-x-release-foundation` matched local HEAD exactly;
+refs/heads/engineering/omnicompile-release-foundation` matched local HEAD exactly;
 `git status --porcelain=v1 --untracked-files=all` was empty after that push.
 No merge, reset, force push, release publication or credential change occurred.

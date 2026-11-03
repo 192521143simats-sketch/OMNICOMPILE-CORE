@@ -1,9 +1,9 @@
-# GRID-X — PHASE 9 MASTER EXECUTION PROMPT
+# OMNICOMPILE — PHASE 9 MASTER EXECUTION PROMPT
 ## Full-System Integration, Cross-Platform End-to-End Validation, Terminal UI Redesign, Security Hardening, Release Readiness, and Verified GitHub Delivery
 
 **EXECUTION MODE: IMPLEMENT, TEST, FIX, VERIFY, COMMIT, AND PUSH.**
 
-You are working on the existing GRID-X / C-OptiForge project. Phase 9 is not a planning-only phase. You must inspect the real repository, verify the development environment, implement the required improvements, test the actual application, fix discovered defects, and deliver the strongest verified build possible.
+You are working on the existing OMNICOMPILE / OmniCompile Core project. Phase 9 is not a planning-only phase. You must inspect the real repository, verify the development environment, implement the required improvements, test the actual application, fix discovered defects, and deliver the strongest verified build possible.
 
 The goal is a near-industry-grade, production-minded software release with demonstrable functionality across the browser, Windows desktop/worker, and native Android worker. Do not claim 100% success unless every applicable acceptance criterion has been verified. Do not stop after generating a plan, design document, mockup, or successful compilation.
 
@@ -18,7 +18,7 @@ Execute all of the following as one coordinated release effort:
 3. Run end-to-end tests covering enrollment, registration, scheduling, task execution, result validation, failure handling, reconnection, and user-visible task results.
 4. Fix all reproducible functional defects and run regression tests after changes.
 5. Completely redesign and improve the UI/UX across all supported applications without breaking existing functionality.
-6. Apply the exact supplied GRID-X colour palette and a consistent, dark-only terminal-inspired design system across every interface.
+6. Apply the exact supplied OMNICOMPILE colour palette and a consistent, dark-only terminal-inspired design system across every interface.
 7. Integrate appropriate design tools, coding tools, available plugins, and automated testing utilities where they materially improve the result.
 8. Harden security, reliability, performance, accessibility, installation, configuration, and release packaging.
 9. Commit and push the verified changes to the existing GitHub repository after reviewing the changes and confirming that no secrets, local credentials, generated junk, or unrelated files are included.
@@ -51,7 +51,7 @@ If the coordinator, database, Android device, Windows environment, or required s
 
 # 3. CROSS-PLATFORM END-TO-END INTEGRATION
 
-The same GRID-X coordinator must remain the authoritative source for worker enrollment, capability registration, task assignment, task status, result verification, and worker lifecycle management.
+The same OMNICOMPILE coordinator must remain the authoritative source for worker enrollment, capability registration, task assignment, task status, result verification, and worker lifecycle management.
 
 Do not create separate, disconnected Android, Windows, and browser systems.
 
@@ -146,7 +146,7 @@ If the physical Android device or a Windows host is unavailable, report the exac
 
 # 4. COMPILER AND DISTRIBUTED-EXECUTION VALIDATION
 
-Test the existing GRID-X compiler and optimization functionality rather than replacing it with UI demonstrations.
+Test the existing OMNICOMPILE compiler and optimization functionality rather than replacing it with UI demonstrations.
 
 Cover C, Python, and Java according to their actual supported pipelines.
 
@@ -368,7 +368,7 @@ Potential libraries to evaluate, not blindly install:
 - **Lucide:** consistent interface icons.
 - **Playwright:** browser and end-to-end testing.
 - **A compatible syntax-highlighting or code-editor library:** only if justified by the existing stack.
-- **Existing Jetpack Compose Material components:** native Android implementation with custom GRID-X design tokens.
+- **Existing Jetpack Compose Material components:** native Android implementation with custom OMNICOMPILE design tokens.
 
 Use current, compatible versions and the existing package manager. Do not mix package managers or upgrade major framework versions without checking compatibility.
 
@@ -642,7 +642,7 @@ Before committing:
 3. Exclude credentials, private keys, personal environment files, large generated folders, caches, temporary logs, and unrelated artefacts.
 4. Ensure required source files, tests, documentation, configuration examples, and intentional release scripts are included.
 5. Confirm the final relevant tests and builds have been executed against the intended changes.
-6. Use an informative commit message such as `feat(phase-9): harden cross-platform workers and redesign GRID-X UI`.
+6. Use an informative commit message such as `feat(phase-9): harden cross-platform workers and redesign OMNICOMPILE UI`.
 7. Push to the existing intended remote and branch only after verifying the remote and branch are correct.
 
 Never force-push, overwrite another branch, discard unrelated commits, or change repository history destructively.
@@ -682,7 +682,7 @@ Phase 9 is complete only when all applicable gates have evidence.
 - [ ] All three worker types operate simultaneously against the same coordinator, with real execution evidence.
 - [ ] Compiler and optimization claims match actual implementation.
 - [ ] Task verification and fault recovery pass applicable tests.
-- [ ] All major screens use the prescribed GRID-X design system.
+- [ ] All major screens use the prescribed OMNICOMPILE design system.
 - [ ] The application remains dark regardless of device system theme.
 - [ ] Infrared Coral, Carbon Black, Orbit White, and Satellite Grey are used consistently and deliberately.
 - [ ] UI regressions, responsiveness, and accessibility are checked.
@@ -701,4 +701,4 @@ Do not stop at planning. Do not substitute mockups for implementation, mocks for
 
 Continue fixing reproducible defects until the acceptance gates pass or a genuine external blocker prevents further progress. Preserve user data, protect credentials, and avoid destructive operations.
 
-**The required outcome is a cohesive, verified GRID-X release—not a demonstration that merely looks complete.**
+**The required outcome is a cohesive, verified OMNICOMPILE release—not a demonstration that merely looks complete.**

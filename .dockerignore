@@ -1,10 +1,13 @@
 **/node_modules
 **/dist
 **/build
+**/build-acceptance
 **/.gradle
+**/.kotlin
 .git
 .runtime
 .codex
+.superpowers
 .env
 .env.*
 **/.env
@@ -13,9 +16,12 @@
 **/*.pem
 **/*.key
 **/*.p12
+**/*.pfx
 **/*.keystore
 **/*.jks
 **/*.log
+**/*.sql
+**/*.bak
 data
 backups
 **/backups

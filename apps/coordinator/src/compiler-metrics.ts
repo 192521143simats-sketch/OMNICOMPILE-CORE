@@ -1,8 +1,8 @@
 import {randomUUID} from 'node:crypto';
 import type {Pool,RowDataPacket} from 'mysql2/promise';
-import type {ResourceSnapshot} from '@c-optiforge/contracts';
-import {networkPolicySchema} from '@c-optiforge/contracts';
-import {evaluateNode,type RequiredCapability} from '@c-optiforge/orchestration';
+import type {ResourceSnapshot} from '@omnicompile/contracts';
+import {networkPolicySchema} from '@omnicompile/contracts';
+import {evaluateNode,type RequiredCapability} from '@omnicompile/orchestration';
 
 type Row=Record<string,any>;
 type MetricInput={tasks:Row[];workers:Row[];telemetry:Row[];verifications:Row[];availability:Row[]};

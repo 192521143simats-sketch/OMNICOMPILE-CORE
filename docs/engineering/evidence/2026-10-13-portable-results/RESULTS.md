@@ -37,7 +37,7 @@ Clients are labelled logical protocol fixtures using the actual portable worker 
 ## Final verification
 
 After both concurrency fixes, portable Node 24.21.0 was prepended to PATH and
-`$env:GRID_X_SANDBOX_TEST='1'; npm run verify` exited 0: 175 tests in 31 files
+`$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify` exited 0: 175 tests in 31 files
 (including real Docker tests), three script tests, all eight workspace type
 checks and builds. Full output: ignored
 `.superpowers/sdd/TASK_ENGINE_PHASE/final-verify.log`.

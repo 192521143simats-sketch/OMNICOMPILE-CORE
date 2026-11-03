@@ -9,7 +9,7 @@ labelled disposable containers, never the developer database.
 
 | Command | Result |
 | --- | --- |
-| `GRID_X_SANDBOX_TEST=1 npm test -- --maxWorkers=1` (PowerShell environment assignment) | 302/302, 45 files, no skips |
+| `OMNICOMPILE_SANDBOX_TEST=1 npm test -- --maxWorkers=1` (PowerShell environment assignment) | 302/302, 45 files, no skips |
 | `npm run typecheck` | All eight workspaces passed |
 | `npm run build` | All eight workspaces passed |
 | `node --test scripts/*.test.mjs` | 5/5 passed, including real Windows owned process-tree cleanup |

@@ -2,9 +2,9 @@
 import {createServer} from 'node:https';
 import {request} from 'node:http';
 import {readFileSync} from 'node:fs';
-const instance=process.env.GRID_X_TEST_INSTANCE,port=Number(process.env.GRID_X_TEST_TLS_PORT),upstream=new URL(process.env.GRID_X_TEST_VITE_BASE);
+const instance=process.env.OMNICOMPILE_TEST_INSTANCE,port=Number(process.env.OMNICOMPILE_TEST_TLS_PORT),upstream=new URL(process.env.OMNICOMPILE_TEST_VITE_BASE);
 if(!/^[a-f0-9]{16}$/.test(instance??'')||upstream.protocol!=='http:'||upstream.hostname!=='127.0.0.1'||![port,Number(upstream.port)].every(p=>p>0&&p<65536&&![4100,5173].includes(p)))throw new Error('Refusing non-isolated TLS proxy');
-const server=createServer({key:readFileSync(process.env.GRID_X_TEST_TLS_KEY),cert:readFileSync(process.env.GRID_X_TEST_TLS_CERT)},(incoming,outgoing)=>{
+const server=createServer({key:readFileSync(process.env.OMNICOMPILE_TEST_TLS_KEY),cert:readFileSync(process.env.OMNICOMPILE_TEST_TLS_CERT)},(incoming,outgoing)=>{
   const proxied=request(new URL(incoming.url,upstream),{method:incoming.method,headers:incoming.headers},response=>{outgoing.writeHead(response.statusCode,response.headers);response.pipe(outgoing);});
   proxied.on('error',()=>{if(!outgoing.headersSent)outgoing.writeHead(502);outgoing.end();});incoming.pipe(proxied);
 });

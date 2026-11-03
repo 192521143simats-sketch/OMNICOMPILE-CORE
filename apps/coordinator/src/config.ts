@@ -2,12 +2,12 @@ import dotenv from "dotenv";
 import { resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import {readFileSync} from "node:fs";
-import {createOriginPolicy, trustedProxyPolicy, validateProductionEnvironment} from "./runtime-policy.js";
+import {createOriginPolicy, trustedProxyPolicy, validateProductionEnvironment,validateHeartbeatTimeouts} from "./runtime-policy.js";
 import {parseDistributionManifest} from './distribution.js';
 
 const projectRoot=resolve(fileURLToPath(new URL("../../../",import.meta.url)));
 // Isolated runners supply a complete environment; do not inherit developer secrets.
-if(!process.env.GRID_X_TEST_INSTANCE) dotenv.config({path:resolve(projectRoot,".env")});
+if(!process.env.OMNICOMPILE_TEST_INSTANCE) dotenv.config({path:resolve(projectRoot,".env")});
 function integer(name: string, fallback: number): number {
   const value = Number(process.env[name] ?? fallback);
   if (!Number.isInteger(value) || value <= 0) throw new Error(`${name} must be a positive integer`);
@@ -15,9 +15,9 @@ function integer(name: string, fallback: number): number {
 }
 
 export const config = {
-  distributionManifest:parseDistributionManifest(process.env.GRID_X_DISTRIBUTION_MANIFEST),
-  localDistributionManifest:process.env.GRID_X_LOCAL_DISTRIBUTION_MANIFEST,
-  requireAdminApproval:process.env.GRID_X_REQUIRE_ADMIN_APPROVAL===undefined?process.env.NODE_ENV==='production':process.env.GRID_X_REQUIRE_ADMIN_APPROVAL==='true',
+  distributionManifest:parseDistributionManifest(process.env.OMNICOMPILE_DISTRIBUTION_MANIFEST),
+  localDistributionManifest:process.env.OMNICOMPILE_LOCAL_DISTRIBUTION_MANIFEST,
+  requireAdminApproval:process.env.OMNICOMPILE_REQUIRE_ADMIN_APPROVAL===undefined?process.env.NODE_ENV==='production':process.env.OMNICOMPILE_REQUIRE_ADMIN_APPROVAL==='true',
   productVersion: String(JSON.parse(readFileSync(resolve(projectRoot,"package.json"),"utf8")).version),
   host: process.env.HOST ?? "0.0.0.0",
   port: integer("PORT", 4100),
@@ -29,8 +29,8 @@ export const config = {
   nodeEnv: process.env.NODE_ENV ?? "development",
   allowedOrigins: process.env.ALLOWED_ORIGINS,
   trustedProxies: trustedProxyPolicy(process.env.TRUSTED_PROXIES),
-  testInstance: process.env.GRID_X_TEST_INSTANCE,
-  executionEnabled: ["docker","kubernetes"].includes(process.env.GRID_X_EXECUTION_MODE??"docker"),
+  testInstance: process.env.OMNICOMPILE_TEST_INSTANCE,
+  executionEnabled: ["docker","kubernetes"].includes(process.env.OMNICOMPILE_EXECUTION_MODE??"docker"),
   sessionTtlHours: integer("SESSION_TTL_HOURS", 12),
   resetTtlMinutes: integer("RESET_TTL_MINUTES", 20),
   integrations: {
@@ -40,8 +40,8 @@ export const config = {
   database: {
     host: process.env.DB_HOST ?? "127.0.0.1",
     port: integer("DB_PORT", 3307),
-    name: process.env.DB_NAME ?? "c_optiforge",
-    user: process.env.DB_USER ?? "c_optiforge",
+    name: process.env.DB_NAME ?? "omnicompile",
+    user: process.env.DB_USER ?? "root",
     password: process.env.DB_PASSWORD ?? ""
   },
   heartbeatStaleMs: integer("HEARTBEAT_STALE_MS", 15_000),
@@ -50,8 +50,9 @@ export const config = {
   ,projectRoot
 };
 
-if (!config.database.password) throw new Error("DB_PASSWORD is required. Run START-C-OPTIFORGE.bat to initialize .env.");
+validateHeartbeatTimeouts(config.heartbeatStaleMs,config.heartbeatOfflineMs);
+if (!config.database.password) throw new Error("DB_PASSWORD is required. Run START-OMNICOMPILE.bat to initialize .env.");
 if (!config.adminPasswordHash && !config.adminPassword) throw new Error("ADMIN_PASSWORD_HASH or ADMIN_PASSWORD is required.");
 validateProductionEnvironment(config);
-if(config.testInstance && (config.nodeEnv==="production" || !/^[a-f0-9]{16}$/.test(config.testInstance) || config.database.name!==`gridx_test_${config.testInstance}` || [4100,5173].includes(config.port))) throw new Error("Invalid isolated test coordinator configuration");
+if(config.testInstance && (config.nodeEnv==="production" || !/^[a-f0-9]{16}$/.test(config.testInstance) || config.database.name!==`omnicompile_test_${config.testInstance}` || [4100,5173].includes(config.port))) throw new Error("Invalid isolated test coordinator configuration");
 export const allowedOrigin=createOriginPolicy(config.publicBaseUrl,config.nodeEnv,config.allowedOrigins);

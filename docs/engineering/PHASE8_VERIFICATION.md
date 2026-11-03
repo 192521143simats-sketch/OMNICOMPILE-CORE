@@ -26,7 +26,7 @@ Fresh verification of the final APK:
 - Exact rebuilt APK end-to-end acceptance passed: fixture `6f90f70b244a9fa2`,
   five real portable results, verified C IR optimization, coordinator restart,
   cancellation/reconnect, pause/recreation/resume/disconnect/leave and downloads.
-- Fresh `GRID_X_SANDBOX_TEST=1 npm run verify`: 327 tests, 16 script checks,
+- Fresh `OMNICOMPILE_SANDBOX_TEST=1 npm run verify`: 327 tests, 16 script checks,
   nine workspace typechecks and builds passed.
 - Debug `apksigner verify --print-certs` passed; debug certificate only.
 
@@ -53,14 +53,14 @@ and MySQL. No coordinator/compiler schema replacement.
 - JDK 21.0.12.1, Gradle 8.13, SDK 36, build tools 36.0.0.
 - Android JVM tests: 23 passed.
 - Debug APK, instrumentation APK, unsigned release APK and release AAB built.
-- Root `GRID_X_SANDBOX_TEST=1 npm run verify`: 327 Vitest tests, 16 script tests,
+- Root `OMNICOMPILE_SANDBOX_TEST=1 npm run verify`: 327 Vitest tests, 16 script tests,
   all nine workspace typechecks and builds passed.
 - Xiaomi M2004J19C, Android 10/API 29: both APKs manually installed after Xiaomi
   rejected ADB installation. Installed APK hashes matched local build outputs.
 - Physical Keystore, native compute and initial consent tests: 3 passed.
 - `npm run verify:artifacts`: passed, isolated fixture `06de8dee7a4aa7b2`;
   migrations, MySQL concurrency, protocol and real C/Python/Java artifact regressions.
-- `GRID_X_ANDROID_PREINSTALLED=1 npm run verify:android-native`: passed, isolated
+- `OMNICOMPILE_ANDROID_PREINSTALLED=1 npm run verify:android-native`: passed, isolated
   fixture `bfabc9540fc3388b`. Five real portable task results accepted; C IR
   optimization persisted and verified; coordinator restart; cancellation/reconnect;
   pause/activity recreation/resume; disconnect; leave; authorized artifact downloads.

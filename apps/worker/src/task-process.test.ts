@@ -1,7 +1,7 @@
 import {describe,it,expect} from 'vitest';
 import {runTaskProcess} from './task-process-controller.js';
 import {fork} from 'node:child_process';
-import {compileCSource} from '@c-optiforge/compiler-c';
+import {compileCSource} from '@omnicompile/compiler-c';
 import {mkdtemp,readFile,writeFile,rm} from 'node:fs/promises';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
@@ -11,10 +11,10 @@ const {verifyCompilation}=await import(new URL('../../coordinator/src/compilatio
 describe('owned native task process',()=>{
   it.skipIf(process.platform!=='win32')('fails closed if the Windows tree-termination command cannot run',async()=>{
     const original=process.env.SystemRoot,controller=new AbortController();
-    try{await expect(runTaskProcess({operation:'sha256_chain',input:'unconfirmed',iterations:10_000_000},{signal:controller.signal,onStarted:()=>{process.env.SystemRoot=join(tmpdir(),'gridx-missing-windows-fixture');controller.abort();}})).rejects.toMatchObject({name:'TaskTerminationUnconfirmedError'});}finally{if(original===undefined)delete process.env.SystemRoot;else process.env.SystemRoot=original;}
+    try{await expect(runTaskProcess({operation:'sha256_chain',input:'unconfirmed',iterations:10_000_000},{signal:controller.signal,onStarted:()=>{process.env.SystemRoot=join(tmpdir(),'omnicompile-missing-windows-fixture');controller.abort();}})).rejects.toMatchObject({name:'TaskTerminationUnconfirmedError'});}finally{if(original===undefined)delete process.env.SystemRoot;else process.env.SystemRoot=original;}
   },15000);
   it.each(['worker cancellation','coordinator cancellation','worker parent loss','coordinator parent loss'])('terminates actual compiler descendants on %s',async(mode)=>{
-    const directory=await mkdtemp(join(tmpdir(),'gridx-tree-fixture-')),parentFile=join(directory,'parent.pid'),childFile=join(directory,'child.pid'),controller=new AbortController();let parentPid=0,childPid=0;
+    const directory=await mkdtemp(join(tmpdir(),'omnicompile-tree-fixture-')),parentFile=join(directory,'parent.pid'),childFile=join(directory,'child.pid'),controller=new AbortController();let parentPid=0,childPid=0;
     const source=`#include <stdio.h>\n#include <string.h>\n#ifdef _WIN32\n#include <windows.h>\n#else\n#include <unistd.h>\n#endif\nint main(int argc,char **argv){int isChild=argc>1&&strcmp(argv[1],"child")==0;\n#ifdef _WIN32\n if(!isChild){char file[4096],command[4200];GetModuleFileNameA(NULL,file,sizeof(file));snprintf(command,sizeof(command),"\\\"%s\\\" child",file);STARTUPINFOA startup={0};PROCESS_INFORMATION process={0};startup.cb=sizeof(startup);if(!CreateProcessA(NULL,command,NULL,NULL,FALSE,CREATE_NO_WINDOW,NULL,NULL,&startup,&process))return 2;CloseHandle(process.hThread);CloseHandle(process.hProcess);}\n int id=(int)GetCurrentProcessId();\n#else\n if(!isChild){if(fork()==0)isChild=1;}int id=(int)getpid();\n#endif\n FILE *f=fopen(!isChild?${JSON.stringify(parentFile)}:${JSON.stringify(childFile)},"w");if(!f)return 3;fprintf(f,"%d",id);fclose(f);while(1){\n#ifdef _WIN32\n Sleep(1000);\n#else\n sleep(1);\n#endif\n }return 0;}\n`;
     const oldCompiler=process.env.GCC_EXECUTABLE,oldPath=process.env.PATH;
     let work:Promise<unknown>|undefined,owned:ReturnType<typeof fork>|undefined;

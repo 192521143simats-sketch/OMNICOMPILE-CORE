@@ -1,0 +1,61 @@
+name: Verify OmniCompile Core
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: verify-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  application:
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      ELECTRON_SKIP_BINARY_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.14'
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - run: npm ci
+      - run: npm run verify
+      - run: npm audit --omit=dev --audit-level=high
+  deployment:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+      - uses: azure/setup-kubectl@v4
+        with:
+          version: v1.36.1
+      - run: python -m pip install 'PyYAML==6.0.3'
+      - run: python infra/kubernetes/Validate.py
+      - name: Validate against the official Kubernetes API schema
+        run: |
+          curl --fail --silent --show-error --location https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.0/api/openapi-spec/swagger.json --output "$RUNNER_TEMP/k8s-openapi.json"
+          echo "d3b0cdc2fda15c753206d25ab459dc7c12df64e2fd652b6809687471ea751c37  $RUNNER_TEMP/k8s-openapi.json" | sha256sum --check
+          python -m pip install 'jsonschema==4.26.0'
+          python infra/kubernetes/Validate.py --openapi "$RUNNER_TEMP/k8s-openapi.json"
+      - name: Validate Compose without storing credentials
+        env:
+          MYSQL_ROOT_PASSWORD: ci-ephemeral-placeholder
+          ADMIN_PASSWORD: ci-ephemeral-placeholder
+        run: docker compose config --quiet
+      - run: docker build -f infra/containers/coordinator.Dockerfile -t be-omnicompile-coordinator:local .
+      - run: docker build -f infra/containers/web.Dockerfile -t fe-omnicompile-frontend:local .
+      - run: docker pull mysql:8.4
+      - run: node infra/containers/Verify-Images.mjs
+      # No registry publishing, infrastructure creation or deployment is performed.

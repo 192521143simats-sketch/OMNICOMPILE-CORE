@@ -6,7 +6,7 @@
  * real raw-type/unchecked warnings. Repair them with List<String> and
  * new ArrayList<>() to retain behavior while removing those warnings.
  * Repeated invoice lookup can be replaced with a prebuilt Map for large batches.
- * GRID-X's Java pipeline does not currently rewrite that algorithm or generate
+ * OMNICOMPILE's Java pipeline does not currently rewrite that algorithm or generate
  * an optimized Java source transformation; javac does compile constant values.
  */
 import java.util.ArrayList;

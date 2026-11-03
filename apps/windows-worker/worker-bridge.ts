@@ -3,7 +3,7 @@ import {profile} from '../worker/src/profiler.js';
 import {validateSettings} from './settings.cjs';
 const coordinator=process.env.COORDINATOR_URL,credential=process.env.WORKER_CREDENTIAL;
 if(!coordinator||!credential||!process.send)throw new Error('Scoped desktop worker configuration is required.');
-const settings=validateSettings(JSON.parse(process.env.GRID_X_WORKER_SETTINGS??'{}'));
+const settings=validateSettings(JSON.parse(process.env.OMNICOMPILE_WORKER_SETTINGS??'{}'));
 // The desktop applies its CPU hard cap through the Windows Job Object before
 // starting this session; host-wide CPU admission would consume retries needlessly.
 const session=new NativeWorkerSession({coordinator,credential,policy:{enabled:true,maxMemoryBytes:settings.maxMemoryMB*1024**2,maxTaskDurationMs:settings.maxTaskDurationSeconds*1000},profile:async()=>{const found=await profile();return settings.allowNative?found:{...found,runtimes:{c:false,python:false,java:false},operations:{...found.operations,nativeCompilation:false,nativeCSource:false}};},onState:state=>{if(process.connected)process.send?.({type:'state',state},()=>{});}});

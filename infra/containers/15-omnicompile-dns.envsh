@@ -1,0 +1,14 @@
+#!/bin/sh
+# Sourced by the upstream nginx entrypoint before template substitution. Docker
+# and Kubernetes provide different DNS servers; use the actual pod/container DNS.
+if [ -z "${NGINX_RESOLVER:-}" ]; then
+    NGINX_RESOLVER=$(awk '$1 == "nameserver" { print $2; exit }' /etc/resolv.conf)
+    if [ -z "$NGINX_RESOLVER" ]; then
+        echo 'No DNS resolver is configured; refusing to start the web proxy.' >&2
+        exit 1
+    fi
+    case "$NGINX_RESOLVER" in
+        *:*) NGINX_RESOLVER="[$NGINX_RESOLVER]" ;;
+    esac
+    export NGINX_RESOLVER
+fi

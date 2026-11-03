@@ -11,4 +11,4 @@ export type IRInstruction=
   |{op:"jump";target:string}
   |{op:"return";value:IRValue|null};
 export type IRFunction={name:string;returnType:CType;parameters:Array<{name:string;type:CType;value:IRValue}>;instructions:IRInstruction[]};
-export type CIntermediateRepresentation={kind:"COptiForgeCIR";version:1;functions:IRFunction[]};
+export type CIntermediateRepresentation={kind:"OmniCompileCIR";version:1;functions:IRFunction[]};

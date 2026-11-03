@@ -1,4 +1,4 @@
-# COMBINED CODEX MASTER ENGINEERING PROMPT — C-OPTIFORGE / GRID-X
+# COMBINED CODEX MASTER ENGINEERING PROMPT — OMNICOMPILE / OMNICOMPILE
 
 READ THIS ENTIRE FILE BEFORE IMPLEMENTATION.
 
@@ -7,11 +7,11 @@ This is one cumulative engineering specification made from two supplied prompts.
 ## M0. SOURCE IDENTITY AND LOSSLESS PRESERVATION
 
 SOURCE A — Initial prompt:
-"C-OPTIFORGE — FULL PRODUCT BUILD MASTER ENGINEERING PROMPT"
+"OMNICOMPILE — FULL PRODUCT BUILD MASTER ENGINEERING PROMPT"
 Original numbering: section 0 followed by sections 1–100.
 
 SOURCE B — Later prompt:
-"MASTER ENGINEERING DIRECTIVE — C-OPTIFORGE / GRID-X"
+"MASTER ENGINEERING DIRECTIVE — OMNICOMPILE / OMNICOMPILE"
 Original numbering: sections 0–24, including subsections, phases, and acceptance scenarios A–H.
 
 The two complete source bodies retain their original words, headings, numbering, examples, lists, constraints, and acceptance criteria. Repetition is deliberately retained to prevent loss of important wording. References such as A:26 or B:6.5 distinguish the two numbering systems. Do not renumber the source bodies or interpret duplicate section numbers as replacements.
@@ -62,7 +62,7 @@ Across all phases: apply A:0, A:5, A:55, A:86–100 and B:0–2, B:12, B:16–19
 ## M2. EXPLICIT RECONCILIATION REGISTER
 
 R01 — Product branding: genuine direct contradiction.
-A:2 requires the visible name "C-OptiForge" and says "Do not expose GRID-X as the primary product identity." B:0, B:3, B:10.1, and B:24 require GRID-X user-facing branding. Resolution: the later directive governs visible product branding: GRID-X. Retain C-OptiForge as the existing repository/package identity and preserve the academic/compiler title "C-OptiForge — Distributed Resource-Aware Compiler for Hardware-Adaptive Optimization" in appropriate academic/compiler documentation. Apply GRID-X consistently to web, Windows, Android, onboarding, and release UI. The original contrary wording remains below for provenance and is explicitly superseded only for visible product naming. Do not build two products or needlessly rename technical identifiers.
+A:2 requires the visible name "OmniCompile Core" and says "Do not expose OMNICOMPILE as the primary product identity." B:0, B:3, B:10.1, and B:24 require OMNICOMPILE user-facing branding. Resolution: the later directive governs visible product branding: OMNICOMPILE. Retain OmniCompile Core as the existing repository/package identity and preserve the academic/compiler title "OmniCompile Core — Distributed Resource-Aware Compiler for Hardware-Adaptive Optimization" in appropriate academic/compiler documentation. Apply OMNICOMPILE consistently to web, Windows, Android, onboarding, and release UI. The original contrary wording remains below for provenance and is explicitly superseded only for visible product naming. Do not build two products or needlessly rename technical identifiers.
 
 R02 — Scheduling worker IDs and user-facing reports: genuine visibility conflict.
 A:30, A:82–84 require actual worker identities and participation evidence; B:5.5 forbids internal worker IDs and private scheduler details in user-facing reports. Resolution: retain actual IDs, detailed selection reasons, and measured participation in authorized administrative/engineering diagnostics and demonstration evidence. Ordinary user-facing build reports show truthful distributed/local status and appropriately abstracted participation without internal worker IDs, private IPs, private scheduler details, or secrets. A worker may see its own stable worker ID in its native/browser dashboard. Do not remove operational evidence to satisfy report privacy.
@@ -118,7 +118,7 @@ If inspection reveals another genuine incompatibility, quote both source-qualifi
 ## M3. REQUIRED START AND CONTINUATION
 
 Verify and work in:
-C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\C-OPTIFORGE
+C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\OMNICOMPILE
 
 If the existing repository is already opened, verify its root before proceeding. If it is unavailable, report that exact blocker; do not create a replacement architecture elsewhere.
 
@@ -265,7 +265,7 @@ B:23 — REQUIRED FINAL DELIVERABLES
 B:24 — HOW YOU MUST BEGIN AND CONTINUE
 
 ================ BEGIN SOURCE A — INITIAL PROMPT (VERBATIM) ================
-# C-OPTIFORGE — FULL PRODUCT BUILD MASTER ENGINEERING PROMPT
+# OMNICOMPILE — FULL PRODUCT BUILD MASTER ENGINEERING PROMPT
 
 ## 0. MISSION
 
@@ -277,7 +277,7 @@ This is NOT a mock/demo implementation.
 
 This is NOT permission to create simulated workers, fake metrics, fake task completion, fake compilation, fake Android execution, fake reliability scores, placeholder APIs, or visually convincing but non-functional UI.
 
-You must take the existing C-OptiForge repository and evolve it into a complete end-to-end cross-platform distributed computing and compilation product.
+You must take the existing OmniCompile Core repository and evolve it into a complete end-to-end cross-platform distributed computing and compilation product.
 
 The final product must be genuinely runnable, testable, maintainable, secure, documented, packaged and releasable.
 
@@ -312,7 +312,7 @@ all work together.
 
 Existing Windows project:
 
-C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\C-OPTIFORGE
+C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\OMNICOMPILE
 
 Do not create a replacement project elsewhere.
 
@@ -330,19 +330,19 @@ Refactor only where required.
 
 Final visible product name:
 
-C-OptiForge
+OmniCompile Core
 
-Do not expose GRID-X as the primary product identity.
+Do not expose OMNICOMPILE as the primary product identity.
 
-C-OptiForge is the product.
+OmniCompile Core is the product.
 
 The academic/compiler identity remains:
 
-C-OptiForge — Distributed Resource-Aware Compiler for Hardware-Adaptive Optimization
+OmniCompile Core — Distributed Resource-Aware Compiler for Hardware-Adaptive Optimization
 
 The final product positioning is:
 
-C-OptiForge is a cross-platform distributed computing and compilation platform in which heterogeneous devices can voluntarily join controlled compute networks and contribute execution resources according to their capabilities, availability, reliability and user-defined policies.
+OmniCompile Core is a cross-platform distributed computing and compilation platform in which heterogeneous devices can voluntarily join controlled compute networks and contribute execution resources according to their capabilities, availability, reliability and user-defined policies.
 
 Its flagship workload is distributed compiler optimization.
 
@@ -352,29 +352,29 @@ Its flagship workload is distributed compiler optimization.
 
 The final system must consist of:
 
-C-OptiForge Web Platform
+OmniCompile Core Web Platform
 +
-C-OptiForge Coordinator
+OmniCompile Core Coordinator
 +
-C-OptiForge Compute Network
+OmniCompile Core Compute Network
 +
-C-OptiForge Windows Worker
+OmniCompile Core Windows Worker
 +
-C-OptiForge Android Worker
+OmniCompile Core Android Worker
 +
-C-OptiForge Browser Worker
+OmniCompile Core Browser Worker
 +
-C-OptiForge Compiler Engine
+OmniCompile Core Compiler Engine
 +
-C-OptiForge Distributed Task Engine
+OmniCompile Core Distributed Task Engine
 +
-C-OptiForge Scheduler
+OmniCompile Core Scheduler
 +
-C-OptiForge Reliability/Integrity Engine
+OmniCompile Core Reliability/Integrity Engine
 +
-C-OptiForge Administration/Observability Platform
+OmniCompile Core Administration/Observability Platform
 +
-C-OptiForge Packaging/Release System
+OmniCompile Core Packaging/Release System
 
 The system must allow:
 
@@ -496,7 +496,7 @@ MySQL
 Do not maintain two competing database architectures.
 
 Remove stale:
-apps/coordinator/data/c-optiforge.db
+apps/coordinator/data/omnicompile.db
 and associated SQLite artifacts if confirmed unused.
 
 Update documentation so it consistently describes MySQL.
@@ -511,7 +511,7 @@ No documentation may say a feature is incomplete after it has been completed.
 
 Build this architecture:
 
-C-OptiForge
+OmniCompile Core
 |
 +-- Web Platform
 |   |
@@ -830,7 +830,7 @@ Install APK
 
 Android UI:
 
-C-OptiForge Worker
+OmniCompile Core Worker
 
 Status:
 CONNECTED / DISCONNECTED / PAUSED / BUSY
@@ -1687,7 +1687,7 @@ The Windows worker must have the same product identity.
 
 Display:
 
-C-OptiForge Worker
+OmniCompile Core Worker
 
 Connection:
 CONNECTED
@@ -2423,7 +2423,7 @@ No navigation to unfinished pages.
 
 First launch:
 
-Welcome to C-OptiForge.
+Welcome to OmniCompile Core.
 
 Explain:
 
@@ -2718,7 +2718,7 @@ Production:
 
 Internet
 → HTTPS reverse proxy
-→ C-OptiForge web/coordinator
+→ OmniCompile Core web/coordinator
 → MySQL
 → worker WebSockets.
 
@@ -2858,7 +2858,7 @@ worker restart.
 
 Admin:
 
-Open C-OptiForge
+Open OmniCompile Core
 → Sign in
 → Dashboard
 → Create Compute Network
@@ -3203,7 +3203,7 @@ AGENTS.md
 It must state:
 
 Project:
-C-OptiForge.
+OmniCompile Core.
 
 Role:
 Production engineering agent.
@@ -3393,7 +3393,7 @@ a collection of unrelated pages.
 
 The final experience must be:
 
-C-OptiForge
+OmniCompile Core
 
 One platform.
 
@@ -3419,7 +3419,7 @@ One compiler platform.
 
 The final conceptual hierarchy is:
 
-C-OptiForge
+OmniCompile Core
 |
 +-- Distributed Compute Platform
 |   |
@@ -3505,7 +3505,7 @@ RUN TESTS
 → DOCUMENT
 → COMMIT
 
-Continue until the complete C-OptiForge product satisfies the release gate.
+Continue until the complete OmniCompile Core product satisfies the release gate.
 
 The final deliverable is not merely source code.
 
@@ -3539,7 +3539,7 @@ BUILD THE COMPLETE SYSTEM END TO END.
 ================ END SOURCE A ================
 
 ================ BEGIN SOURCE B — LATER DIRECTIVE (VERBATIM) ================
-# MASTER ENGINEERING DIRECTIVE — C-OPTIFORGE / GRID-X
+# MASTER ENGINEERING DIRECTIVE — OMNICOMPILE / OMNICOMPILE
 
 ## 0. YOUR ROLE, AUTHORITY, AND FINAL OBJECTIVE
 
@@ -3551,15 +3551,15 @@ You are not being asked to generate a college demonstration, a throwaway proof o
 
 You are being asked to transform an existing, partially implemented codebase into a complete, integrated, maintainable, secure, testable, deployable software product.
 
-**Project repository name:** `C-OptiForge`
+**Project repository name:** `OmniCompile Core`
 
-**Product name:** `GRID-X`
+**Product name:** `OMNICOMPILE`
 
 **Product identity:** A security-aware, fault-tolerant, resource-aware distributed compiler framework that executes language-specific compilation and optimization workflows using a coordinated network of consenting, heterogeneous compute workers across Windows, Android, and web browsers.
 
 **Primary engineering objective:** Preserve, complete, validate, and professionally package the existing implementation. Do not discard functioning work merely to make implementation easier.
 
-**Final expected outcome:** A user can launch GRID-X, authenticate, submit C, Python, or Java source code, run the appropriate language pipeline, distribute eligible work to authorized and compatible workers, observe real-time execution, receive verified results and genuine artifacts, inspect reports, and manage the network. Administrators can monitor and govern the platform. Users can contribute resources through a Windows native worker, a genuine Android application, or a browser worker.
+**Final expected outcome:** A user can launch OMNICOMPILE, authenticate, submit C, Python, or Java source code, run the appropriate language pipeline, distribute eligible work to authorized and compatible workers, observe real-time execution, receive verified results and genuine artifacts, inspect reports, and manage the network. Administrators can monitor and govern the platform. Users can contribute resources through a Windows native worker, a genuine Android application, or a browser worker.
 
 All three worker types must participate in the same coherent distributed system. They must not be three unrelated implementations or three dashboards that merely look integrated.
 
@@ -3594,7 +3594,7 @@ Before modifying any source file, perform a complete repository and environment 
 
 Use the existing repository at:
 
-`C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\C-OPTIFORGE`
+`C:\Users\mahen\OneDrive\Desktop\SARVESH\simats\SIMATS PROJECT\COMPILER DESIGN\OMNICOMPILE`
 
 If the workspace has already opened this repository, use its verified root rather than assuming another location.
 
@@ -3724,9 +3724,9 @@ Continue across all phases below. Do not stop after Phase 1, Phase 2, or the fir
 
 # 3. PRODUCT ARCHITECTURE AND SOURCE-OF-TRUTH RULES
 
-The product must remain a single integrated system named GRID-X.
+The product must remain a single integrated system named OMNICOMPILE.
 
-The repository can retain `C-OptiForge` as its package or repository identity where changing it would create unnecessary breakage. User-facing product branding must consistently identify the application as GRID-X.
+The repository can retain `OmniCompile Core` as its package or repository identity where changing it would create unnecessary breakage. User-facing product branding must consistently identify the application as OMNICOMPILE.
 
 Inspect the current architecture before choosing implementation details. Retain the existing stack when it is fit for purpose.
 
@@ -3745,7 +3745,7 @@ These components must be verified before modification.
 
 Implement or complete these responsibilities using the existing package structure wherever possible.
 
-### A. GRID-X Web Client
+### A. OMNICOMPILE Web Client
 
 Responsibilities:
 
@@ -3762,7 +3762,7 @@ Responsibilities:
 - Real-time task and worker updates.
 - Responsive desktop, tablet, and mobile layouts.
 
-### B. GRID-X Coordinator
+### B. OMNICOMPILE Coordinator
 
 Responsibilities:
 
@@ -3782,7 +3782,7 @@ Responsibilities:
 - Administrative APIs.
 - Operational health and readiness endpoints.
 
-### C. GRID-X Shared Contracts
+### C. OMNICOMPILE Shared Contracts
 
 Define stable, versioned contracts for:
 
@@ -3806,7 +3806,7 @@ Define stable, versioned contracts for:
 
 The browser, Windows worker, Android worker, and coordinator must follow the same documented protocol, with capability-specific behavior explicitly defined.
 
-### D. GRID-X Compiler Engine
+### D. OMNICOMPILE Compiler Engine
 
 Responsibilities:
 
@@ -3822,7 +3822,7 @@ Responsibilities:
 - Build reports.
 - Error and diagnostic reporting.
 
-### E. GRID-X Windows Worker
+### E. OMNICOMPILE Windows Worker
 
 A genuine installed native worker application or service, using the existing Node.js worker implementation where practical.
 
@@ -3843,7 +3843,7 @@ Responsibilities:
 - Graceful shutdown.
 - Uninstall and credential revocation.
 
-### F. GRID-X Android Worker
+### F. OMNICOMPILE Android Worker
 
 A genuine Android application built using Kotlin and an appropriate Android-supported UI framework, preferably Jetpack Compose if compatible with the project and the installed toolchain.
 
@@ -3867,7 +3867,7 @@ Responsibilities:
 
 The Android application must not simply display the web dashboard inside a WebView and claim to be a native worker.
 
-### G. GRID-X Browser Worker
+### G. OMNICOMPILE Browser Worker
 
 Responsibilities:
 
@@ -3898,13 +3898,13 @@ The web application, coordinator, worker packages, Android client, and Windows p
 
 The following workflow must work end to end.
 
-1. The user opens GRID-X.
+1. The user opens OMNICOMPILE.
 2. The landing page loads successfully.
 3. The user signs in or creates an account.
 4. The user reaches the correct workspace for their role.
 5. The user selects C, Python, or Java.
 6. The user enters code or uploads a supported source file.
-7. GRID-X validates the language, file, source size, and supported feature set.
+7. OMNICOMPILE validates the language, file, source size, and supported feature set.
 8. The user configures available compilation or optimization options.
 9. The user submits the job.
 10. The coordinator creates a persistent job record and unique job identifier.
@@ -3917,7 +3917,7 @@ The following workflow must work end to end.
 17. Workers return results with task identity, attempt identity, protocol version, and integrity metadata.
 18. The coordinator validates submissions and rejects stale, unauthorized, malformed, or conflicting results.
 19. The compiler pipeline aggregates verified results and completes the appropriate downstream stages.
-20. GRID-X generates genuine output artifacts and a truthful build report.
+20. OMNICOMPILE generates genuine output artifacts and a truthful build report.
 21. The frontend displays the actual job outcome.
 22. The user downloads available artifacts and reviews diagnostics.
 23. The job and its audit trail remain available according to the retention policy.
@@ -4070,7 +4070,7 @@ Administrative diagnostics may expose appropriately authorized operational infor
 
 # 6. DISTRIBUTED COMPUTING AND SCHEDULING
 
-GRID-X must implement a genuine distributed execution model.
+OMNICOMPILE must implement a genuine distributed execution model.
 
 The coordinator must own authoritative task state. Workers must never be allowed to declare their own results globally successful without coordinator validation.
 
@@ -4105,7 +4105,7 @@ Implement an explicit, controlled enrollment workflow.
 2. The system issues a high-entropy, time-limited, single-use token or another suitably protected invitation mechanism.
 3. The user shares the invitation link or code with the intended contributor.
 4. The recipient opens a dedicated enrollment page or native application flow.
-5. GRID-X clearly explains the resource contribution being requested.
+5. OMNICOMPILE clearly explains the resource contribution being requested.
 6. The contributor explicitly consents.
 7. The server validates the invitation and its network ownership.
 8. The worker completes authenticated registration.
@@ -4280,7 +4280,7 @@ Required features:
 - Credential revocation.
 - Clean uninstall.
 
-The user must be able to understand when GRID-X is using resources and must have a clear way to pause or stop contribution.
+The user must be able to understand when OMNICOMPILE is using resources and must have a clear way to pause or stop contribution.
 
 ## 7.2 Packaging
 
@@ -4458,7 +4458,7 @@ Test at least the supported Chromium-based browsers, including current Chrome or
 
 # 10. WEB APPLICATION AND PRODUCT EXPERIENCE
 
-GRID-X must look and behave like a cohesive, professional developer product.
+OMNICOMPILE must look and behave like a cohesive, professional developer product.
 
 Do not create an oversized dashboard full of meaningless counters, fake charts, decorative controls, or information that users cannot act upon.
 
@@ -4466,7 +4466,7 @@ Do not create an oversized dashboard full of meaningless counters, fake charts, 
 
 Use a consistent design system with:
 
-- GRID-X wordmark and product identity.
+- OMNICOMPILE wordmark and product identity.
 - Clear typography hierarchy.
 - Consistent spacing.
 - Restrained color palette.
@@ -4496,7 +4496,7 @@ Do not redirect initial navigation to `/login` unless an explicit product requir
 
 The landing page must explain:
 
-- What GRID-X does.
+- What OMNICOMPILE does.
 - How its compiler workflow works.
 - How distributed computing is used.
 - Which worker platforms are supported.
@@ -4915,14 +4915,14 @@ Preserve and improve the existing startup scripts instead of creating an unrelat
 The intended local workflow is:
 
 1. Open the project directory.
-2. Start the GRID-X startup script.
+2. Start the OMNICOMPILE startup script.
 3. The script checks required dependencies and service readiness.
 4. Docker Desktop and the required Linux engine are checked.
 5. The required MySQL service starts or is verified as running.
 6. The coordinator starts after database readiness is established.
 7. The web application starts.
 8. Health checks confirm service availability.
-9. The browser opens the GRID-X landing page at `http://localhost:5173/`.
+9. The browser opens the OMNICOMPILE landing page at `http://localhost:5173/`.
 10. The user can sign in and use the product.
 
 The launcher must not blindly assume that a process has started just because a command was issued.
@@ -5653,7 +5653,7 @@ Do not declare the product ready until the following scenarios have been verifie
 
 ## Scenario A — Local startup
 
-1. Start GRID-X using the documented startup entry point.
+1. Start OMNICOMPILE using the documented startup entry point.
 2. Verify Docker and MySQL readiness.
 3. Verify coordinator readiness.
 4. Verify frontend readiness.
@@ -5741,7 +5741,7 @@ Do not declare the product ready until the following scenarios have been verifie
 
 At the end of the engineering effort, provide the following.
 
-1. A complete, integrated GRID-X codebase.
+1. A complete, integrated OMNICOMPILE codebase.
 2. A functioning web application.
 3. A functioning coordinator service.
 4. The completed C compiler pipeline.
@@ -5819,5 +5819,5 @@ After inspecting the repository, report only:
 
 Then proceed with implementation rather than treating that report as the final deliverable.
 
-**FINAL DIRECTIVE: Build GRID-X as one coherent, reliable, security-conscious, cross-platform software product. Preserve what already works. Complete what is missing. Test what you build. Package what users must install. Document how it operates. Verify every claim. Continue until the release gates are satisfied or a specific, evidenced external blocker prevents completion.**
+**FINAL DIRECTIVE: Build OMNICOMPILE as one coherent, reliable, security-conscious, cross-platform software product. Preserve what already works. Complete what is missing. Test what you build. Package what users must install. Document how it operates. Verify every claim. Continue until the release gates are satisfied or a specific, evidenced external blocker prevents completion.**
 ================ END SOURCE B ================

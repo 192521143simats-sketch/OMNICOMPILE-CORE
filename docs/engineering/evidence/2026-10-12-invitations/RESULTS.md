@@ -4,7 +4,7 @@ Commands executed under the official SHA-256-verified portable Node 24.21.0 runt
 
 - `npm run verify`: exit 0; all eight workspace typechecks/builds, 64 unit tests in 23 files and 3 script tests passed.
 - `npm run verify:integration`: exit 0; owned temporary MySQL fixtures `1efc1ebdd4df9960` (migration, genuine InnoDB contention, protocol, platform, real all-language artifacts) and `6b126f249c94502a` (migration and enrollment).
-- `npm run build --workspace @c-optiforge/web`: exit 0 after adding the no-referrer document policy.
+- `npm run build --workspace @omnicompile/web`: exit 0 after adding the no-referrer document policy.
 - `docker compose config --quiet`: exit 0, existing Compose preserved.
 - `D:/Android/Sdk/platform-tools/adb.exe devices -l`: no devices detected on this check. Earlier detection is not current evidence.
 
@@ -18,4 +18,4 @@ Preservation: no developer database migration/reset, volume deletion, credential
 
 Limitations: no APK, Windows installer/package or package location exists for this phase. New migration interruption at every DDL statement and all historic duplicate-data paths are not exhaustively tested. Existing developer backup has not been restored into an isolated instance. Legacy enrolled workers retain scoped credentials; active credentials are not rotated by this migration. Long-lived browser device lifecycle, task lease/cancel/result correctness and complete release acceptance remain open. Network creation and its initial invitation are separate transactions; a network disabled/expired between them can persist while the response reports it unavailable.
 
-Next ordered implementation: compiler semantics and differential tests, beginning with C short-circuit correctness; then durable task correctness and Windows/native Android worker implementations. Start normally with `START-C-OPTIFORGE.bat`; the migration runs at coordinator startup. Do not reset the developer database to test admission.
+Next ordered implementation: compiler semantics and differential tests, beginning with C short-circuit correctness; then durable task correctness and Windows/native Android worker implementations. Start normally with `START-OMNICOMPILE.bat`; the migration runs at coordinator startup. Do not reset the developer database to test admission.

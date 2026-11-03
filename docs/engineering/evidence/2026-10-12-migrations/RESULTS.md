@@ -12,7 +12,7 @@ Under portable Node 24.21.0: `npm run verify` exit 0; 63 unit tests in 22 files,
 4. Existing auth, network/node/task flow and failure recovery regression.
 5. Real native Node agent C/Python/Java samples, generated artifacts and authorized downloads.
 
-Developer database and named volumes were not migrated/reset. Protected pre-domain-change dump: `.runtime/backups/gridx-before-domain-migrations-20261012-093442.sql`, 481776 bytes. A dump is not restore verification; an isolated restore remains required.
+Developer database and named volumes were not migrated/reset. Protected pre-domain-change dump: `.runtime/backups/omnicompile-before-domain-migrations-20261012-093442.sql`, 481776 bytes. A dump is not restore verification; an isolated restore remains required.
 
 ADB detection repeated: authorized Redmi M2004J19C present. No native Android APK or Windows installer has been generated or installed. Logical WebSocket fixtures are not physical/browser device acceptance evidence.
 

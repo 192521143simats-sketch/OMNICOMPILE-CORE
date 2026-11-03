@@ -1,6 +1,6 @@
 import {verifyCompilation} from './compilation-verification.js';
-import {compileCSource,compileCExecutable} from '@c-optiforge/compiler-c';
-import {installParentDisconnectGuard} from '@c-optiforge/orchestration';
+import {compileCSource,compileCExecutable} from '@omnicompile/compiler-c';
+import {installParentDisconnectGuard} from '@omnicompile/orchestration';
 const releaseParentGuard=installParentDisconnectGuard();
 process.once('message',async(message:any)=>{
   const started=performance.now();

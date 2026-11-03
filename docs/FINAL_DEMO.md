@@ -12,7 +12,7 @@ The final demonstration used Docker Engine 27.2.0, the healthy Compose-managed M
 6. The C frontend validated and lowered the source; the coordinator created real function-level worker tasks.
 7. The scheduler assigned the tasks to the eligible node, which optimized and returned measured results.
 8. Aggregation accepted both candidates with 0.626 ms total measured worker time.
-9. GCC generated `c-optiforge-89c4183b.exe`; MySQL persisted the completed job and artifact metadata.
+9. GCC generated `omnicompile-89c4183b.exe`; MySQL persisted the completed job and artifact metadata.
 10. The download endpoint returned the genuine 135,922-byte executable for job `JOB-f4fa199b-4d95-47ed-80d5-7d6d89c4183b`.
 
 The same persisted distributed job path had already been verified for genuine Python `.pyc` and Java `.jar` artifacts. The repeatable final project gate is `npm run verify`.

@@ -8,18 +8,18 @@ Inspected the actual repository, Docker images/containers/mounts and both local 
 
 | Resource | Purpose | Decision |
 |---|---|---|
-| mysql:8.4 / c-optiforge-mysql / localhost:3307 | Current Compose database | Keep; started existing container without recreating its volume |
-| c-optiforge_mysql_data | Persistent application data (about 256 MB) | Keep |
+| mysql:8.4 / omnicompile-mysql / localhost:3307 | Current Compose database | Keep; started existing container without recreating its volume |
+| omnicompile_mysql_data | Persistent application data (about 256 MB) | Keep |
 | mysql:latest / MYSQL / localhost:3306 | Six unrelated project databases in external bind mount | Keep pending explicit schema-level review |
-| gridx-coordinator:phase9 | Current verified coordinator image | Keep |
-| gridx-web:phase9 | Current verified frontend image | Keep |
-| gridx-execution:1 and :phase9 | Same sandbox filesystem; startup and verification references | Consolidated identical layers to image ae7ebbd536b9, retaining both tags |
+| omnicompile-coordinator:phase9 | Current verified coordinator image | Keep |
+| omnicompile-web:phase9 | Current verified frontend image | Keep |
+| oa-omnicompile-execution:local and :phase9 | Same sandbox filesystem; startup and verification references | Consolidated identical layers to image ae7ebbd536b9, retaining both tags |
 
 Removed redundant image configuration 6d64a6c5aaff. Distinct image count reduced from six to five. The filesystem layers were already shared, so no substantial disk-space saving is claimed. No dangling images or build cache were present. A single image cannot replace these separate services.
 
 ## Current database
 
-MySQL c_optiforge on port 3307 has 22 application tables. Approximate InnoDB row counts below are not exact counts or a basis for deletion.
+MySQL omnicompile on port 3307 has 22 application tables. Approximate InnoDB row counts below are not exact counts or a basis for deletion.
 
 | Table | Estimated rows | Purpose |
 |---|---:|---|
@@ -72,17 +72,17 @@ Results are appended after fresh regression and isolated integration complete.
 
 ## Workspace packages
 
-- apps/coordinator: @c-optiforge/coordinator, version 0.1.0.
-- apps/web: @c-optiforge/web, version 0.1.0.
-- apps/windows-worker: @c-optiforge/windows-worker, version 0.1.1.
-- apps/worker: @c-optiforge/worker, version 0.1.0.
-- packages/compiler-c: @c-optiforge/compiler-c, version 0.1.0.
-- packages/compiler-java: @c-optiforge/compiler-java, version 0.1.0.
-- packages/compiler-python: @c-optiforge/compiler-python, version 0.1.0.
-- packages/contracts: @c-optiforge/contracts, version 0.1.0.
-- packages/orchestration: @c-optiforge/orchestration, version 0.1.0.
+- apps/coordinator: @omnicompile/coordinator, version 0.1.0.
+- apps/web: @omnicompile/web, version 0.1.0.
+- apps/windows-worker: @omnicompile/windows-worker, version 0.1.1.
+- apps/worker: @omnicompile/worker, version 0.1.0.
+- packages/compiler-c: @omnicompile/compiler-c, version 0.1.0.
+- packages/compiler-java: @omnicompile/compiler-java, version 0.1.0.
+- packages/compiler-python: @omnicompile/compiler-python, version 0.1.0.
+- packages/contracts: @omnicompile/contracts, version 0.1.0.
+- packages/orchestration: @omnicompile/orchestration, version 0.1.0.
 
-Native Android: apps/android-worker (Gradle/Kotlin application). Current generated files: apps/android-worker/app/build/outputs/apk/debug/app-debug.apk; apps/android-worker/app/build/outputs/apk/release/app-release-unsigned.apk; apps/android-worker/app/build/outputs/bundle/release/app-release.aab. Current Windows installer: .runtime/windows-worker/releases/GRID-X-Worker-0.1.1-Windows-x64-Setup.exe. Unsigned/development artifacts are not certified production releases.
+Native Android: apps/android-worker (Gradle/Kotlin application). Current generated files: apps/android-worker/app/build/outputs/apk/debug/app-debug.apk; apps/android-worker/app/build/outputs/apk/release/app-release-unsigned.apk; apps/android-worker/app/build/outputs/bundle/release/app-release.aab. Current Windows installer: .runtime/windows-worker/releases/OMNICOMPILE-Worker-0.1.1-Windows-x64-Setup.exe. Unsigned/development artifacts are not certified production releases.
 
 ## Migration files
 
@@ -116,3 +116,18 @@ Recursive file-size inventory: .runtime approximately 1102 MiB; node_modules 241
 Local logs: .runtime/cleanup-regression.log, cleanup-process-retest.log, cleanup-regression-retest.log, cleanup-build.log, cleanup-script-tests.log and cleanup-metrics.log. Logs are ignored; no secret files or database dumps are staged.
 
 Full npm run verify rerun exited 0: all workspace typechecks and builds passed. No application source changes were required.
+
+## Explicitly authorized deletion — 2026-11-02
+
+The user subsequently authorized deleting the six reviewed other-project databases and identified old test residue. The following supersedes the earlier deferred decisions; no source-code or database-model change was made.
+
+- Verified Docker configuration before executing SQL: `MYSQL` binds host port 3306; `omnicompile-mysql` binds host port 3307 and retains named volume `omnicompile_mysql_data`.
+- Dropped only `ticket_system`, `netsys`, `threatview`, `intrusion_detection_db`, `property_legacy`, and `aegis_domain_db` through the `MYSQL` container. Afterwards only `mysql`, `sys`, `information_schema`, and `performance_schema` remained on that instance. Neither container nor persistent mount was removed.
+- Compared `CHECKSUM TABLE ... EXTENDED` for all 22 `omnicompile` tables before and after cleanup: every checksum matched. No application-database reset or migration was performed.
+- Removed 237 explicitly bounded runtime directories, totaling 185,852,847 bytes (about 177.2 MiB): isolated fixture directories with 16-character hex names modified before 2026-11-01, plus generated previews under `.runtime/compiler-phase`, `.runtime/report-diagnostics`, and `.runtime/execution-pdf-preview`. Checked resolved paths stayed under this project's `.runtime`, excluded active process references, and rejected reparse points before recursive removal. Retained November acceptance fixtures, source tests, backups, toolchains, packages, credentials, and recovery evidence.
+- Local ignored deletion manifest: `.runtime/cleanup-deleted-paths.json`; result summary: `.runtime/cleanup-result.json`; protected-table checksum snapshots: `.runtime/cleanup-protected-before.tsv` and `cleanup-protected-after.tsv`.
+- Fresh `npm run verify` typechecks passed, but its concurrent test phase had six native compiler/process fixture failures (timeouts, process-detection assertions, and Windows EPERM cleanup). No source or assertions were changed. `npm test -- --maxWorkers=1` then passed all 364 tests; 11 opt-in Docker tests were skipped. `node --test scripts/*.test.mjs apps/windows-worker/*.test.mjs` passed 25/25; `npm run build` passed all workspace builds.
+- Fresh `npm run verify:metrics` passed against disposable fixture `7b09a7eb2df074b4`; the developer database was not used. Post-cleanup logs are `.runtime/post-cleanup-*.log`.
+- Fresh `npm run verify:artifacts` exited 0 against disposable fixture `08cb441e24b9043a`: migrations, MySQL concurrency, versioned worker protocol, and real C/Python/Java artifact generation and authorized downloads passed. After all verification, the protected database's 22 checksums still matched the pre-cleanup snapshot and its container remained healthy. No temporary test container remained.
+
+Database schema sizes from the earlier inventory are not a measurement of reclaimed Windows disk space. No purge, volume removal, Docker-data compaction, or cleanup outside the approved project residue was performed.

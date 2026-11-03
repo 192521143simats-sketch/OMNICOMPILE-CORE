@@ -2,7 +2,7 @@ import type {FastifyInstance} from 'fastify';import type {Pool,RowDataPacket} fr
 type Scope={nodeId:string|null;networkId:string};
 export function registerWorkerStatus(app:FastifyInstance,dependencies:{pool:Pool;authenticate:(credential:string)=>Promise<Scope|null>}){
   app.get('/api/worker/status',async(request,reply)=>{
-    reply.header('Cache-Control','no-store');const authorization=request.headers.authorization,credential=request.cookies?.gridx_worker??(authorization?.startsWith('Bearer ')?authorization.slice(7):undefined),scope=credential?await dependencies.authenticate(credential):null;
+    reply.header('Cache-Control','no-store');const authorization=request.headers.authorization,credential=request.cookies?.omnicompile_worker??(authorization?.startsWith('Bearer ')?authorization.slice(7):undefined),scope=credential?await dependencies.authenticate(credential):null;
     if(!scope?.nodeId)return reply.code(401).send({error:{code:'WORKER_AUTH_REQUIRED',message:'An active scoped worker enrollment is required.'}});
     const [rows]=await dependencies.pool.execute<RowDataPacket[]>(`SELECT n.id nodeId,n.network_id networkId,d.name networkName,
       COALESCE(SUM(CASE WHEN a.status='COMPLETED' AND COALESCE(a.failure_reason,'') NOT IN ('USER_PAUSED','USER_LEFT','SERVER_FAILURE') THEN 1 ELSE 0 END),0) completed,

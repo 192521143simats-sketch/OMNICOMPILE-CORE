@@ -9,7 +9,8 @@ const bytes = readFileSync(resolve(directory, 'specification/MASTER_PROMPT.txt')
 const lines = bytes.toString('utf8').split(/\r?\n/);
 const ledgerPath = resolve(directory, 'REQUIREMENT_LEDGER.json');
 let previous = new Map();
-try { previous = new Map(JSON.parse(readFileSync(ledgerPath, 'utf8')).items.map(item => [item.id, item])); }
+let previousDocument = {};
+try { previousDocument=JSON.parse(readFileSync(ledgerPath, 'utf8'));previous = new Map(previousDocument.items.map(item => [item.id, item])); }
 catch (error) { if (error.code !== 'ENOENT') throw error; }
 let source = 'M', section = 'preamble', heading = '';
 const areas = [
@@ -43,6 +44,7 @@ for (let index = 0; index < lines.length; index++) {
   });
 }
 writeFileSync(ledgerPath, JSON.stringify({
+  ...previousDocument,
   schemaVersion: 1, sourceSha256: createHash('sha256').update(bytes).digest('hex'),
   sourceLineCount: lines.length - (lines.at(-1) === '' ? 1 : 0),
   policy: 'Every nonblank line retained. NOT_STARTED means acceptance not established, even if related legacy code exists. M2 governs conflicts; examples are not fabricated measurements.',

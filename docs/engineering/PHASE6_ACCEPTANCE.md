@@ -46,8 +46,8 @@ reconnected browser from being overwritten as OFFLINE by its old connection.
 - No universal browser/platform guarantee or guarantee of defect-free future use.
 
 Run `npm run verify:browser`, or PowerShell
-`$env:GRID_X_TEST_TLS='1'; npm run verify:browser` with Docker, Microsoft Edge and
-Git OpenSSL available. Normal startup remains `START-C-OPTIFORGE.bat`.
+`$env:OMNICOMPILE_TEST_TLS='1'; npm run verify:browser` with Docker, Microsoft Edge and
+Git OpenSSL available. Normal startup remains `START-OMNICOMPILE.bat`.
 Deployment/lifecycle details: BROWSER_WORKER.md. Exact commands, failures and
 fixture identities: evidence/2026-10-14-phase6-browser/RESULTS.md.
 

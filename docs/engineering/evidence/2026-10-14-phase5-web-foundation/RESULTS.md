@@ -1,6 +1,6 @@
 # Phase 4 recheck and Phase 5 web-foundation evidence
 
-Date: 14 October 2026. Base: 4b75df2, engineering/grid-x-release-foundation.
+Date: 14 October 2026. Base: 4b75df2, engineering/omnicompile-release-foundation.
 Runtime: bundled Node 24.21.0. No developer records, schema, credentials or volumes
 were changed. No production deployment or external email was performed.
 
@@ -40,7 +40,7 @@ Run from project root with bundled Node on PATH:
 
 ```powershell
 $env:PATH=(Join-Path (Get-Location) '.runtime/toolchains/node-v24.21.0')+';'+$env:PATH
-$env:GRID_X_SANDBOX_TEST='1'
+$env:OMNICOMPILE_SANDBOX_TEST='1'
 npm test -- --maxWorkers=1
 npm run typecheck
 node --test scripts/*.test.mjs

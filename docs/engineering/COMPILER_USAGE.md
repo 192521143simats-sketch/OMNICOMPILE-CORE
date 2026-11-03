@@ -1,6 +1,6 @@
 # Actual compiler outputs and scope
 
-Use `START-C-OPTIFORGE.bat` from the project root. MySQL and its existing volume
+Use `START-OMNICOMPILE.bat` from the project root. MySQL and its existing volume
 remain authoritative. Sign in as admin, create an invoked network and enroll a
 compatible native worker through the existing scoped onboarding. The current
 developer Node agent command remains `npm run worker -- --coordinator <URL> --credential
@@ -63,13 +63,13 @@ Failures/report artifacts are committed atomically and remain owner/admin-only.
 Java library reports explain that they are not standalone runnable programs.
 
 Processing time measures actual job wall time (including distributed waiting),
-not claimed CPU time or acceleration. With `GRID_X_EXECUTION_MODE=docker` (default),
+not claimed CPU time or acceleration. With `OMNICOMPILE_EXECUTION_MODE=docker` (default),
 the final supported program is actually run in an owned Linux Docker container.
 Optional standard input is supplied in the workspace (16 KB maximum). Reports show
 captured stdout/stderr, actual exit status/time and peak child-process resident
 memory, not total compilation memory. Compilation can succeed while execution
 fails; that produces `PARTIAL_SUCCESS`, preserving genuine compiled downloads.
-Java libraries are explicitly not executed. `GRID_X_EXECUTION_MODE=disabled`
+Java libraries are explicitly not executed. `OMNICOMPILE_EXECUTION_MODE=disabled`
 retains compilation-only operation and reports execution was not performed.
 
 Windows C executables are retained. Execution requires a genuine Linux rebuild
@@ -79,7 +79,7 @@ executed artifact, not a renamed Windows binary. Downloaded Linux files may need
 the actual runnable JAR. The Linux image includes GCC, CPython 3.14 and JRE 21;
 external runtime dependencies are not automatically installed.
 
-`START-C-OPTIFORGE.bat` prepares/reuses the execution image after Docker/MySQL
+`START-OMNICOMPILE.bat` prepares/reuses the execution image after Docker/MySQL
 readiness. Its first build needs Internet; failure is bounded and visible.
 For manual development, use `npm run sandbox:build` before `npm run dev`.
 No image is pulled implicitly during execution. Submitted programs run as UID
@@ -106,7 +106,7 @@ original and advanced language fixtures, downloadable outputs, negative programs
 `npm run verify:execution`: owned temporary MySQL/coordinator/native worker,
 actual C/Python/Java execution, standard input, runtime failures, timeout, Java
 library handling, authorized reports and invalid source diagnosis. Enable Docker
-unit tests with `$env:GRID_X_SANDBOX_TEST='1'; npm run verify` in PowerShell.
+unit tests with `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify` in PowerShell.
 No developer database is reset.
 
 ## Report outcomes and language validation
@@ -131,7 +131,7 @@ is judged by the selected real toolchain. Text alone cannot universally identify
 a program's language, and this check is not presented as a universal classifier.
 
 Run every existing sample and the mismatch matrix in isolated MySQL/Docker:
-`$env:GRID_X_TEST_SAMPLES='1'; npm run verify:execution` (PowerShell).
+`$env:OMNICOMPILE_TEST_SAMPLES='1'; npm run verify:execution` (PowerShell).
 This exercises the six easy/tough files, three deliberately invalid industrial
 files, repaired industrial variants submitted in memory, real warnings/runtime
 failures, all 18 foreign-language combinations and 18 extension mismatches.

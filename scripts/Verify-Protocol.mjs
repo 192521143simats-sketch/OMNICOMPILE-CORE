@@ -1,12 +1,12 @@
 import WebSocket from 'ws';
-import {encodeProtocolMessage,parseCoordinatorMessage} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
 
 const target=assertIsolatedTarget();await verifyIsolatedCoordinator(target);
 const origin=process.env.PUBLIC_BASE_URL;
 const check=(value,message)=>{if(!value)throw new Error(message);};
 async function request(path,body,cookie){const response=await fetch(target.base+path,{method:body?'POST':'GET',headers:{origin,...(cookie?{cookie}:{}),...(body?{'content-type':'application/json'}:{})},body:body?JSON.stringify(body):undefined});return{status:response.status,body:response.status===204?null:await response.json(),cookie:response.headers.get('set-cookie')?.split(';')[0]};}
-const version=await request('/version');check(version.body.protocolVersion===1,'Coordinator version was not advertised');
+const version=await request('/version');check(version.body.protocolVersion===2,'Coordinator version was not advertised');
 const login=await request('/api/auth/login',{identifier:process.env.ADMIN_USERNAME,password:process.env.ADMIN_PASSWORD});check(login.status===200,'Protocol verifier admin login failed');
 const network=await request('/api/admin/networks',{name:'Protocol boundary fixture',maxNodes:2},login.cookie);
 const join=`/api${new URL(network.body.joinUrl).pathname}`;

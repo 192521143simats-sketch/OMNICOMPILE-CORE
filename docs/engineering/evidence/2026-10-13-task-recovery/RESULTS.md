@@ -1,11 +1,11 @@
 # Phase 4 — durable task leases and failure recovery
 
 Date: 2026-10-13. Baseline: `2228cf93aee7bf0805a9d75809ae577658ef1576`.
-Branch: `engineering/grid-x-release-foundation`.
+Branch: `engineering/omnicompile-release-foundation`.
 
 Implementation committed/pushed as `73396b963a6206f879e096ee30cbec4126441a49`
 (`feat: persist task leases and recover interrupted work`). GitHub origin was
-`https://github.com/192521143simats-sketch/PROJECT-C-OPTIFORGE.git`; remote branch
+the configured Git origin; remote branch
 hash matched local HEAD and tracked tree was clean after the non-force push.
 
 ## Implemented scope
@@ -40,7 +40,7 @@ pause/unpause preserves tmpfs data; stop/start would not. No production fault AP
 | `node scripts/Run-Isolated-Integration.mjs recovery` | PASS `5b01817117ecf690`: actual coordinator crash/restart, actual MySQL pause/resume and readiness 503, lease recovery, socket disconnect during healthy DB and paused DB with a controlled real row lock, same-identity reconnect, compatible different-worker reassignment, one verified result per task, completed history survives restart |
 | Recovery fixture, native/compilation boundaries | PASS: actual native Node executor computing a bounded hash chain across coordinator restart cannot consume retries while busy; stored real CPython output publishes after process death; real C IR aggregation/GCC executable publishes after killing the owned coordinator SQL connection during an actual blocked artifact-stage update |
 | `npm run verify` (default sandbox opt-out) | PASS: 165 tests passed, 10 explicitly skipped; 3 script tests; 8 workspace typechecks/builds. This is not the Docker-enabled final gate |
-| `$env:GRID_X_SANDBOX_TEST='1'; npm run verify` | Final PASS: 175/175 tests in 31 files, including all 10 real sandbox tests; 3/3 script tests, 8/8 workspace typechecks and builds. Full command exit 0; detailed log `full-docker-final.log` |
+| `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify` | Final PASS: 175/175 tests in 31 files, including all 10 real sandbox tests; 3/3 script tests, 8/8 workspace typechecks and builds. Full command exit 0; detailed log `full-docker-final.log` |
 | `node scripts/Run-Isolated-Integration.mjs all` | PASS `0bb0ca2cdfa2fe3b`: 6 scripts—append-only/interrupted migration recovery, real MySQL contention, protocol, independent portable result acceptance, platform, C/Python/Java artifacts |
 | `node scripts/Run-Isolated-Integration.mjs execution` | PASS `b8230884098da4bc`: all 6 easy/tough samples, 3 invalid industrial samples and repaired variants, actual execution outcomes/warnings/errors/report counts, timeout/heartbeat, ownership-protected downloads and 36 language/extension mismatch checks |
 | `node scripts/Run-Isolated-Integration.mjs enrollment` | PASS `1b94b87003a53ca2`: migrations and real isolated consent/identity/capacity/revocation |
@@ -52,7 +52,7 @@ summaries include the actual lock-wait rejection, 100/1/0 batches, paused-DB
 disconnect intersection, native busy reconnect and both compiler-publication
 crash boundaries. The stage completion ledger records the exact BASE-to-commit
 range and successful commands, not merely a presumed baseline.
-The post-commit full `GRID_X_SANDBOX_TEST=1 npm run verify` repetition also passed
+The post-commit full `OMNICOMPILE_SANDBOX_TEST=1 npm run verify` repetition also passed
 all 175 tests, 3 script tests and all eight workspace checks/builds (exit 0).
 
 Execution outcomes are not forced to success. Existing C samples return 1 and are

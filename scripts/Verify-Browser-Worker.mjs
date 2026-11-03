@@ -3,7 +3,7 @@ import {createHash} from 'node:crypto';
 import mysql from 'mysql2/promise';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
 const target=assertIsolatedTarget();await verifyIsolatedCoordinator(target);
-const base=process.env.GRID_X_TEST_WEB_BASE;if(!base||!/^https?:\/\/127\.0\.0\.1:\d+$/.test(base))throw new Error('Isolated web target required');
+const base=process.env.OMNICOMPILE_TEST_WEB_BASE;if(!base||!/^https?:\/\/127\.0\.0\.1:\d+$/.test(base))throw new Error('Isolated web target required');
 const browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
 const admin=await browser.newContext({baseURL:base,ignoreHTTPSErrors:base.startsWith('https:')}),user=await browser.newContext({baseURL:base,ignoreHTTPSErrors:base.startsWith('https:')});const errors=[];
 const db=await mysql.createConnection({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});

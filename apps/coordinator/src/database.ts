@@ -1,9 +1,9 @@
 import mysql, { type Pool, type PoolConnection, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
 import { createHash, randomBytes, randomUUID } from "node:crypto";
-import {networkPolicySchema} from "@c-optiforge/contracts";
-import {evaluateNode,type TaskRequirements} from "@c-optiforge/orchestration";
-import type { CapabilityProfile, NodeStatus, ResourceSnapshot, TaskStatus, WorkPayload } from "@c-optiforge/contracts";
-import type {CIntermediateRepresentation,IRFunction} from "@c-optiforge/compiler-c";
+import {networkPolicySchema} from "@omnicompile/contracts";
+import {evaluateNode,type TaskRequirements} from "@omnicompile/orchestration";
+import type { CapabilityProfile, NodeStatus, ResourceSnapshot, TaskStatus, WorkPayload } from "@omnicompile/contracts";
+import type {CIntermediateRepresentation,IRFunction} from "@omnicompile/compiler-c";
 import {verifyIROptimization} from "./compilation-verification.js";
 import {verifyPortableResult,StaleTaskResultError} from "./portable-verification.js";
 import {retryTransaction} from "./transaction.js";
@@ -32,7 +32,7 @@ export class Store {
   private readonly verifyingTasks=new Set<string>();
   readonly metrics:CompilerMetrics;
   private constructor(readonly pool:Pool){this.metrics=new CompilerMetrics(pool,Number(process.env.HEARTBEAT_OFFLINE_MS??30_000));}
-  static async connect(config:DatabaseConfig){const pool=mysql.createPool({host:config.host,port:config.port,database:config.name,user:config.user,password:config.password,waitForConnections:true,connectionLimit:10,queueLimit:0,timezone:"Z",decimalNumbers:true});const store=new Store(pool);try{const mode=process.env.GRID_X_MIGRATION_MODE??'apply';if(mode!=='apply'&&mode!=='check')throw new Error('Invalid migration mode');await applyMigrations(pool,config.name,[existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration()],mode);return store;}catch(error){await pool.end();throw error;}}
+  static async connect(config:DatabaseConfig){const pool=mysql.createPool({host:config.host,port:config.port,database:config.name,user:config.user,password:config.password,waitForConnections:true,connectionLimit:10,queueLimit:0,timezone:"Z",decimalNumbers:true});const store=new Store(pool);try{const mode=process.env.OMNICOMPILE_MIGRATION_MODE??'apply';if(mode!=='apply'&&mode!=='check')throw new Error('Invalid migration mode');await applyMigrations(pool,config.name,[existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration()],mode);return store;}catch(error){await pool.end();throw error;}}
   async close(){await this.pool.end();}
   async recoverTaskAttempts(restart=false,serverInterrupted=false){return recoverTaskAttempts(this.pool,restart,serverInterrupted);}
   async cancelCompilationJob(jobId:string,actorId:string,admin=false){return cancelCompilationJob(this.pool,jobId,actorId,admin);}

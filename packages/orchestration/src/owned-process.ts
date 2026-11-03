@@ -8,11 +8,11 @@ const execFileAsync=promisify(execFile);
 export class TaskTerminationUnconfirmedError extends Error {constructor(){super('Native process-tree termination could not be confirmed. Worker stopped; inspect owned processes before restarting.');this.name='TaskTerminationUnconfirmedError';}}
 export async function runOwnedProcess<T>(entry:URL,payload:unknown,options:{signal?:AbortSignal;onStarted?:()=>void}={}):Promise<{result:T;executionTimeMs:number}>{
   options.signal?.throwIfAborted();
-  const workspace=await mkdtemp(join(tmpdir(),'gridx-owned-task-'));
+  const workspace=await mkdtemp(join(tmpdir(),'omnicompile-owned-task-'));
   // Compiler children inherit only toolchain/system settings, never enrollment,
   // coordinator, database, admin or session credentials.
   const env:NodeJS.ProcessEnv={TMP:workspace,TEMP:workspace,TMPDIR:workspace};
-  const allowed=new Set(['path','pathext','systemroot','windir','comspec','gcc_executable','python_executable','java_home','coptiforge_jdk_home','lang','lc_all']);
+  const allowed=new Set(['path','pathext','systemroot','windir','comspec','gcc_executable','python_executable','java_home','omnicompile_jdk_home','lang','lc_all']);
   for(const [key,value] of Object.entries(process.env))if(allowed.has(key.toLowerCase()))env[key]=value;
   try{
     options.signal?.throwIfAborted();

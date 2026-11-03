@@ -1,5 +1,5 @@
 <resources>
-    <style name="Theme.GridX" parent="Theme.GridX.Base">
+    <style name="Theme.OmniCompile" parent="Theme.OmniCompile.Base">
         <item name="android:windowLightNavigationBar">@bool/worker_light_bars</item>
         <!-- Compose owns both palettes; prevent Android/OEM double inversion. -->
         <item name="android:forceDarkAllowed">false</item>

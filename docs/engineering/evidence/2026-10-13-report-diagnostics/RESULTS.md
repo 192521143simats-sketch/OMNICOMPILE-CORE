@@ -1,7 +1,7 @@
 # Report diagnostics and language admission - 2026-10-13
 
 Baseline: `95f01abef2fcb34b3002a84281949cee3fc12583` on
-`engineering/grid-x-release-foundation`. Existing MySQL, compiler pipelines,
+`engineering/omnicompile-release-foundation`. Existing MySQL, compiler pipelines,
 authentication, worker v1 protocol and artifacts are preserved. No developer
 database reset, credential change, frozen migration change or volume deletion.
 
@@ -38,7 +38,7 @@ these were corrected without weakening compiler assertions. Expanded fixture
 `114d4de6981bd9ad` passed before the final repaired-industrial additions.
 
 An interrupted verification run left two owned temporary MySQL containers. Their
-exact names and `gridx.test.instance` labels were validated before removal; no
+exact names and `omnicompile.test.instance` labels were validated before removal; no
 developer MySQL container or persistent volume was removed. Docker Engine was
 started and readiness verified before fresh tests.
 
@@ -53,8 +53,8 @@ compiler semantic defect; final full verification is recorded below separately.
 Command (PowerShell, portable Node 24.21.0 on PATH):
 
 ```powershell
-$env:GRID_X_TEST_SAMPLES='1'
-$env:GRID_X_TEST_PDF_OUTPUT=(Join-Path (Get-Location) '.runtime/report-diagnostics')
+$env:OMNICOMPILE_TEST_SAMPLES='1'
+$env:OMNICOMPILE_TEST_PDF_OUTPUT=(Join-Path (Get-Location) '.runtime/report-diagnostics')
 npm run verify:execution
 ```
 
@@ -97,7 +97,7 @@ ignored under `.runtime/report-diagnostics`, not committed as build artifacts.
 
 ## Full regression verification
 
-`$env:GRID_X_SANDBOX_TEST='1'; npm run verify` exited 0 under portable Node
+`$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify` exited 0 under portable Node
 24.21.0 after Docker readiness: all eight workspace typechecks/builds, all 156
 Vitest tests across 30 files (including actual Docker tests and React rendering)
 and all three script safety tests passed. The C test that previously timed out

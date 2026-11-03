@@ -1,5 +1,5 @@
 import WebSocket from 'ws';
-import {encodeProtocolMessage,parseCoordinatorMessage,type CapabilityProfile,type ContributionPolicy,type ResourceSnapshot,type WorkPayload} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage,type CapabilityProfile,type ContributionPolicy,type ResourceSnapshot,type WorkPayload} from '@omnicompile/contracts';
 import {profile,resources} from './profiler.js';
 import {runTaskProcess,TaskTerminationUnconfirmedError} from './task-process-controller.js';
 export type NativeState={status:string;nodeId:string;submitted:number;failed:number;lastHeartbeat:string|null;currentTask:string|null;error:string;profile:CapabilityProfile|null;resources:ResourceSnapshot|null};

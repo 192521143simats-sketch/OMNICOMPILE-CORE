@@ -1,12 +1,12 @@
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.android"); id("org.jetbrains.kotlin.plugin.compose") }
 // Same implementation, isolated identity/storage only for explicitly requested device acceptance.
-val isolatedAcceptance = providers.gradleProperty("gridxIsolatedAcceptance").orNull == "true"
+val isolatedAcceptance = providers.gradleProperty("omnicompileIsolatedAcceptance").orNull == "true"
 if (isolatedAcceptance) layout.buildDirectory.set(layout.projectDirectory.dir("build-acceptance"))
 android {
-    namespace = "org.gridx.worker"
+    namespace = "org.omnicompile.worker"
     compileSdk = 36
     buildToolsVersion = "36.0.0"
-    defaultConfig { applicationId = if (isolatedAcceptance) "org.gridx.worker.acceptance" else "org.gridx.worker"; minSdk = 26; targetSdk = 36; versionCode = 1; versionName = "0.1.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = if (isolatedAcceptance) "org.omnicompile.worker.acceptance" else "org.omnicompile.worker"; minSdk = 26; targetSdk = 36; versionCode = 1; versionName = "0.1.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

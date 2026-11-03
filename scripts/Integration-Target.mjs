@@ -1,6 +1,6 @@
 export function assertIsolatedTarget(env=process.env) {
-  const base=env.GRID_X_TEST_BASE,instance=env.GRID_X_TEST_INSTANCE,database=env.DB_NAME;
-  if(!base || !/^[a-f0-9]{16}$/.test(instance??'') || database!==`gridx_test_${instance}`) throw new Error('Integration verification requires an isolated test database and instance. Use npm run verify:integration.');
+  const base=env.OMNICOMPILE_TEST_BASE,instance=env.OMNICOMPILE_TEST_INSTANCE,database=env.DB_NAME;
+  if(!base || !/^[a-f0-9]{16}$/.test(instance??'') || database!==`omnicompile_test_${instance}`) throw new Error('Integration verification requires an isolated test database and instance. Use npm run verify:integration.');
   const url=new URL(base);
   if(url.protocol!=='http:' || !['127.0.0.1','localhost'].includes(url.hostname) || !url.port || ['4100','5173'].includes(url.port) || url.pathname!=='/' || url.search || url.hash || url.username || url.password) throw new Error('Integration verification requires an isolated loopback coordinator port.');
   return {base:url.origin,instance,database};

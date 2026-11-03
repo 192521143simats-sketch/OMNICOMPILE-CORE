@@ -1,8 +1,8 @@
 import {describe,it,expect} from "vitest";
 import {executeIsolated} from "./isolated-execution.js";
-import {compileJava} from "@c-optiforge/compiler-java";
+import {compileJava} from "@omnicompile/compiler-java";
 
-describe.skipIf(process.env.GRID_X_SANDBOX_TEST!=="1")("real isolated execution",()=>{
+describe.skipIf(process.env.OMNICOMPILE_SANDBOX_TEST!=="1")("real isolated execution",()=>{
   it("does not publish output from explicitly cancelled program execution",async()=>{
     const controller=new AbortController(),timer=setTimeout(()=>controller.abort(),1000);
     try{const result=await executeIsolated({language:"python",sourceName:"cancel.py",generatedSource:"while True: pass",artifact:null,signal:controller.signal});expect(controller.signal.aborted).toBe(true);expect(result.execution.status).not.toBe("SUCCEEDED");expect(result.artifact).toBeUndefined();}finally{clearTimeout(timer);}
@@ -13,8 +13,8 @@ describe.skipIf(process.env.GRID_X_SANDBOX_TEST!=="1")("real isolated execution"
     const large=await executeIsolated({language:"c",sourceName:"large.c",generatedSource:"const char payload[9000000] = {[0]=1,[8999999]=2}; int main(void){return payload[0]==1?0:1;}",artifact:null});expect(large.execution.status).toBe("UNAVAILABLE");expect(large.artifact).toBeUndefined();
   },60000);
   it("fails closed when the configured local image is missing",async()=>{
-    const previous=process.env.GRID_X_SANDBOX_IMAGE;process.env.GRID_X_SANDBOX_IMAGE="gridx-execution:deliberately-missing";
-    try{const result=await executeIsolated({language:"python",sourceName:"missing.py",generatedSource:'print("not executed")',artifact:null});expect(result.execution.status).toBe("UNAVAILABLE");expect(result.execution.stdout).toBe("");}finally{if(previous===undefined)delete process.env.GRID_X_SANDBOX_IMAGE;else process.env.GRID_X_SANDBOX_IMAGE=previous;}
+    const previous=process.env.OMNICOMPILE_SANDBOX_IMAGE;process.env.OMNICOMPILE_SANDBOX_IMAGE="omnicompile-execution:deliberately-missing";
+    try{const result=await executeIsolated({language:"python",sourceName:"missing.py",generatedSource:'print("not executed")',artifact:null});expect(result.execution.status).toBe("UNAVAILABLE");expect(result.execution.stdout).toBe("");}finally{if(previous===undefined)delete process.env.OMNICOMPILE_SANDBOX_IMAGE;else process.env.OMNICOMPILE_SANDBOX_IMAGE=previous;}
   },60000);
   it("prevents the submitted program from writing to its controller output",async()=>{
     const result=await executeIsolated({language:"python",sourceName:"integrity.py",generatedSource:'import os\ntry:\n fd=os.open("/proc/"+str(os.getppid())+"/fd/1",os.O_WRONLY)\n os.write(fd,b"FORGED")\n raise AssertionError("controller output writable")\nexcept PermissionError: pass\nprint("protected")',artifact:null});expect(result.execution.status).toBe("SUCCEEDED");expect(result.execution.stdout).toBe("protected\n");

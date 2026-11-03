@@ -7,17 +7,17 @@ $identity="$runnerHash-$dockerfileHash"
 $savedPreference=$ErrorActionPreference
 try {
   $ErrorActionPreference='Continue'
-  $imageJson=& docker.exe image inspect gridx-execution:1 2>$null
+  $imageJson=& docker.exe image inspect oa-omnicompile-execution:local 2>$null
   $inspectExit=$LASTEXITCODE
 } finally {$ErrorActionPreference=$savedPreference}
 if($inspectExit -eq 0){
   $imageInfo=($imageJson -join "`n") | ConvertFrom-Json
-  if($imageInfo[0].Config.Labels.'gridx.execution.source' -eq $identity){Write-Host 'Reusing verified OmniCompile Core execution image.';exit 0}
+  if($imageInfo[0].Config.Labels.'omnicompile.execution.source' -eq $identity){Write-Host 'Reusing verified OmniCompile Core execution image.';exit 0}
 }
 Write-Host 'Preparing isolated OmniCompile Core execution environment (first build needs Internet)...'
 $runtime=Join-Path $ProjectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtime | Out-Null
-$build=Start-Process -FilePath 'docker.exe' -ArgumentList @('build','--quiet','--label',"gridx.execution.source=$identity",'-t','gridx-execution:1',"`"$context`"") -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtime 'sandbox-build.log') -RedirectStandardError (Join-Path $runtime 'sandbox-build-error.log')
+$build=Start-Process -FilePath 'docker.exe' -ArgumentList @('build','--quiet','--label',"omnicompile.execution.source=$identity",'-t','oa-omnicompile-execution:local',"`"$context`"") -WindowStyle Hidden -PassThru -RedirectStandardOutput (Join-Path $runtime 'sandbox-build.log') -RedirectStandardError (Join-Path $runtime 'sandbox-build-error.log')
 $null=$build.Handle
 $deadline=[DateTime]::UtcNow.AddMinutes(10)
 while(-not $build.WaitForExit(10000)){if([DateTime]::UtcNow -gt $deadline){$build.Kill();throw 'Execution image build timed out. See .runtime\sandbox-build-error.log.'};Write-Host 'Execution image build is still working...'}

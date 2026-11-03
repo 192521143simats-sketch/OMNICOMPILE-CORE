@@ -2,7 +2,7 @@ import type {BlockStatement,Expression,FunctionDefinition,Statement} from "./ast
 import {compileCFrontend} from "./frontend.js";
 import type {CIntermediateRepresentation,IRFunction,IRInstruction,IRValue} from "./ir.js";
 
-export function lowerCToIR(source:string):CIntermediateRepresentation{const{ast}=compileCFrontend(source);const voidFunctions=new Set(ast.functions.filter(fn=>fn.returnType==="void").map(fn=>fn.name));return{kind:"COptiForgeCIR",version:1,functions:ast.functions.map(fn=>lowerFunction(fn,voidFunctions))};}
+export function lowerCToIR(source:string):CIntermediateRepresentation{const{ast}=compileCFrontend(source);const voidFunctions=new Set(ast.functions.filter(fn=>fn.returnType==="void").map(fn=>fn.name));return{kind:"OmniCompileCIR",version:1,functions:ast.functions.map(fn=>lowerFunction(fn,voidFunctions))};}
 function lowerFunction(fn:FunctionDefinition,voidFunctions:Set<string>):IRFunction{
   const instructions:IRInstruction[]=[],scopes:Array<Map<string,IRValue>>=[new Map()],parameters=fn.parameters.map((parameter,index)=>({name:parameter.name,type:parameter.type,value:`%arg${index}.${parameter.name}`}));parameters.forEach(p=>scopes[0]!.set(p.name,p.value));let temporary=0,label=0,variable=0;
   const temp=()=>`%t${temporary++}`,newLabel=(name:string)=>`${fn.name}.${name}.${label++}`,lookup=(name:string)=>{for(let i=scopes.length-1;i>=0;i--){const value=scopes[i]!.get(name);if(value)return value;}throw new Error(`Validated identifier '${name}' is missing during IR lowering`);};

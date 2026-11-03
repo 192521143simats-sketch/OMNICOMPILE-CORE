@@ -24,12 +24,12 @@ and secrets were preserved.
 | New Kubernetes executor test before implementation | Failed | Missing adapter reproduced. |
 | Check-only migration test before implementation | Failed | Missing completeness validation reproduced. |
 | `npx vitest run apps/coordinator/src/kubernetes-execution.test.ts apps/coordinator/src/migrations.test.ts` | Passed 12 tests | Seven payload/spec/fake-API tests and five migration tests. Fake API is not live Kubernetes execution. |
-| `npm run typecheck -w @c-optiforge/coordinator` | Passed | Adapter, dispatch, CLI and migration changes. Full repository verification is recorded separately. |
+| `npm run typecheck -w @omnicompile/coordinator` | Passed | Adapter, dispatch, CLI and migration changes. Full repository verification is recorded separately. |
 | `kubectl kustomize infra/kubernetes` | Passed, 476 lines | Local YAML transformation, not server schema/admission validation. |
 | `kubectl config current-context` | Blocked | No current context configured. |
-| Coordinator image build | Passed | `docker build -f infra/containers/coordinator.Dockerfile -t gridx-coordinator:phase9 .`; fresh final build exited 0. |
-| Web image build | Passed | `docker build -f infra/containers/web.Dockerfile -t gridx-web:phase9 .`; actual production bundle built inside image, final build exited 0. |
-| Execution image build | Passed | `docker build -t gridx-execution:phase9 infra/sandbox`; actual existing runner plus Kubernetes entry built. |
+| Coordinator image build | Passed | `docker build -f infra/containers/coordinator.Dockerfile -t omnicompile-coordinator:phase9 .`; fresh final build exited 0. |
+| Web image build | Passed | `docker build -f infra/containers/web.Dockerfile -t omnicompile-web:phase9 .`; actual production bundle built inside image, final build exited 0. |
+| Execution image build | Passed | `docker build -t oa-omnicompile-execution:local infra/sandbox`; actual existing runner plus Kubernetes entry built. |
 | Final `node infra/containers/Verify-Images.mjs` | Passed, fixture `65f766cf86870a1b` | Real disposable MySQL/container coordinator/web, separate migration apply/check, readiness nonce, administrator login, network creation, pending native enrollment, SPA deep-route fallback, UID1000 coordinator and UID101 web. Cleanup exited 0. |
 | Earlier same local image smoke | Passed, fixture `e81df023f17269ef` | Same functional assertions before final server rate-limit and distribution concurrency guards; superseded by final image smoke above. |
 | Bounded execution image Python smoke | Passed | Real read-only, network-none Docker container, PID64/memory512MiB/capability restrictions; `print(6*7)` returned `42`, exit0, measured144.03ms and13,914,112 peak memory bytes. Not Kubernetes containment evidence. |

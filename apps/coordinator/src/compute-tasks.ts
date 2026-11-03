@@ -1,6 +1,6 @@
 import {randomUUID} from 'node:crypto';
 import {z} from 'zod';
-import {testTaskSchema,type TestTaskPayload} from '@c-optiforge/contracts';
+import {testTaskSchema,type TestTaskPayload} from '@omnicompile/contracts';
 import type {Pool,RowDataPacket} from 'mysql2/promise';
 import {retryTransaction} from './transaction.js';
 

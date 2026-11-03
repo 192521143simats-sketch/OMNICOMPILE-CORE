@@ -1,11 +1,11 @@
 <resources>
     <color name="worker_background">#0C0D10</color>
     <bool name="worker_light_bars">false</bool>
-    <style name="Theme.GridX.Base" parent="android:style/Theme.Material.NoActionBar">
+    <style name="Theme.OmniCompile.Base" parent="android:style/Theme.Material.NoActionBar">
         <item name="android:windowBackground">@color/worker_background</item>
         <item name="android:statusBarColor">@color/worker_background</item>
         <item name="android:navigationBarColor">@color/worker_background</item>
         <item name="android:windowLightStatusBar">@bool/worker_light_bars</item>
     </style>
-    <style name="Theme.GridX" parent="Theme.GridX.Base" />
+    <style name="Theme.OmniCompile" parent="Theme.OmniCompile.Base" />
 </resources>

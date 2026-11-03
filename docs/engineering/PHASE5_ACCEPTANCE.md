@@ -36,8 +36,8 @@ lifecycle and release signing remain later phases, not claims of this seal.
 
 ## Running and next phases
 
-Run `START-C-OPTIFORGE.bat` at the project root; stop with
-`STOP-C-OPTIFORGE.bat`. Admin uses Overview, Tasks & Jobs and Audit. Users submit
+Run `START-OMNICOMPILE.bat` at the project root; stop with
+`STOP-OMNICOMPILE.bat`. Admin uses Overview, Tasks & Jobs and Audit. Users submit
 language/source/filename without selecting a network, download final results,
 use `/compute` for authorized portable tasks and `/settings` for preferences
 and session management. Workers explicitly consent through the network link.

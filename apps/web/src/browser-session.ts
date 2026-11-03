@@ -1,4 +1,4 @@
-import {encodeProtocolMessage,parseCoordinatorMessage,portableWorkloadCatalogue,type CapabilityProfile,type ResourceSnapshot} from "@c-optiforge/contracts";
+import {encodeProtocolMessage,parseCoordinatorMessage,portableWorkloadCatalogue,type CapabilityProfile,type ResourceSnapshot} from "@omnicompile/contracts";
 export type BrowserState={status:string;nodeId:string;error:string;taskId?:string|undefined;progress?:number|undefined};
 type Options={url:string;profile:()=>CapabilityProfile;resources:()=>ResourceSnapshot;onChange:(state:BrowserState)=>void;socket:(url:string)=>WebSocket;worker:()=>Worker};
 export class BrowserSession{

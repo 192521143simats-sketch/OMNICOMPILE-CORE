@@ -4,7 +4,7 @@ Deliberate compilation error: add a colon to the stock_position declaration.
 After repairing that one line, run this file to produce a purchase plan.
 Constant calculations and disabled legacy branches exercise the AST optimizer.
 The repeated SKU scans are a real improvement opportunity: build a lookup
-dictionary once when scaling this batch to thousands of products. GRID-X does
+dictionary once when scaling this batch to thousands of products. OMNICOMPILE does
 not currently perform that algorithmic rewrite or diagnose every such issue.
 Quantities are units and monetary amounts are integer cents.
 """

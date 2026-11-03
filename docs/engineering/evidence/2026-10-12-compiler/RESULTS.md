@@ -79,6 +79,6 @@ No APK, Windows package, ADB installation, physical browser/mobile test or publi
 deployment was performed or claimed in this iteration. Web application was built;
 API/coordinator/native-worker integration is not physical UI acceptance.
 
-Run existing development startup: `START-C-OPTIFORGE.bat`. Verification commands
+Run existing development startup: `START-OMNICOMPILE.bat`. Verification commands
 above require Docker and compatible installed toolchains. See `COMPILER_USAGE.md`
 and `WORKER_PROTOCOL.md` for onboarding, outputs and additive capability rules.

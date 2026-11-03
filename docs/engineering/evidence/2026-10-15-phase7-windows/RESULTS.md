@@ -122,7 +122,7 @@ generation is an explicit Windows-only command, not an accidental Linux CI gate.
   pause/reload/offline/reconnect/close/leave. Not a fresh physical-phone test.
 - `node --test scripts/*.test.mjs apps/windows-worker/settings.test.mjs`: PASS,
   12/12 checks, including requirement-ledger preservation and actual Windows job.
-- `GRID_X_SANDBOX_TEST=1 npx vitest run apps/coordinator/src/isolated-execution.test.ts`:
+- `OMNICOMPILE_SANDBOX_TEST=1 npx vitest run apps/coordinator/src/isolated-execution.test.ts`:
   PASS, all 11 previously skipped Docker isolation cases. These are Linux Docker
   execution tests, not Windows filesystem/network compiler containment.
 - Extended installer fixture `94b36916816548ac` reproduced the historical 0.1.0
@@ -153,7 +153,7 @@ uninstalled application, desktop/start-menu shortcuts and registration, preservi
 protected configuration. This is not a clean-OS or bundled-compiler certification.
 
 Generated installer:
-`.runtime/windows-worker/releases/GRID-X-Worker-0.1.1-Windows-x64-Setup.exe`
+`.runtime/windows-worker/releases/OMNICOMPILE-Worker-0.1.1-Windows-x64-Setup.exe`
 
 - Size: 135936136 bytes.
 - SHA-256: `f100aa1b2e15789bf281bd0b7601b2e77f277c1ca3733eb7721e8ab6e7e57882`.
@@ -162,7 +162,7 @@ Generated installer:
 
 ## Final verification sweep
 
-`$env:GRID_X_SANDBOX_TEST='1'; npm run verify`: PASS, exit 0.
+`$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify`: PASS, exit 0.
 All nine workspace typechecks/builds, **327/327 tests in 50 files with none
 skipped**, and **12/12 script/settings tests** passed. Full `npm audit` returned
 zero vulnerabilities. `git diff --check` passed. `.env` and generated installer

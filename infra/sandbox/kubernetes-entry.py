@@ -5,4 +5,4 @@ import sys
 stream = open('/work/request.json', 'rb')
 os.unlink('/work/request.json')
 os.dup2(stream.fileno(), 0)
-os.execv(sys.executable, [sys.executable, '-I', '/opt/gridx/runner.py'])
+os.execv(sys.executable, [sys.executable, '-I', '/opt/omnicompile/runner.py'])

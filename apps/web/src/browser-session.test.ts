@@ -1,6 +1,6 @@
 import {afterEach,expect,it,vi} from "vitest";
 import {BrowserSession} from "./browser-session.js";
-import {encodeProtocolMessage} from "@c-optiforge/contracts";
+import {encodeProtocolMessage} from "@omnicompile/contracts";
 
 function fixture(){
   vi.useFakeTimers();const sockets:any[]=[],workers:any[]=[],states:any[]=[];

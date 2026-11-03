@@ -1,5 +1,5 @@
 {
-  "name": "c-optiforge",
+  "name": "omnicompile",
   "private": true,
   "version": "0.1.0",
   "workspaces": [
@@ -8,9 +8,9 @@
   ],
   "scripts": {
     "build": "npm run build --workspaces --if-present",
-    "dev": "concurrently -n coordinator,web -c cyan,magenta \"npm run dev -w @c-optiforge/coordinator\" \"npm run dev -w @c-optiforge/web\"",
-    "start": "npm run start -w @c-optiforge/coordinator",
-    "worker": "npm run start -w @c-optiforge/worker --",
+    "dev": "concurrently -n coordinator,web -c cyan,magenta \"npm run dev -w @omnicompile/coordinator\" \"npm run dev -w @omnicompile/web\"",
+    "start": "npm run start -w @omnicompile/coordinator",
+    "worker": "npm run start -w @omnicompile/worker --",
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present",
     "verify": "npm run typecheck && npm test -- --run && node --test scripts/*.test.mjs apps/windows-worker/*.test.mjs && npm run build",
@@ -32,14 +32,14 @@
     "verify:metrics": "node scripts/Run-Isolated-Integration.mjs metrics",
     "verify:windows-install": "node scripts/Run-Isolated-Integration.mjs windows-install",
     "verify:cancellation": "node scripts/Run-Isolated-Integration.mjs cancellation",
-    "sandbox:build": "docker build -t gridx-execution:1 infra/sandbox",
+    "sandbox:build": "docker build -t oa-omnicompile-execution:local infra/sandbox",
     "verify:execution": "node scripts/Run-Isolated-Integration.mjs execution"
   },
   "devDependencies": {
     "@playwright/test": "^1.64.0",
     "@types/jsdom": "^30.0.0",
     "concurrently": "^9.2.5",
-    "electron": "44.7.2",
+    "electron": "44.10.1",
     "electron-builder": "26.15.3",
     "esbuild": "0.28.2",
     "jsdom": "^30.1.2",

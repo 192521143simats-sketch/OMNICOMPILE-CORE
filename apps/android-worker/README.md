@@ -1,5 +1,11 @@
 # OmniCompile Core native Android worker
 
+The current application identity is `org.omnicompile.worker`, with a separate
+Android Keystore namespace and worker protocol version 2. This intentionally does
+not import credentials from the former application: install the new package and
+explicitly enroll using the current coordinator's link. Earlier physical-device
+evidence below is historical and does not certify this renamed package on a phone.
+
 Native task contribution has passed physical Android 10 acceptance against an
 isolated coordinator/MySQL fixture. See docs/engineering/PHASE8_VERIFICATION.md
 for exact evidence and release boundaries; this is not a signed production release.

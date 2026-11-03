@@ -14,7 +14,7 @@ Publishing, chargeable infrastructure and secret creation require explicit appro
 
 | Area | Status | Evidence / next action |
 |---|---|---|
-| Git baseline | Verified | e3b2b67, clean engineering/grid-x-release-foundation, requested origin |
+| Git baseline | Verified | e3b2b67, clean engineering/omnicompile-release-foundation, requested origin |
 | Existing implementation | Verified | Fastify/MySQL, React/Vite, Electron/native core, Kotlin/Compose, protocol1 |
 | Dependency audit | Verified | npm audit: 0 advisories; shell-quote1.12.0 through concurrently |
 | Public endpoint configuration | Defect Found | HTTPS localhost/private URLs passed production validation; regression reproduced |

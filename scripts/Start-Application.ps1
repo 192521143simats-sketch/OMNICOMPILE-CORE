@@ -2,7 +2,7 @@ param([Parameter(Mandatory=$true)][string]$ProjectRoot)
 $ErrorActionPreference = 'Stop'
 $runtimeDirectory = Join-Path $ProjectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtimeDirectory | Out-Null
-if($env:GRID_X_EXECUTION_MODE -ne 'disabled'){
+if($env:OMNICOMPILE_EXECUTION_MODE -ne 'disabled'){
     & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot 'scripts\Prepare-ExecutionSandbox.ps1') -ProjectRoot $ProjectRoot
     if($LASTEXITCODE -ne 0){throw 'OmniCompile Core execution environment preparation failed.'}
 }
@@ -38,7 +38,7 @@ if (-not (Test-Path -LiteralPath (Join-Path $ProjectRoot 'node_modules'))) {
 }
 
 if ($coordinatorReady -or $webReady) {
-    throw 'Only part of OmniCompile Core is already running. Run STOP-C-OPTIFORGE.bat, then start again.'
+    throw 'Only part of OmniCompile Core is already running. Run STOP-OMNICOMPILE.bat, then start again.'
 }
 
 $stdout = Join-Path $runtimeDirectory 'application.log'

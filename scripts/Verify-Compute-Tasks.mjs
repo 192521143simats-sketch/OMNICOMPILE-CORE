@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict';
 import WebSocket from 'ws';
-import {encodeProtocolMessage,parseCoordinatorMessage} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
 import {Store} from '../apps/coordinator/src/database.ts';
 const target=assertIsolatedTarget();await verifyIsolatedCoordinator(target);

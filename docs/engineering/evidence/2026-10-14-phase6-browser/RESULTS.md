@@ -51,14 +51,14 @@ acceptance is recorded below, independently from emulator evidence.
 
 | Command | Result |
 | --- | --- |
-| PowerShell `$env:GRID_X_SANDBOX_TEST='1'; npm test -- --maxWorkers=1` | 317/317 tests, 48 files, no skips |
+| PowerShell `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm test -- --maxWorkers=1` | 317/317 tests, 48 files, no skips |
 | `node --test scripts/*.test.mjs` | 5/5 passed |
 | `npm run typecheck` | Eight workspaces passed |
 | `npm run build` | Eight workspaces passed; actual Web Worker asset generated |
 | `npm audit --json` | Zero advisories |
 | `node scripts/Run-Isolated-Integration.mjs all` | Passed, 35dda557149d0dcb |
 | `node scripts/Run-Isolated-Integration.mjs browser` | Initial core passed, a73681867b6f880d |
-| PowerShell `$env:GRID_X_TEST_TLS='1'; node scripts/Run-Isolated-Integration.mjs browser` | Expanded HTTPS/WSS passed, a91c7851e54f8df9 |
+| PowerShell `$env:OMNICOMPILE_TEST_TLS='1'; node scripts/Run-Isolated-Integration.mjs browser` | Expanded HTTPS/WSS passed, a91c7851e54f8df9 |
 | Caddy 2.10-alpine isolated `caddy validate --config /etc/caddy/Caddyfile` | Passed after formatting; no serving/publishing/certificate issuance |
 | `adb devices -l` | No devices; physical acceptance BLOCKED |
 
@@ -98,14 +98,14 @@ The HTTPS/WSS full-browser rerun **5f1f7ee02da0cdec** passed, exit 0, including
 visible successful-leave confirmation and absence of stale Leave controls in
 both desktop Edge and Android-emulated Chromium. All eight workspace
 typechecks/builds also passed after this UI correction.
-Final full `GRID_X_SANDBOX_TEST=1 npm test -- --maxWorkers=1`: **318/318**,
+Final full `OMNICOMPILE_SANDBOX_TEST=1 npm test -- --maxWorkers=1`: **318/318**,
 48 files, no skips, 115.06 seconds. Final script guard tests: **5/5**. Disposable
 TLS files from this last fixture were also removed (2,839 additional bytes).
 One background ER_LOCK_DEADLOCK was logged during that device fixture's leave;
 the leave transaction returned 204 and persisted revocation assertions passed.
 This is disclosed rather than claiming an entirely error-free log.
 
-`$env:GRID_X_ANDROID_MANUAL='1'; node scripts/Run-Isolated-Integration.mjs android-browser`
+`$env:OMNICOMPILE_ANDROID_MANUAL='1'; node scripts/Run-Isolated-Integration.mjs android-browser`
 passed fixture **836139ed765adc44**, both runner and verifier exit **0**.
 Physical M2004J19C, Android 10, installed Chrome 155.0.8059.39; normal native
 Chrome UI with human taps, not WebView/emulation/CDP-injected success.
@@ -146,7 +146,7 @@ and reverse rule were removed. Standard CDP attach succeeded once but an initial
 verifier fetch-contract bug interrupted it (6876dbb59831954e); the subsequent
 normal Chrome launch had no attachable socket (cf78950eb4ffdc74).
 
-Native Chrome/UI-based test (68b2c70d12f3b408) loaded the GRID-X application but
+Native Chrome/UI-based test (68b2c70d12f3b408) loaded the OMNICOMPILE application but
 MIUI rejected ADB input with INJECT_EVENTS. No physical computation pass is
 inferred from page rendering. The user initially offered to enable USB debugging
 (Security settings), then chose manual taps as recorded above. No browser data

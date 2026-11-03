@@ -1,6 +1,6 @@
 # Phase 4 closure — verification evidence
 
-Verification date: 13–14 October 2026 (Asia/Calcutta). Existing branch: engineering/grid-x-release-foundation. Baseline: c7458d1255672688041a7938414305456c77fd33. **Phase 4 v1 sealed: eight master exit obligations and six closure gates passed.**
+Verification date: 13–14 October 2026 (Asia/Calcutta). Existing branch: engineering/omnicompile-release-foundation. Baseline: c7458d1255672688041a7938414305456c77fd33. **Phase 4 v1 sealed: eight master exit obligations and six closure gates passed.**
 
 ## Exact commands and final results
 
@@ -8,7 +8,7 @@ The project-local official SHA-verified Node 24.21.0 was prepended to PATH, with
 
 | Command | Actual result |
 |---|---|
-| `$env:GRID_X_SANDBOX_TEST='1'; npm test -- --maxWorkers=1` | 252/252 tests, all 36 files passed; zero skips; final duration 128.23 seconds |
+| `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm test -- --maxWorkers=1` | 252/252 tests, all 36 files passed; zero skips; final duration 128.23 seconds |
 | `npm run typecheck` | All eight workspace type checks passed |
 | `node --test scripts/*.test.mjs` | 3/3 ledger/isolated-target safety tests passed |
 | `npm run build` | All eight workspace builds passed, including real Vite/browser-worker output and coordinator migration copying |
@@ -68,6 +68,6 @@ See ../../PHASE4_ACCEPTANCE.md for the eight master exit obligations and the exa
 
 - Implementation: `01f3bd4397613b37e9e894106691113e7dd0ea4d`, `feat: harden task policies, cancellation, and durable recovery`.
 - 48 legitimate source/test/config/acceptance files committed; staged diff reviewed and whitespace check passed. No environment credentials, SQL dumps, runtime logs, dependencies, volumes or generated binaries staged.
-- `git push origin engineering/grid-x-release-foundation` succeeded without force to `https://github.com/192521143simats-sketch/PROJECT-C-OPTIFORGE.git`.
-- `git ls-remote origin refs/heads/engineering/grid-x-release-foundation` matched the exact implementation hash. Tracked/untracked non-ignored tree was clean after implementation push.
+- `git push origin engineering/omnicompile-release-foundation` succeeded without force to the configured Git origin.
+- `git ls-remote origin refs/heads/engineering/omnicompile-release-foundation` matched the exact implementation hash. Tracked/untracked non-ignored tree was clean after implementation push.
 - This seal/ledger update is a separate documentation commit; its remote hash is checked after publication. Phase 5 is the next implementation phase, not a claim that later product/package/device/release gates passed.

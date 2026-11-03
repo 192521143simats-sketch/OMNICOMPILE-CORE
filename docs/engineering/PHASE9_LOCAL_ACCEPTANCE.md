@@ -44,23 +44,23 @@ created. Existing MySQL records and Docker volumes are preserved.
 | API and actual local downloads | PASS: `4d5841b02c45c09a`, approval/races/rotation/link replacement/migration checks and actual installer/APK byte hashes, authorization and download throttling |
 | Compiler artifacts unloaded-host rerun | PASS: `f1a85f72e523731c`, 13 genuine program cases, three invalid programs, actual outputs and authorized downloads |
 | Execution/report integration | PASS: `72efe6b512060d43`, real Docker C/Python/Java execution, runtime failures/timeouts, accurate partial-success reports and authorization |
-| Docker execution unit gate | PASS: eleven actual Docker tests with `GRID_X_SANDBOX_TEST=1`, image `gridx-execution:phase9`; not merely the default skipped tests |
+| Docker execution unit gate | PASS: eleven actual Docker tests with `OMNICOMPILE_SANDBOX_TEST=1`, image `oa-omnicompile-execution:local`; not merely the default skipped tests |
 | Polished web product acceptance | PASS: `690dd0a356b83756`, real browser authentication/reset, administrator approval, browser enrollment, native language compilation/report/download and compact compiler form assertions; screenshots retained in the owned fixture directory |
 | Android full build | PASS: unit tests, debug APK/test APK, unsigned release APK, AAB and lint; 27 JVM tests |
-| Physical Android isolated UI/compute | PASS: five tests on Xiaomi/API29 using side-by-side `org.gridx.worker.acceptance`, preserving the ordinary installed application's identity. Keystore, bounded native computation/cancellation, consent and dark/light-configuration contrast tested |
+| Physical Android isolated UI/compute | PASS: five tests on Xiaomi/API29 using side-by-side `org.omnicompile.worker.acceptance`, preserving the ordinary installed application's identity. Keystore, bounded native computation/cancellation, consent and dark/light-configuration contrast tested |
 | Updated Android network acceptance test | APK rebuilt after adding credential-rotation lifecycle assertions; not installed/rerun because ADB now detects no device. User explicitly requested continuing without the phone |
 | Windows polished package | PASS: `npm run package:windows`, actual NSIS installer rebuilt with final layout-preserving styles; unsigned development package |
 | Final two-platform acceptance | PASS: `d5d8f191c2def565`, actual browser Web Worker and packaged Windows worker, same coordinator/network, distinct identities, protected credential rotation, persisted results, browser-to-native reassignment and coordinator restart; Android explicitly excluded |
 | Final full repository verification | PASS: `npm run verify`, 351 Vitest tests, 24 Node/script tests, all workspace typechecks/builds; eleven Docker tests skipped by default and separately executed as recorded above |
 | Durable lease/recovery regressions | PASS: `npm run verify:recovery`, leases `2e7f90b18428a23a`, recovery `0717d3a94cb99de2`; actual coordinator crash/restart and MySQL interruption, stale leases, reassignment, preserved attempts and resumed compiler publication |
-| Final rebuilt package download acceptance | PASS: `86b4c6a67ca8f9da`, `GRID_X_TEST_LOCAL_DISTRIBUTION=1 npm run verify:phase9`; actual final installer/APK bytes, hashes and API negative cases |
+| Final rebuilt package download acceptance | PASS: `86b4c6a67ca8f9da`, `OMNICOMPILE_TEST_LOCAL_DISTRIBUTION=1 npm run verify:phase9`; actual final installer/APK bytes, hashes and API negative cases |
 | Final polished container smoke | PASS: `5335e7581a7b2db9`, `node infra/containers/Verify-Images.mjs`; actual isolated MySQL, controlled migrations, coordinator readiness/login/approval gate, SPA deep links and non-root containers |
 
 Primary commands executed for this increment: `npm run verify`,
 `npm run verify:web`, `npm run verify:mixed`, `npm run verify:recovery`,
 `npm run verify:phase9` (with local-distribution flag), `npm run verify:artifacts`,
 `npm run verify:execution`, `npm run package:windows`, the Android Gradle command
-below, `docker build -f infra/containers/web.Dockerfile -t gridx-web:phase9 .`,
+below, `docker build -f infra/containers/web.Dockerfile -t omnicompile-web:phase9 .`,
 `node infra/containers/Verify-Images.mjs`, and `kubectl kustomize infra/kubernetes`.
 Captured logs and screenshots are retained under ignored `.runtime`; fixtures
 clean up only their own temporary resources. Regression tests are retained in Git.
@@ -76,7 +76,7 @@ From the root:
 ```powershell
 npm run package:windows
 node scripts/Local-Distribution.mjs
-$env:GRID_X_LOCAL_DISTRIBUTION_MANIFEST = Get-Content -Raw .runtime/distribution/manifest.json
+$env:OMNICOMPILE_LOCAL_DISTRIBUTION_MANIFEST = Get-Content -Raw .runtime/distribution/manifest.json
 ```
 
 Start the coordinator with that environment to offer the actual local packages.
@@ -94,7 +94,7 @@ $env:JAVA_HOME = 'C:/Program Files/Java/jdk-21.0.12.1'
 
 Output locations (verify existence/build success before claiming acceptance):
 
-- `.runtime/windows-worker/releases/GRID-X-Worker-0.1.1-Windows-x64-Setup.exe`
+- `.runtime/windows-worker/releases/OMNICOMPILE-Worker-0.1.1-Windows-x64-Setup.exe`
 - `apps/android-worker/app/build/outputs/apk/debug/app-debug.apk`
 - `apps/android-worker/app/build/outputs/apk/release/app-release-unsigned.apk`
 - `apps/android-worker/app/build/outputs/bundle/release/app-release.aab`

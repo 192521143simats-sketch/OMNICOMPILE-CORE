@@ -27,7 +27,7 @@ installations or development. See USER_REQUIREMENT_OVERRIDES.md.
 | `node --test scripts/windows-install-lifecycle.test.mjs` | RED missing helper exports, then GREEN 3/3; actual owned-process termination and real filesystem cleanup |
 | `npm run verify:windows-install` | PASS, f5592dc029138ad3, initial real reinstall acceptance |
 | `npm run verify:windows-install` | PASS, cb241f55ee0a452e, final reviewed/cleanup-corrected flow, exit 0 |
-| `$env:GRID_X_SANDBOX_TEST='1'; npm run verify` | PASS, exit 0; 327/327 tests, 15/15 script/settings checks, all nine builds/typechecks |
+| `$env:OMNICOMPILE_SANDBOX_TEST='1'; npm run verify` | PASS, exit 0; 327/327 tests, 15/15 script/settings checks, all nine builds/typechecks |
 | `git diff --check` | PASS |
 | `Get-FileHash ...Setup.exe -Algorithm SHA256` | f100aa1b2e15789bf281bd0b7601b2e77f277c1ca3733eb7721e8ab6e7e57882 |
 | `Get-AuthenticodeSignature ...Setup.exe` | NotSigned, explicitly not represented as production-signed |

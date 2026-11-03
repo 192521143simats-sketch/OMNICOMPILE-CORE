@@ -3,9 +3,9 @@ import mysql from 'mysql2/promise';
 import WebSocket from 'ws';
 import {spawn} from 'node:child_process';
 import {resolve} from 'node:path';
-import {encodeProtocolMessage,parseCoordinatorMessage} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
 import {execute} from '../apps/worker/src/executor.ts';
-import {lowerCToIR} from '@c-optiforge/compiler-c';
+import {lowerCToIR} from '@omnicompile/compiler-c';
 import {Store} from '../apps/coordinator/src/database.ts';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
 

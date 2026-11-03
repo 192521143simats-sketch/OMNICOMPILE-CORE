@@ -1,5 +1,12 @@
 # Kubernetes preparation (not a running deployment)
 
+Read-only local validation: `python infra/kubernetes/Validate.py` (kubectl + PyYAML).
+Add `--openapi PATH_TO_OFFICIAL_SWAGGER_JSON` for offline upstream structural
+schema validation (jsonschema required). `--render-bootstrap` emits the same
+resources with app replicas zero for an explicitly approved migration-first rollout.
+This renders resources and verifies cross-component contracts; it is not server-side
+schema validation or a live deployment test.
+
 Current detailed procedure: [DEPLOYMENT.md](DEPLOYMENT.md). Container recipes,
 the API execution adapter and controlled migration Job/check-only startup now exist;
 actual image builds and cluster acceptance must be recorded separately. The older
@@ -23,13 +30,13 @@ credentials in the manifests. Do not apply them unmodified.
    explicit trusted ingress source CIDRs, not universal proxy trust.
 5. Provision a storage class with retained persistent volumes and a tested backup
    destination. MySQL is internal-only. Verify the CNI enforces NetworkPolicy.
-6. Configure gridx-runtime using a protected local env file or provider secret
+6. Configure omnicompile-runtime using a protected local env file or provider secret
    facility with DB_PASSWORD, MYSQL_ROOT_PASSWORD, ADMIN_USERNAME and an Argon2id
    ADMIN_PASSWORD_HASH. Do not include plaintext ADMIN_PASSWORD. Never commit the
    file or echo secret values. The coordinator receives explicit application
    keys only, not MYSQL_ROOT_PASSWORD. Limit secret-read RBAC and enable provider
    encryption at rest; Kubernetes Secrets alone are not a vault.
-7. Configure TLS secret gridx-tls using provider/cert-manager procedures after DNS
+7. Configure TLS secret omnicompile-tls using provider/cert-manager procedures after DNS
    ownership validation. Never bypass certificate verification in deployed clients.
 
 ## Safe validation and rollout procedure
@@ -46,12 +53,16 @@ After separate deployment approval and completion of the gates above:
 kubectl config current-context
 kubectl apply --dry-run=server -k infra/kubernetes
 kubectl diff -k infra/kubernetes
+python infra/kubernetes/Validate.py --kustomization PATH_TO_REVIEWED_OVERLAY --render-bootstrap | kubectl apply -f -
+kubectl -n omnicompile rollout status statefulset/mysql --timeout=300s
+# Provision migration credentials/grants, then apply the reviewed migration Job.
+kubectl apply -f PATH_TO_VERSIONED_MIGRATION_JOB
+kubectl -n omnicompile wait --for=condition=complete job/REVIEWED_JOB_NAME --timeout=300s
 kubectl apply -k infra/kubernetes
-kubectl -n gridx rollout status statefulset/mysql --timeout=300s
-kubectl -n gridx rollout status deployment/coordinator --timeout=300s
-kubectl -n gridx rollout status deployment/web --timeout=300s
-kubectl -n gridx get pods,services,ingress,pvc
-kubectl -n gridx logs deployment/coordinator --tail=100
+kubectl -n omnicompile rollout status deployment/coordinator --timeout=300s
+kubectl -n omnicompile rollout status deployment/web --timeout=300s
+kubectl -n omnicompile get pods,services,ingress,pvc
+kubectl -n omnicompile logs deployment/coordinator --tail=100
 ```
 
 Do not paste logs without reviewing for sensitive operational information. Verify
@@ -78,8 +89,8 @@ backup schedule. Do not delete PVCs, run down -v or reset live data.
 For an application rollback, retain prior image digests and run:
 
 ```powershell
-kubectl -n gridx rollout undo deployment/coordinator
-kubectl -n gridx rollout undo deployment/web
+kubectl -n omnicompile rollout undo deployment/coordinator
+kubectl -n omnicompile rollout undo deployment/web
 ```
 
 This does not roll back schema/data. If an older image is incompatible with the

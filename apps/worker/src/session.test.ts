@@ -1,6 +1,6 @@
 import {afterEach,expect,it} from 'vitest';
 import {WebSocketServer,type WebSocket} from 'ws';
-import {encodeProtocolMessage,parseWorkerMessage,type CapabilityProfile} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseWorkerMessage,type CapabilityProfile} from '@omnicompile/contracts';
 import {NativeWorkerSession} from './session.js';
 import {TaskTerminationUnconfirmedError} from './task-process-controller.js';
 const capabilities:CapabilityProfile={workerType:'NATIVE',deviceType:'DESKTOP',cpuModel:'fixture',logicalCores:2,totalMemoryBytes:1024**3,operatingSystem:'Windows',architecture:'x64',runtimes:{c:false,python:false,java:false},toolchains:{c:{available:false},python:{available:false},java:{available:false}},operations:{irOptimization:true,staticAnalysis:false,browserCompute:true,nativeCompilation:false}};

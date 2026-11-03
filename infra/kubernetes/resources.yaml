@@ -2,31 +2,34 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: gridx
+  name: omnicompile
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
 ---
 apiVersion: v1
 kind: ConfigMap
 metadata:
-  name: gridx-config
-  namespace: gridx
+  name: omnicompile-config
+  namespace: omnicompile
 data:
   NODE_ENV: production
   HOST: 0.0.0.0
   PORT: "4100"
-  PUBLIC_BASE_URL: https://gridx.example.invalid
-  COORDINATOR_PUBLIC_URL: https://gridx.example.invalid
-  ALLOWED_ORIGINS: https://gridx.example.invalid
+  PUBLIC_BASE_URL: https://omnicompile.example.invalid
+  COORDINATOR_PUBLIC_URL: https://omnicompile.example.invalid
+  ALLOWED_ORIGINS: https://omnicompile.example.invalid
   # Replace with the actual ingress-controller source CIDR; never use true.
   TRUSTED_PROXIES: ""
   DB_HOST: mysql
   DB_PORT: "3306"
-  DB_NAME: c_optiforge
-  DB_USER: gridx
-  GRID_X_EXECUTION_MODE: kubernetes
-  GRID_X_EXECUTION_NAMESPACE: gridx-execution
-  GRID_X_SANDBOX_RUNTIME_CLASS: gvisor
-  GRID_X_SANDBOX_IMAGE: registry.example.invalid/gridx/execution@sha256:REPLACE_WITH_VERIFIED_DIGEST
-  GRID_X_MIGRATION_MODE: check
+  DB_NAME: omnicompile
+  DB_USER: omnicompile
+  OMNICOMPILE_EXECUTION_MODE: kubernetes
+  OMNICOMPILE_EXECUTION_NAMESPACE: omnicompile-execution
+  OMNICOMPILE_SANDBOX_RUNTIME_CLASS: gvisor
+  OMNICOMPILE_SANDBOX_IMAGE: registry.example.invalid/oa-omnicompile-execution@sha256:REPLACE_WITH_VERIFIED_DIGEST
+  OMNICOMPILE_MIGRATION_MODE: check
+  OMNICOMPILE_REQUIRE_ADMIN_APPROVAL: "true"
   RESEND_ENABLED: "false"
   POSTHOG_ENABLED: "false"
 ---
@@ -34,7 +37,7 @@ apiVersion: v1
 kind: Service
 metadata:
   name: mysql
-  namespace: gridx
+  namespace: omnicompile
 spec:
   clusterIP: None
   selector: {app: mysql}
@@ -45,7 +48,7 @@ apiVersion: apps/v1
 kind: StatefulSet
 metadata:
   name: mysql
-  namespace: gridx
+  namespace: omnicompile
 spec:
   serviceName: mysql
   replicas: 1
@@ -59,19 +62,19 @@ spec:
       terminationGracePeriodSeconds: 60
       containers:
         - name: mysql
-          image: mysql:8.4
+          image: db-omnicompile-database:8.4
           ports: [{containerPort: 3306, name: mysql}]
           env:
-            - {name: MYSQL_DATABASE, value: c_optiforge}
-            - {name: MYSQL_USER, value: gridx}
+            - {name: MYSQL_DATABASE, value: omnicompile}
+            - {name: MYSQL_USER, value: omnicompile}
             - name: MYSQL_PASSWORD
-              valueFrom: {secretKeyRef: {name: gridx-runtime, key: DB_PASSWORD}}
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: DB_PASSWORD}}
             - name: MYSQL_ROOT_PASSWORD
-              valueFrom: {secretKeyRef: {name: gridx-runtime, key: MYSQL_ROOT_PASSWORD}}
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: MYSQL_ROOT_PASSWORD}}
           resources:
             requests: {cpu: 100m, memory: 512Mi}
             limits: {cpu: "1", memory: 1Gi}
-          volumeMounts: [{name: database, mountPath: /var/lib/mysql}]
+          volumeMounts: [{name: omnicompile-data, mountPath: /var/lib/mysql}]
           startupProbe:
             exec: {command: [sh, -c, 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1"']}
             periodSeconds: 5
@@ -83,8 +86,9 @@ spec:
             tcpSocket: {port: mysql}
             periodSeconds: 20
             failureThreshold: 6
+  persistentVolumeClaimRetentionPolicy: {whenDeleted: Retain, whenScaled: Retain}
   volumeClaimTemplates:
-    - metadata: {name: database}
+    - metadata: {name: omnicompile-data}
       spec:
         accessModes: [ReadWriteOnce]
         resources:
@@ -94,7 +98,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: coordinator
-  namespace: gridx
+  namespace: omnicompile
 spec:
   # Connection ownership is process-local: do not scale until HA is implemented.
   replicas: 1
@@ -105,30 +109,34 @@ spec:
     metadata:
       labels: {app: coordinator}
     spec:
-      serviceAccountName: gridx-coordinator
+      serviceAccountName: omnicompile-coordinator
       automountServiceAccountToken: true
       terminationGracePeriodSeconds: 60
       securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
       containers:
         - name: coordinator
-          image: registry.example.invalid/gridx/coordinator:REPLACE_WITH_VERIFIED_VERSION
+          image: be-omnicompile-coordinator:local
+          command: [node, --import, tsx, apps/coordinator/src/server.ts]
           ports: [{containerPort: 4100, name: http}]
           envFrom:
-            - configMapRef: {name: gridx-config}
+            - configMapRef: {name: omnicompile-config}
           env:
             - name: DB_PASSWORD
-              valueFrom: {secretKeyRef: {name: gridx-runtime, key: DB_PASSWORD}}
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: DB_PASSWORD}}
             - name: ADMIN_USERNAME
-              valueFrom: {secretKeyRef: {name: gridx-runtime, key: ADMIN_USERNAME}}
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: ADMIN_USERNAME}}
             - name: ADMIN_PASSWORD_HASH
-              valueFrom: {secretKeyRef: {name: gridx-runtime, key: ADMIN_PASSWORD_HASH}}
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: ADMIN_PASSWORD_HASH}}
           securityContext:
             allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
             capabilities: {drop: [ALL]}
             seccompProfile: {type: RuntimeDefault}
           resources:
             requests: {cpu: 200m, memory: 512Mi}
             limits: {cpu: "1", memory: 2Gi}
+          volumeMounts:
+            - {name: temporary-work, mountPath: /tmp}
           startupProbe:
             httpGet: {path: /ready, port: http}
             periodSeconds: 5
@@ -139,15 +147,18 @@ spec:
           livenessProbe:
             # Existing /health includes MySQL. DB faults should remove readiness,
             # not force coordinator restart loops and destroy live socket ownership.
-            tcpSocket: {port: http}
+            httpGet: {path: /live, port: http}
             periodSeconds: 15
             failureThreshold: 6
+      volumes:
+        - name: temporary-work
+          emptyDir: {medium: Memory, sizeLimit: 512Mi}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: coordinator
-  namespace: gridx
+  namespace: omnicompile
 spec:
   selector: {app: coordinator}
   ports: [{port: 4100, targetPort: http, name: http}]
@@ -156,7 +167,7 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: web
-  namespace: gridx
+  namespace: omnicompile
 spec:
   replicas: 1
   selector:
@@ -166,9 +177,10 @@ spec:
       labels: {app: web}
     spec:
       automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101}
       containers:
         - name: web
-          image: registry.example.invalid/gridx/web:REPLACE_WITH_VERIFIED_VERSION
+          image: fe-omnicompile-frontend:local
           ports: [{containerPort: 8080, name: http}]
           securityContext:
             allowPrivilegeEscalation: false
@@ -179,14 +191,14 @@ spec:
           resources:
             requests: {cpu: 50m, memory: 32Mi}
             limits: {cpu: 250m, memory: 128Mi}
-          readinessProbe: {httpGet: {path: /, port: http}}
-          livenessProbe: {httpGet: {path: /, port: http}}
+          readinessProbe: {httpGet: {path: /healthz, port: http}}
+          livenessProbe: {httpGet: {path: /healthz, port: http}}
 ---
 apiVersion: v1
 kind: Service
 metadata:
   name: web
-  namespace: gridx
+  namespace: omnicompile
 spec:
   selector: {app: web}
   ports: [{port: 8080, targetPort: http, name: http}]
@@ -194,8 +206,8 @@ spec:
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: gridx
-  namespace: gridx
+  name: omnicompile
+  namespace: omnicompile
   annotations:
     nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
     nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
@@ -203,10 +215,10 @@ metadata:
 spec:
   ingressClassName: nginx
   tls:
-    - hosts: [gridx.example.invalid]
-      secretName: gridx-tls
+    - hosts: [omnicompile.example.invalid]
+      secretName: omnicompile-tls
   rules:
-    - host: gridx.example.invalid
+    - host: omnicompile.example.invalid
       http:
         paths:
           - path: /api
@@ -223,7 +235,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: mysql-internal-only
-  namespace: gridx
+  namespace: omnicompile
 spec:
   podSelector:
     matchLabels: {app: mysql}

@@ -1,4 +1,4 @@
-# C-OptiForge Incremental Implementation Plan
+# OmniCompile Core Incremental Implementation Plan
 
 ## Phase 0 — Assessment (complete)
 

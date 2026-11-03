@@ -8,4 +8,4 @@
 6. Windows/Android: unit/native instrumentation, real installer upgrade/uninstall/signature verification, APK/AAB verification, physical hardware and heterogeneous demonstration. Missing devices/keys block release, not independent development.
 7. CI/release: clean lockfile install, supported runtime matrix, tests/build/audits/SBOM/container scans, actual backup restore, migration rollback, compatibility, signatures and approved TLS deployment.
 
-Each ledger status requires evidence. No default integration script may write to `c_optiforge`. Do not weaken assertions or enlarge limits to disguise defects; diagnose resource contention separately from behavior.
+Each ledger status requires evidence. No default integration script may write to `omnicompile`. Do not weaken assertions or enlarge limits to disguise defects; diagnose resource contention separately from behavior.

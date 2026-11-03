@@ -4,7 +4,7 @@ export * from "./portable-catalogue.js";
 import {contributionPolicySchema} from "./network-policy.js";
 export * from "./network-policy.js";
 
-export const PROTOCOL_VERSION=1 as const;
+export const PROTOCOL_VERSION=2 as const;
 const protocolVersion=z.literal(PROTOCOL_VERSION);
 export class ProtocolCompatibilityError extends Error {
   readonly code="PROTOCOL_INCOMPATIBLE";

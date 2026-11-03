@@ -21,14 +21,14 @@ function render(state){
 async function act(type,value){
   if(busy)return;busy=true;document.querySelectorAll('button').forEach(button=>button.disabled=true);
   let error='';
-  try{const result=await window.gridx.act(type,value);if(result.error)error=result.error;else render(result);}
+  try{const result=await window.omnicompile.act(type,value);if(result.error)error=result.error;else render(result);}
   catch{error='The desktop service could not complete this action.';}
-  finally{busy=false;render(await window.gridx.snapshot());if(error)$('error').textContent=error;}
+  finally{busy=false;render(await window.omnicompile.snapshot());if(error)$('error').textContent=error;}
 }
 $('enroll').addEventListener('click',()=>act('enroll',{invitation:$('invitation').value,consent:$('consent').checked}));
 for(const id of ['connect','pause','disconnect','leave','rotate'])$(id).addEventListener('click',()=>act(id));
 $('importCredential').addEventListener('click',async()=>{await act('importCredential',{credential:$('replacement-credential').value,enrollmentId:$('replacement-enrollment').value.trim()});$('replacement-credential').value='';});
 $('save').addEventListener('click',()=>act('settings',{maxCpuPercent:Number($('cpu').value),maxMemoryMB:Number($('memory').value),maxTaskDurationSeconds:Number($('duration').value),allowNative:$('native').checked}));
-$('logs').addEventListener('click',async()=>{const result=await window.gridx.act('logs');if(result.error)$('error').textContent=result.error;else $('activity').textContent=result.location+'\n'+result.recent.map(event=>`${event.at} ${event.status}`).join('\n');});
-window.gridx.onState(render);
-window.gridx.snapshot().then(state=>{if(state.settings){$('cpu').value=state.settings.maxCpuPercent;$('memory').value=state.settings.maxMemoryMB;$('duration').value=state.settings.maxTaskDurationSeconds;$('native').checked=state.settings.allowNative;}render(state);});
+$('logs').addEventListener('click',async()=>{const result=await window.omnicompile.act('logs');if(result.error)$('error').textContent=result.error;else $('activity').textContent=result.location+'\n'+result.recent.map(event=>`${event.at} ${event.status}`).join('\n');});
+window.omnicompile.onState(render);
+window.omnicompile.snapshot().then(state=>{if(state.settings){$('cpu').value=state.settings.maxCpuPercent;$('memory').value=state.settings.maxMemoryMB;$('duration').value=state.settings.maxTaskDurationSeconds;$('native').checked=state.settings.allowNative;}render(state);});

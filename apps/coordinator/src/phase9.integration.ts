@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import {createHash} from 'node:crypto';
 import mysql from 'mysql2/promise';
 import WebSocket from 'ws';
-import type {CapabilityProfile} from '@c-optiforge/contracts';
+import type {CapabilityProfile} from '@omnicompile/contracts';
 import {NetworkService} from './networks.js';
 import {applyMigrations,type Migration} from './migrations.js';
 import type {Pool} from 'mysql2/promise';
@@ -10,7 +10,7 @@ import type {Pool} from 'mysql2/promise';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from '../../../scripts/Integration-Target.mjs';
 
 const target=assertIsolatedTarget(process.env);await verifyIsolatedCoordinator(target);
-const base=process.env.GRID_X_TEST_BASE!;
+const base=process.env.OMNICOMPILE_TEST_BASE!;
 async function request(path:string,body?:unknown,cookie?:string,bearer?:string){return fetch(base+path,{method:body===undefined?'GET':'POST',headers:{origin:process.env.PUBLIC_BASE_URL!,...(body===undefined?{}:{'content-type':'application/json'}),...(cookie?{cookie}:{}),...(bearer?{authorization:`Bearer ${bearer}`}:{})},...(body===undefined?{}:{body:JSON.stringify(body)})});}
 const login=await request('/api/auth/login',{identifier:process.env.ADMIN_USERNAME,password:process.env.ADMIN_PASSWORD});assert.equal(login.status,200);const cookie=login.headers.get('set-cookie')!.split(';')[0]!;
 const created=await request('/api/admin/networks',{name:'Phase9 controlled admission',maxNodes:3,requireAdminApproval:true},cookie);assert.equal(created.status,201);const network=await created.json() as any;
@@ -19,7 +19,7 @@ const accepted=await request(`/api/join/${joinToken}/accept`,{consent:true,worke
 assert.equal(enrollment.approvalStatus,'PENDING','new gated worker must await administrator authorization');
 const pool=mysql.createPool({host:process.env.DB_HOST!,port:Number(process.env.DB_PORT),database:process.env.DB_NAME!,user:process.env.DB_USER!,password:process.env.DB_PASSWORD!});
 const profile:CapabilityProfile={workerType:'NATIVE',deviceType:'DESKTOP',cpuModel:'Logical admission security fixture',logicalCores:1,totalMemoryBytes:0,operatingSystem:'Test',architecture:'x64',runtimes:{c:false,python:false,java:false},toolchains:{c:{available:false},python:{available:false},java:{available:false}},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:false}};
-async function registerSocket(credential:string){return new Promise<{message:any;closeCode:number}>((resolve,reject)=>{const socket=new WebSocket(base.replace('http:','ws:')+'/ws/worker',{headers:{authorization:`Bearer ${credential}`}});let message:any;const timer=setTimeout(()=>{socket.terminate();reject(new Error('Worker socket admission timed out'));},8000);socket.on('error',reject);socket.on('open',()=>socket.send(JSON.stringify({protocolVersion:1,type:'register',profile})));socket.on('message',raw=>{message=JSON.parse(raw.toString());});socket.on('close',closeCode=>{clearTimeout(timer);resolve({message,closeCode});});});}
+async function registerSocket(credential:string){return new Promise<{message:any;closeCode:number}>((resolve,reject)=>{const socket=new WebSocket(base.replace('http:','ws:')+'/ws/worker',{headers:{authorization:`Bearer ${credential}`}});let message:any;const timer=setTimeout(()=>{socket.terminate();reject(new Error('Worker socket admission timed out'));},8000);socket.on('error',reject);socket.on('open',()=>socket.send(JSON.stringify({protocolVersion:2,type:'register',profile})));socket.on('message',raw=>{message=JSON.parse(raw.toString());});socket.on('close',closeCode=>{clearTimeout(timer);resolve({message,closeCode});});});}
 try{
  const migrationModules=[['0001-existing-schema','existingSchemaMigration'],['0002-worker-invitations','workerInvitationMigration'],['0003-reusable-network-links','reusableNetworkLinkMigration'],['0004-task-attempt-leases','taskAttemptLeaseMigration'],['0005-task-cancellation','taskCancellationMigration'],['0006-task-policy-integrity','taskPolicyIntegrityMigration'],['0007-attempt-failure-reasons','attemptFailureReasonMigration'],['0008-compute-ownership','computeOwnershipMigration'],['0009-user-preferences','userPreferencesMigration'],['0010-worker-approval','workerApprovalMigration'],['0011-compiler-metrics','compilerMetricsMigration']];
  const plan:Migration[]=await Promise.all(migrationModules.map(async([file,name])=>(await import(`./migrations/${file}.mjs`))[name!]())) as Migration[];
@@ -54,7 +54,7 @@ try{
  const rotate=await request(`/api/admin/networks/${network.id}/rotate-join-link`,{},cookie);assert.equal(rotate.status,200);assert.equal((await request(`/api/join/${joinToken}`)).status,404);
  const distribution=await request('/api/distribution');assert.equal(distribution.status,200);const manifest=await distribution.json() as any;assert.deepEqual(manifest.platforms.map((p:any)=>p.platform),['WINDOWS','ANDROID']);for(const entry of manifest.platforms)assert.equal(entry.available,false);
  const [audit]=await pool.query<any[]>("SELECT event_type FROM audit_events WHERE target_id=? AND event_type IN ('ENROLLMENT_APPROVED','ENROLLMENT_REJECTED')",[enrollment.enrollmentId]);assert.equal(audit.length,1);
- if(process.env.GRID_X_TEST_LOCAL_DISTRIBUTION==='1'){
+ if(process.env.OMNICOMPILE_TEST_LOCAL_DISTRIBUTION==='1'){
   for(const item of manifest.platforms){assert.equal(item.localAvailable,true);assert.equal(item.channel,'LOCAL_PRERELEASE');assert.equal(item.available,false);assert.ok(!('filePath' in item));const download=await request(item.localDownloadUrl);assert.equal(download.status,200);const bytes=Buffer.from(await download.arrayBuffer());assert.equal(bytes.length,item.sizeBytes);assert.equal(createHash('sha256').update(bytes).digest('hex'),item.sha256);assert.equal(download.headers.get('x-content-sha256'),item.sha256);}
   assert.equal((await request('/api/distribution/UNKNOWN/download')).status,404);
  }

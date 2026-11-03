@@ -17,7 +17,9 @@ it("keeps dense live values readable and long headings contained without changin
     expect(computed('th').whiteSpace).toBe('nowrap');
     expect(computed('button').transform).toBe('none');
   }finally{dom.window.close();}
-});
+// Full-sheet JSDOM cascade evaluation is a correctness fixture, not a browser
+// latency benchmark; allow bounded headroom on memory-constrained build hosts.
+},15_000);
 it("keeps the compiler form compact beside a longer compilation result",()=>{
   const dom=new JSDOM('<!doctype html><html><head></head><body><div class="grid two"><form class="card compiler-form"><label>Source<textarea></textarea></label><button>Compile and optimize</button></form><section>Long result</section></div></body></html>');
   try{
@@ -31,5 +33,5 @@ it("keeps the compiler form compact beside a longer compilation result",()=>{
 });
 it("Android uses carbon system bars even in the light resource configuration",()=>{
   const xml=read("../../android-worker/app/src/main/res/values/themes.xml");expect(xml).toContain("#0C0D10");expect(xml).toContain('name="worker_light_bars">false');
-  const theme=read("../../android-worker/app/src/main/java/org/gridx/worker/WorkerTheme.kt");expect(theme).not.toContain("isSystemInDarkTheme");expect(theme).not.toContain("lightColorScheme");
+  const theme=read("../../android-worker/app/src/main/java/org/omnicompile/worker/WorkerTheme.kt");expect(theme).not.toContain("isSystemInDarkTheme");expect(theme).not.toContain("lightColorScheme");
 });

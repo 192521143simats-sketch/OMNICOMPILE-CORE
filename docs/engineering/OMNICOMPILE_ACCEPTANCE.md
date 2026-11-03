@@ -35,10 +35,10 @@ verification checks. Administrative users have no own-job metrics.
 | Durable leases | PASS: `77ad922198a783d8`, actual persisted deadlines, stale result fencing and attempt history. |
 | Recovery failure/retest | `4b559e4ec42957ff` and `e78890f17c07641f` failed at a forced-lock disconnect setup. Telemetry was moved out of the heartbeat critical path. The fixture's unrelated periodic heartbeat was stopped before deliberately holding its node lock, avoiding a queue-order race that prevented its target disconnect statement from starting. No fault/assertion was removed. Retest `0ec301f6eb8c4d0d` PASS: actual coordinator crash, MySQL pause/resume, disconnect/reconnect under database outage, reassignment, accepted-result uniqueness, preserved history, real native busy reconnect and recovered Python/C publication. |
 | `npm run package:windows` | PASS: actual installer, PE ProductName/FileDescription verified OmniCompile Core Worker; eight Windows tests and old/new product-recognition guard pass. Unsigned development package. |
-| Android Gradle | PASS: `:app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:bundleRelease :app:lintDebug --no-daemon --console=plain`;27 JVM tests, actual debug/release APK/AAB and lint. aapt verified new label and unchanged org.gridx.worker. No connected phone was available for a new installation/test. |
+| Android Gradle | PASS: `:app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:bundleRelease :app:lintDebug --no-daemon --console=plain`;27 JVM tests, actual debug/release APK/AAB and lint. aapt verified new label and unchanged org.omnicompile.worker. No connected phone was available for a new installation/test. |
 | Final web regression | PASS: `5de7ef1b62d6540a`, genuine C/Python/Java output/download and all five metric panels after native verification gating. Live socket ownership has an additional RED→GREEN unit regression. |
 | Packaged browser/Windows | First fixture `e199bad6a0cb152e` failed at Electron launch timeout before enrollment. Unloaded rerun `0fafabff7393e2ff` PASS with unchanged assertions: actual Web Worker and packaged native Windows worker, distinct identities, same coordinator/network, rotation, verified results, reassignment, restart/reconnect and leave. No Android included. |
-| Actual Docker execution gate | PASS:11/11 tests in `isolated-execution.test.ts` with `GRID_X_SANDBOX_TEST=1`, Docker mode and actual `gridx-execution:phase9` image; not merely default skips. |
+| Actual Docker execution gate | PASS:11/11 tests in `isolated-execution.test.ts` with `OMNICOMPILE_SANDBOX_TEST=1`, Docker mode and actual `oa-omnicompile-execution:local` image; not merely default skips. |
 | Containers | Coordinator and web images rebuilt. Final smoke `c9b48d803078e719` PASS: real isolated MySQL, migration apply/check, authenticated own metrics, admin403, current product name, approval gate, non-root UIDs and SPA deep links. No public deployment. |
 
 Final local image IDs: coordinator
@@ -49,7 +49,7 @@ socket/filter/quotas; the final smoke above is authoritative for this delivery.
 
 ## Actual packages
 
-- Windows: `.runtime/windows-worker/releases/GRID-X-Worker-0.1.1-Windows-x64-Setup.exe`
+- Windows: `.runtime/windows-worker/releases/OMNICOMPILE-Worker-0.1.1-Windows-x64-Setup.exe`
   SHA256 `5898aed12ed3940c5465e1f4f588abbadde445f62a6fc8f4394260c1062dde22`.
 - Android debug: `apps/android-worker/app/build/outputs/apk/debug/app-debug.apk`
   SHA256 `f0fcd40a6eddac3234617a49279d2473b9959e33d168f0d359ff4cc31ee2e3d6`.

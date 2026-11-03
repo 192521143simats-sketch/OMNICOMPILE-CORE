@@ -2,7 +2,7 @@
 
 **Status: SEALED v1 against the B20 web acceptance scope.** Phase 4 v1 remains sealed at 4b75df2. See PHASE5_ACCEPTANCE.md for evidence and explicit external verification gates.
 
-Goal: finish the existing GRID-X web product against the actual coordinator and
+Goal: finish the existing OMNICOMPILE web product against the actual coordinator and
 MySQL, without replacing working authentication, compilers, worker protocol or
 database models. React/Vite and Fastify remain authoritative.
 

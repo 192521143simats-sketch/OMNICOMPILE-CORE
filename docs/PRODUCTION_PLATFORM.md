@@ -28,7 +28,7 @@ Password reset tokens are random, short-lived, single-use, and hash-only in MySQ
 
 ## Compiler truthfulness
 
-C uses the custom lexer/parser/semantic model, lowers functions into C-OptiForge IR, distributes meaningful per-function optimization, validates and aggregates candidates, emits C, and invokes GCC for the final native artifact. Browser workers may perform the IR stage; GCC remains native coordinator tooling.
+C uses the custom lexer/parser/semantic model, lowers functions into OmniCompile Core IR, distributes meaningful per-function optimization, validates and aggregates candidates, emits C, and invokes GCC for the final native artifact. Browser workers may perform the IR stage; GCC remains native coordinator tooling.
 
 Python uses CPython AST/compiler machinery and produces genuine `.pyc`; Java uses JDK `javac`, `javap`, and `jar` and produces genuine JARs. These require compatible native workers and are not assigned to browser nodes.
 

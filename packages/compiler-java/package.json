@@ -1,1 +1,1 @@
-{"name":"@c-optiforge/compiler-java","version":"0.1.0","type":"module","exports":"./src/index.ts","scripts":{"typecheck":"tsc --noEmit","build":"tsc"},"devDependencies":{"@types/node":"^24.10.0","typescript":"^5.9.3","vitest":"^5.0.3"}}
+{"name":"@omnicompile/compiler-java","version":"0.1.0","type":"module","exports":"./src/index.ts","scripts":{"typecheck":"tsc --noEmit","build":"tsc"},"devDependencies":{"@types/node":"^24.10.0","typescript":"^5.9.3","vitest":"^5.0.3"}}

@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { randomUUID } from "node:crypto";
 
 const serviceAccount = "/var/run/secrets/kubernetes.io/serviceaccount";
-const labels = { app: "gridx-execution" };
+const labels = { app: "omnicompile-execution" };
 export function executionPayloads(name: string, payload: string, uid: string) {
   const bytes = Buffer.from(payload);
   if (bytes.length > 24000000)
@@ -93,7 +93,7 @@ export function executionJob(
             {
               name: "runner",
               image,
-              command: ["python3", "-I", "/opt/gridx/kubernetes-entry.py"],
+              command: ["python3", "-I", "/opt/omnicompile/kubernetes-entry.py"],
               securityContext,
               resources: {
                 requests: { cpu: "100m", memory: "128Mi" },
@@ -200,13 +200,13 @@ export async function runKubernetesExecution(
   ]);
   if (!/^[A-Za-z0-9][A-Za-z0-9./:_-]*@sha256:[a-f0-9]{64}$/.test(image))
     throw new Error("Kubernetes execution requires a verified image digest");
-  const runtime = process.env.GRID_X_SANDBOX_RUNTIME_CLASS;
+  const runtime = process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS;
   if (!runtime || !/^[a-z0-9][a-z0-9.-]*$/.test(runtime))
     throw new Error("A verified sandbox RuntimeClass is required");
-  const namespace = process.env.GRID_X_EXECUTION_NAMESPACE ?? "gridx-execution";
+  const namespace = process.env.OMNICOMPILE_EXECUTION_NAMESPACE ?? "omnicompile-execution";
   if (!/^[a-z0-9][a-z0-9-]*$/.test(namespace))
     throw new Error("Invalid execution namespace");
-  const name = `gridx-${randomUUID()}`,
+  const name = `omnicompile-${randomUUID()}`,
     maps = executionPayloads(name, payload, "pending"),
     api = apiOverride ?? (await inClusterApi());
   const batch = `/apis/batch/v1/namespaces/${namespace}/jobs`,

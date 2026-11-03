@@ -1,8 +1,8 @@
 # OmniCompile Core operations
 
-Run `START-C-OPTIFORGE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
+Run `START-OMNICOMPILE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
 
-Run `STOP-C-OPTIFORGE.bat` to stop application processes and containers without deleting `c-optiforge_mysql_data`.
+Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `mysql-data`.
 
 ## Environment
 
@@ -13,14 +13,49 @@ Run `STOP-C-OPTIFORGE.bat` to stop application processes and containers without 
 - `SESSION_TTL_HOURS`, `RESET_TTL_MINUTES`
 - `HEARTBEAT_STALE_MS`, `HEARTBEAT_OFFLINE_MS`, `TASK_TIMEOUT_MS`
 
-Host processes use `127.0.0.1:3307` by default. A future containerized coordinator must use Compose hostname `mysql:3306`. Secrets stay in ignored `.env`; production should use a secret manager.
+Host processes use `127.0.0.1:3306`. The containerized coordinator uses Compose
+hostname `mysql:3306`; localhost inside that container is not MySQL. Local MySQL
+8.4 runs as container `MYSQL` with database `omnicompile`, root user and retained
+named volume `mysql-data`. Secrets stay in ignored `.env`; production Kubernetes
+uses separate application/migration credentials and Secret references.
+
+## Full container startup and verification
+
+```powershell
+docker compose config --quiet
+docker compose build
+docker compose up -d --wait
+node scripts/Verify-Compose.mjs
+docker compose ps
+docker compose stop
+```
+
+`Verify-Compose.mjs` explicitly restarts MYSQL to verify persistence using only a
+new random temporary database. It deletes that fixture database in finally and
+does not write application records. Run it during an agreed local test window.
+Normal stop/start never deletes the volume. The migration service runs the
+immutable ledger once; the API checks it at startup. `/live` is process liveness,
+while `/ready` and compatibility `/health` require database connectivity.
+
+The local container coordinator sets `OMNICOMPILE_EXECUTION_MODE=disabled` explicitly.
+Native workers still produce real C/Python/Java artifacts; reports must say program
+execution was not performed. For final program execution use the existing host
+coordinator Docker sandbox or the approved Kubernetes sandbox deployment. Never
+mount the Docker socket into the coordinator to hide this boundary. The container
+verification image uses CPython3.14 and JDK21 with distribution GCC; actual GCC
+version and Java21/Python type-alias compilation are checked by the image smoke.
+Workers using newer source-level features still need a matching verifier. Host development
+uses the installed toolchains (this Windows host has JDK21).
+
+Kubernetes rendering and official-schema checks are described in
+`infra/kubernetes/DEPLOYMENT.md`. They are not proof of a live cluster deployment.
 
 ## Troubleshooting
 
 - Docker: `docker info`, then `docker compose ps` and `docker compose logs mysql`.
 - Coordinator/dashboard: `.runtime/application.log` and `.runtime/application-error.log`.
 - No eligible worker: verify network match and required capability. Browser workers can optimize IR but cannot compile Python/Java or run GCC/JDK.
-- JDK: set `COPTIFORGE_JDK_HOME` or `JAVA_HOME` to JDK 21 before starting a native worker.
+- JDK: set `OMNICOMPILE_JDK_HOME` or `JAVA_HOME` to JDK 21 before starting a native worker.
 - Security/build gate: `npm run verify`, `npm run verify:platform`, `npm audit`.
 
 Do not use `docker compose down -v` unless permanent database deletion is explicitly intended.

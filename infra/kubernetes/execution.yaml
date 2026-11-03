@@ -2,19 +2,19 @@
 apiVersion: v1
 kind: Namespace
 metadata:
-  name: gridx-execution
+  name: omnicompile-execution
   labels:
-    gridx.execution: sandbox
+    omnicompile.execution: sandbox
     pod-security.kubernetes.io/enforce: baseline
     pod-security.kubernetes.io/enforce-version: latest
 ---
 apiVersion: v1
 kind: ServiceAccount
-metadata: {name: gridx-coordinator, namespace: gridx}
+metadata: {name: omnicompile-coordinator, namespace: omnicompile}
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: Role
-metadata: {name: gridx-executor, namespace: gridx-execution}
+metadata: {name: omnicompile-executor, namespace: omnicompile-execution}
 rules:
   - apiGroups: [batch]
     resources: [jobs]
@@ -31,13 +31,13 @@ rules:
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
-metadata: {name: gridx-executor, namespace: gridx-execution}
-roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: gridx-executor}
-subjects: [{kind: ServiceAccount, name: gridx-coordinator, namespace: gridx}]
+metadata: {name: omnicompile-executor, namespace: omnicompile-execution}
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: Role, name: omnicompile-executor}
+subjects: [{kind: ServiceAccount, name: omnicompile-coordinator, namespace: omnicompile}]
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
-metadata: {name: execution-deny-all, namespace: gridx-execution}
+metadata: {name: execution-deny-all, namespace: omnicompile-execution}
 spec:
   podSelector: {}
   policyTypes: [Ingress, Egress]
@@ -46,7 +46,7 @@ spec:
 ---
 apiVersion: v1
 kind: ResourceQuota
-metadata: {name: execution-budget, namespace: gridx-execution}
+metadata: {name: execution-budget, namespace: omnicompile-execution}
 spec:
   hard:
     pods: "2"
@@ -61,7 +61,7 @@ spec:
 # A Job-create Role cannot constrain Pod specs: admission enforces this boundary.
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicy
-metadata: {name: gridx-execution-boundary}
+metadata: {name: omnicompile-execution-boundary}
 spec:
   failurePolicy: Fail
   matchConstraints:
@@ -77,15 +77,19 @@ spec:
       message: Sandbox pods must not receive Kubernetes credentials.
     - expression: "!has(object.spec.volumes) || object.spec.volumes.all(v, has(v.emptyDir) || (has(v.projected) && v.projected.sources.all(s, has(s.configMap))))"
       message: Only ephemeral workspaces and ConfigMap payloads are allowed.
+    - expression: "(!has(object.spec.initContainers) || object.spec.initContainers.all(c, has(c.resources) && has(c.resources.limits) && 'cpu' in c.resources.limits && 'memory' in c.resources.limits))"
+      message: All init containers require CPU and memory limits.
+    - expression: "!has(object.spec.ephemeralContainers) || size(object.spec.ephemeralContainers) == 0"
+      message: Ephemeral debug containers are forbidden in the execution namespace.
     - expression: "object.spec.containers.all(c, has(c.resources) && has(c.resources.limits) && 'cpu' in c.resources.limits && 'memory' in c.resources.limits)"
       message: All sandbox containers require CPU and memory limits.
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: ValidatingAdmissionPolicyBinding
-metadata: {name: gridx-execution-boundary}
+metadata: {name: omnicompile-execution-boundary}
 spec:
-  policyName: gridx-execution-boundary
+  policyName: omnicompile-execution-boundary
   validationActions: [Deny]
   matchResources:
     namespaceSelector:
-      matchLabels: {gridx.execution: sandbox}
+      matchLabels: {omnicompile.execution: sandbox}

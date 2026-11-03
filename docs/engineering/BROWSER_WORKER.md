@@ -1,7 +1,7 @@
 # OmniCompile Core browser contribution
 
 For a physical Android test when MIUI blocks automated taps, run PowerShell
-`$env:GRID_X_ANDROID_MANUAL='1'; npm run verify:android-browser` and follow the
+`$env:OMNICOMPILE_ANDROID_MANUAL='1'; npm run verify:android-browser` and follow the
 console's consent/pause/reload/resume/HOME/leave prompts. The verifier still checks
 actual coordinator state and persisted computation results; manual taps do not
 substitute for result assertions. Keep the phone unlocked. This mode does not
@@ -10,7 +10,7 @@ is not public-internet deployment evidence.
 
 Use a current Chromium browser on desktop or Android. Open the network link,
 explicitly consent, and keep the worker tab visible. The browser uses the same
-protocol v1/coordinator, HttpOnly worker cookie, task leases and result storage
+protocol v2/coordinator, HttpOnly worker cookie, task leases and result storage
 as native workers. Never copy credentials into URLs or browser storage.
 
 Supported: SHA-256, bounded digest chains, prime counting, signed integer matrix
@@ -53,8 +53,8 @@ requires a reachable public host, approved VPN or separately approved tunnel.
 Production needs a trusted HTTPS certificate and same-origin WSS. Build with
 `npm run build`; serve only `apps/web/dist`, not the project directory. The
 optional `infra/web/Caddyfile` serves the SPA and proxies `/api`/`/ws` to the
-existing host coordinator. Configure `GRID_X_DOMAIN` to your approved hostname
-and `GRID_X_WEB_ROOT` to that absolute built directory, then validate with
+existing host coordinator. Configure `OMNICOMPILE_DOMAIN` to your approved hostname
+and `OMNICOMPILE_WEB_ROOT` to that absolute built directory, then validate with
 `caddy validate --config infra/web/Caddyfile` before an approved deployment.
 
 Configure existing coordinator environment: `NODE_ENV=production`,
@@ -72,7 +72,7 @@ References: [Caddy reverse proxy](https://caddyserver.com/docs/caddyfile/directi
 
 With Docker and installed Microsoft Edge, use the repository Node 24 LTS PATH,
 then `npm run verify:browser`. For test-only local TLS termination:
-`$env:GRID_X_TEST_TLS='1'; npm run verify:browser` in PowerShell. TLS mode needs
+`$env:OMNICOMPILE_TEST_TLS='1'; npm run verify:browser` in PowerShell. TLS mode needs
 OpenSSL (Windows uses the installed Git OpenSSL). It creates one-day test keys
 only in ignored fixture storage and accepts its self-signed certificate only in
 the isolated browser context. This proves HTTPS/WSS plumbing, not public trusted

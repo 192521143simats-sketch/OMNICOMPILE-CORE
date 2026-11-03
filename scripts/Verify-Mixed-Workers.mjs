@@ -7,10 +7,10 @@ import {terminateOwnedTestProcess} from './Owned-Test-Process.mjs';
 import {startAndroidParticipant} from './Android-Fixture.mjs';
 
 const target=assertIsolatedTarget();await verifyIsolatedCoordinator(target);
-const web=process.env.GRID_X_TEST_WEB_BASE,evidence=process.env.GRID_X_TEST_EVIDENCE;
+const web=process.env.OMNICOMPILE_TEST_WEB_BASE,evidence=process.env.OMNICOMPILE_TEST_EVIDENCE;
 if(!web||!/^http:\/\/127\.0\.0\.1:\d+$/.test(web)||!evidence)throw new Error('Owned mixed web fixture required');
 const data=resolve(evidence,'mixed-windows-profile');await mkdir(data,{recursive:true});
-const includeAndroid=process.env.GRID_X_MIXED_ANDROID==='1';
+const includeAndroid=process.env.OMNICOMPILE_MIXED_ANDROID==='1';
 let cookie='',browser,desktop,desktopProcess,failure,android,androidNode,network;
 const db=await mysql.createConnection({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
 async function api(path,body,method=body?'POST':'GET'){const response=await fetch(target.base+path,{method,headers:{origin:web,...(cookie?{cookie}:{}),...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});expect(response.ok,`${path}: ${response.status}`).toBe(true);if(path==='/api/auth/login')cookie=response.headers.get('set-cookie').split(';')[0];return response.status===204?null:response.json();}
@@ -26,11 +26,11 @@ try{
   await page.goto(network.joinUrl);await page.getByRole('button',{name:'Become a Worker'}).click();await approve('BROWSER');
   const browserStatus=page.getByLabel('Worker status');await expect(browserStatus).toHaveText('AVAILABLE',{timeout:30000});
   const browserNode=(await page.locator('.browser-node code').first().textContent()).trim();
-  desktop=await _electron.launch({executablePath:resolve('.runtime/windows-worker/releases/win-unpacked/GRID-X Worker.exe'),env:{...process.env,GRID_X_WORKER_DATA_DIR:data},timeout:30000});desktopProcess=desktop.process();
+  desktop=await _electron.launch({executablePath:resolve('.runtime/windows-worker/releases/win-unpacked/OMNICOMPILE Worker.exe'),env:{...process.env,OMNICOMPILE_WORKER_DATA_DIR:data},timeout:30000});desktopProcess=desktop.process();
   const window=await desktop.firstWindow();await window.locator('#invitation').fill(network.joinUrl);await window.locator('#consent').check();await window.locator('#enroll').click();
   const nativeStatus=window.locator('#status');await approve('NATIVE');await expect(nativeStatus).toHaveText('AVAILABLE',{timeout:30000});
-  const nativeNode=(await window.evaluate(()=>window.gridx.snapshot())).nodeId;expect(nativeNode).not.toBe(browserNode);
-  await window.locator('#rotate').click();await expect(nativeStatus).toHaveText('PAUSED');await window.locator('#connect').click();await expect(nativeStatus).toHaveText('AVAILABLE',{timeout:30000});expect((await window.evaluate(()=>window.gridx.snapshot())).nodeId).toBe(nativeNode);
+  const nativeNode=(await window.evaluate(()=>window.omnicompile.snapshot())).nodeId;expect(nativeNode).not.toBe(browserNode);
+  await window.locator('#rotate').click();await expect(nativeStatus).toHaveText('PAUSED');await window.locator('#connect').click();await expect(nativeStatus).toHaveText('AVAILABLE',{timeout:30000});expect((await window.evaluate(()=>window.omnicompile.snapshot())).nodeId).toBe(nativeNode);
   await page.getByRole('button',{name:'Rotate private credential'}).click();await expect(browserStatus).toHaveText('PAUSED');await page.getByRole('button',{name:'Resume contribution'}).click();await expect(browserStatus).toHaveText('AVAILABLE',{timeout:30000});expect((await page.locator('.browser-node code').first().textContent()).trim()).toBe(browserNode);
   if(includeAndroid){
     android=await startAndroidParticipant(process.env,network.joinUrl);await approve('ANDROID');
@@ -74,7 +74,7 @@ try{
   const[attempts]=await db.execute('SELECT node_id,status FROM task_attempts WHERE task_id=? ORDER BY attempt',[interrupted.id]);expect(attempts.length).toBeGreaterThan(1);expect(attempts[0].node_id).toBe(browserNode);expect(attempts[0].status).not.toBe('COMPLETED');
   await page.getByRole('button',{name:'Resume contribution'}).click();await expect(browserStatus).toHaveText('AVAILABLE');
   await restart();await expect(browserStatus).toHaveText('AVAILABLE',{timeout:60000});await expect(nativeStatus).toHaveText('AVAILABLE',{timeout:60000});
-  expect((await window.evaluate(()=>window.gridx.snapshot())).nodeId).toBe(nativeNode);expect((await page.locator('.browser-node code').first().textContent()).trim()).toBe(browserNode);
+  expect((await window.evaluate(()=>window.omnicompile.snapshot())).nodeId).toBe(nativeNode);expect((await page.locator('.browser-node code').first().textContent()).trim()).toBe(browserNode);
   // Do not accept stale AVAILABLE labels as reconnect proof. Policy routes fresh
   // work to each platform without manually reconnecting either client.
   for(const [workerType,nodeId] of [['NATIVE',nativeNode],['BROWSER',browserNode],...(androidNode?[['ANDROID',androidNode]]:[])]){

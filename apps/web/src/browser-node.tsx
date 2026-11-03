@@ -1,9 +1,9 @@
 import React,{useEffect,useRef,useState} from "react";
-import type {CapabilityProfile,ResourceSnapshot} from "@c-optiforge/contracts";
+import type {CapabilityProfile,ResourceSnapshot} from "@omnicompile/contracts";
 import {BrowserSession,type BrowserState} from "./browser-session.js";
 import {Notice} from "./notice.js";
 import {api} from "./api.js";
-const pausePreference="gridx_browser_pause_v1";
+const pausePreference="omnicompile_browser_pause_v1";
 function rememberPause(paused:boolean){try{sessionStorage.setItem(pausePreference,paused?"1":"0");}catch{/* Storage may be disabled. In-memory pause remains authoritative. */}}
 
 export function browserProfile():CapabilityProfile{

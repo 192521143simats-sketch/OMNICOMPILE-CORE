@@ -1,7 +1,13 @@
 import {describe, expect, it} from "vitest";
-import {createOriginPolicy, trustedProxyPolicy, validateProductionEnvironment} from "./runtime-policy.js";
+import {createOriginPolicy, trustedProxyPolicy, validateProductionEnvironment,validateHeartbeatTimeouts} from "./runtime-policy.js";
 
 describe("runtime security policy", () => {
+  it("requires a strictly later offline deadline than the stale deadline",()=>{
+    expect(()=>validateHeartbeatTimeouts(15000,30000)).not.toThrow();
+    for(const pair of [[15000,15000],[30000,15000],[0,30000],[-1,30000],[15000,Infinity],[1.5,30000]]){
+      expect(()=>validateHeartbeatTimeouts(pair[0]!,pair[1]!)).toThrow(/HEARTBEAT/);
+    }
+  });
   it("rejects development destinations even when they use HTTPS in production", () => {
     const safe={nodeEnv:"production",publicBaseUrl:"https://grid.example.com",adminPasswordHash:"$argon2id$v=19$m=19456,t=2,p=1$bootstrap$hash"};
     for(const host of ["localhost","worker.localhost","grid.local","grid.internal","app.test","app.invalid","app.example","router.home.arpa","127.0.0.1","127.1","10.0.0.5","172.16.1.1","192.168.1.2","169.254.1.1","100.64.1.1","[::1]","[fc00::1]","[fe80::1]","[fec0::1]","[::192.168.1.2]","[::ffff:192.168.1.2]","[2002:c0a8:102::1]","[3fff::1]","grid.example.com:5173"]){

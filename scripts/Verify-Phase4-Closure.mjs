@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import {once} from 'node:events';
 import {resolve} from 'node:path';
 import WebSocket from 'ws';
-import {encodeProtocolMessage,parseCoordinatorMessage} from '@c-optiforge/contracts';
+import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
 import {Store} from '../apps/coordinator/src/database.ts';
 import {NetworkService} from '../apps/coordinator/src/networks.ts';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';

@@ -1,4 +1,4 @@
-import {networkPolicySchema,contributionPolicySchema,resourceSchema,type CapabilityProfile,type ResourceSnapshot,type NetworkPolicy,type ContributionPolicy} from "@c-optiforge/contracts";
+import {networkPolicySchema,contributionPolicySchema,resourceSchema,type CapabilityProfile,type ResourceSnapshot,type NetworkPolicy,type ContributionPolicy} from "@omnicompile/contracts";
 export * from "./reliability.js";
 
 export type RequiredCapability="base"|"ir"|"c"|"python"|"java";

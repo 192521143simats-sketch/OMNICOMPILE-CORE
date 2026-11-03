@@ -1,10 +1,35 @@
 # Explicit user requirement overrides
 
+## 2026-11-02 — fresh infrastructure and complete maintained-identity rename
+
+The user explicitly authorizes replacing all maintained legacy product/package/
+configuration/worker identifiers with OmniCompile identities. This supersedes
+the earlier compatibility-preservation instruction below. Windows and Android
+application IDs, browser cookies, credential stores and enrollment identifiers
+change; existing installations must install the rebuilt application and enroll
+again. Protocol v2 rejects v1 peers rather than interpreting changed IR identities
+as a compatible v1 payload. Git history and third-party dependencies are not
+rewritten. Existing actual source functionality is retained.
+
+The user confirms using genuine service images, not fabricated Docker substitutes
+for Windows/Android applications. General MYSQL on3306 remains separate. The
+omnicompile Compose project contains three services: backend, frontend, database.
+Project MySQL publishes loopback3307 and stores application data in Docker volume
+OMNICOMPILE-DATA. General3306 uses mysql-data and must not initialize the project
+database. Both use the same ignored local root password. Docker image/project
+repositories are lowercase as Docker requires. Kubernetes resources use legal
+lowercase names, are validated locally, and must not be deployed yet.
+
+Normal authenticated users have one compiler workspace, without separate Compute
+Tasks or Settings pages. Authentication, admin operations and worker consent/
+enrollment routes remain necessary. No existing distributed backend capability is
+replaced by a mock to simplify the UI.
+
 ## 2026-11-01 — OmniCompile Core and owner-scoped live indicators
 
 The product and faculty-approved research title is now **OmniCompile Core: A
 Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous
-Edge-to-Cloud Orchestration**. This supersedes GRID-X/C-OptiForge presentation,
+Edge-to-Cloud Orchestration**. This supersedes OMNICOMPILE/OmniCompile Core presentation,
 not the existing architecture or data. Retain compatibility-sensitive package,
 database, protocol, installed-app, credential, environment and path identifiers.
 Historical specifications/evidence retain their original names.

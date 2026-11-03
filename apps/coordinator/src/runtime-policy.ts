@@ -1,5 +1,11 @@
 import {isIP} from "node:net";
 
+export function validateHeartbeatTimeouts(staleMs:number,offlineMs:number):void {
+  if(!Number.isSafeInteger(staleMs)||staleMs<=0||!Number.isSafeInteger(offlineMs)||offlineMs<=staleMs){
+    throw new Error("HEARTBEAT_OFFLINE_MS must be greater than the positive integer HEARTBEAT_STALE_MS");
+  }
+}
+
 function origin(value:string):string {
   const url = new URL(value);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error("Expected an HTTP(S) origin without credentials, path or query");

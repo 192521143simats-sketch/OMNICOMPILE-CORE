@@ -7,7 +7,7 @@ Verification commands under portable Node 24.21.0:
 - `npm run verify`: exit 0, all eight workspace typechecks/builds, 64 unit tests in 23 files and 3 script tests.
 - `npm run verify:integration`: exit 0, isolated fixtures `8e6f4617b06f57fe` (migrations, InnoDB contention, protocol, platform, real C/Python/Java artifacts), `ab2ba141bb8ee3ce` (migrations/enrollment), `527810dedc77050b` (reusable admission).
 - `node scripts/Run-Isolated-Integration.mjs reusable`: exit 0, enhanced fixture `309542b1b1ae9580` additionally registers two distinct logical browser nodes from the same default link, verifies private credentials remain valid after admission closes, unauthorized link retrieval, and legacy invitations cannot bypass the toggle.
-- `npm run build --workspace @c-optiforge/web`: exit 0 after the UI review fixes.
+- `npm run build --workspace @omnicompile/web`: exit 0 after the UI review fixes.
 
 Real MySQL/API checks cover default invocation, same URL retrieved repeatedly, two concurrent consenting devices with separate credentials/enrollments/registered IDs, admin-only retrieval/toggle, revoked status/rejected acceptance, existing enrollment leave, same URL after re-invocation, concurrent admission within capacity and overflow 409, disabled network cannot reopen. Existing network/node/worker/auth/compiler regression checks remain green. Migration verification deliberately interrupts actual 0003 immediately after token backfill, reruns it and confirms the assigned default token is unchanged. Frozen 0001/0002 artifacts remain unchanged.
 
@@ -19,4 +19,4 @@ Data preservation: developer database, named volumes, `.env`, private worker cre
 
 Limits: API, persistence, migration, logical worker and actual native compiler regressions were tested; physical mobile/browser UI clicking and cross-device Wi-Fi were not tested in this turn. Web was typechecked and production-built. No Windows/Android package, device installation or public deployment was attempted or claimed. Shared admission links grant admission only after consent; keep them private and revoke when needed. Pending registrations reserve capacity for ten minutes, while the displayed count remains connected nodes only.
 
-Run: `STOP-C-OPTIFORGE.bat` then `START-C-OPTIFORGE.bat` if an older application instance is running. Open Admin → Overview → network row → **Show / copy link**. **Revoke link** blocks new enrollments and displays the expired page; **Invoke link** restores the same URL. Do not delete/reset data to apply this change.
+Run: `STOP-OMNICOMPILE.bat` then `START-OMNICOMPILE.bat` if an older application instance is running. Open Admin → Overview → network row → **Show / copy link**. **Revoke link** blocks new enrollments and displays the expired page; **Invoke link** restores the same URL. Do not delete/reset data to apply this change.

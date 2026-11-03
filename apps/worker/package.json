@@ -1,8 +1,8 @@
 {
-  "name": "@c-optiforge/worker",
+  "name": "@omnicompile/worker",
   "version": "0.1.0",
   "type": "module",
   "scripts": { "start": "tsx src/index.ts", "build": "tsc", "typecheck": "tsc --noEmit" },
-  "dependencies": { "@c-optiforge/orchestration": "*", "@c-optiforge/compiler-c": "*", "@c-optiforge/compiler-python": "*", "@c-optiforge/compiler-java": "*", "@c-optiforge/contracts": "*", "ws": "^8.18.3" },
+  "dependencies": { "@omnicompile/orchestration": "*", "@omnicompile/compiler-c": "*", "@omnicompile/compiler-python": "*", "@omnicompile/compiler-java": "*", "@omnicompile/contracts": "*", "ws": "^8.18.3" },
   "devDependencies": { "@types/node": "^24.10.0", "@types/ws": "^8.18.1", "tsx": "^4.20.6", "typescript": "^5.9.3" }
 }

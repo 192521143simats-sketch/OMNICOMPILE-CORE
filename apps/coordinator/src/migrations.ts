@@ -38,7 +38,7 @@ export function validateCompletedMigrations(plan:readonly Migration[],applied:re
 export async function applyMigrations(pool:Pool,database:string,plan:readonly Migration[],mode:'apply'|'check'='apply'):Promise<void> {
   validateMigrationPlan(plan);
   const connection=await pool.getConnection();
-  const lock=`gridx:migrations:${createHash('sha256').update(database).digest('hex').slice(0,40)}`;
+  const lock=`omnicompile:migrations:${createHash('sha256').update(database).digest('hex').slice(0,40)}`;
   let acquired=false;
   try{
     const [rows]=await connection.execute<RowDataPacket[]>('SELECT GET_LOCK(?,30) AS acquired',[lock]);
