@@ -2,9 +2,9 @@
 
 **OmniCompile Core: A Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous Edge-to-Cloud Orchestration.**
 
-All maintained application, package and worker identifiers now use OmniCompile. Protocol v2 and new Windows/Android app identities require rebuilt workers and fresh enrollment. Historical acceptance records predate this identity reset; current results must be read from the latest engineering acceptance report.
+All maintained application, package and worker identifiers now use OmniCompile. Protocol v2 and new Windows/Android app identities require rebuilt workers and fresh enrollment. See the [security policy](SECURITY.md) and [engineering status](docs/engineering/PROJECT_STATUS.md) for operating limits and verification evidence.
 
-OmniCompile Core provides authenticated administrator and user roles, reusable isolated distributed networks, consent-based browser and native workers, capability-aware scheduling, failure/retry history, and real C, Python, and Java artifact pipelines backed by one Docker-managed MySQL database.
+OmniCompile Core provides authenticated administrator and user roles, reusable isolated distributed networks, consent-based browser and native workers, capability-aware scheduling, failure/retry history, and real C, Python, and Java artifact pipelines backed by a dedicated Docker-managed MySQL database.
 
 ## Start
 
