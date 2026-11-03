@@ -2,9 +2,19 @@
 
 **OmniCompile Core: A Zero-Trust, Fault-Tolerant Distributed Compiler Pipeline for Heterogeneous Edge-to-Cloud Orchestration.**
 
-All maintained application, package and worker identifiers now use OmniCompile. Protocol v2 and new Windows/Android app identities require rebuilt workers and fresh enrollment. See the [security policy](SECURITY.md) and [engineering status](docs/engineering/PROJECT_STATUS.md) for operating limits and verification evidence.
+OmniCompile Core combines real C, Python, and Java compiler pipelines with a coordinator that assigns eligible optimization and compute tasks to heterogeneous workers. It is designed to adapt scheduling to device capabilities and recover from worker failures while keeping compilation outputs and task history traceable.
 
-OmniCompile Core provides authenticated administrator and user roles, reusable isolated distributed networks, consent-based browser and native workers, capability-aware scheduling, failure/retry history, and real C, Python, and Java artifact pipelines backed by a dedicated Docker-managed MySQL database.
+## How it works
+
+1. An administrator creates an isolated network and shares its enrollment link. Peers explicitly consent to join through a browser, Windows application, or native Android app.
+2. Workers advertise supported operations and available resources through the versioned worker protocol. Heartbeats inform the coordinator which workers are eligible for assignment.
+3. A compilation user selects a language and submits source. The language-specific pipeline analyzes the program and decomposes supported independent work into bounded tasks. Scheduling considers network membership, capabilities, resource information, and recorded performance.
+4. Workers execute authorized tasks. The coordinator checks task, worker, and attempt identity and applies task-specific result verification before aggregation. Expired or interrupted attempts can be retried within policy.
+5. The compiler produces language-specific artifacts and diagnostics. The compiler workspace presents job-scoped operational metrics separately from the downloadable build report.
+
+Browser and Android workers handle supported portable workloads. Native toolchain work requires a compatible environment. Distribution applies to eligible tasks, while dependent work and final artifact generation follow the language pipeline. Hosted Kubernetes operation and hostile-code isolation have separate acceptance gates.
+
+Workers built for older protocol versions must be rebuilt and re-enrolled. See the [master build specification](OMNICOMPILE_MASTER_BUILD_SPEC.md), [security policy](SECURITY.md), and [engineering status](docs/engineering/PROJECT_STATUS.md) for requirements, operating limits, and verification evidence.
 
 ## Start
 
