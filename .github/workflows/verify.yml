@@ -32,7 +32,12 @@ jobs:
       - run: npm audit --omit=dev --audit-level=high
   deployment:
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
+    env:
+      MYSQL_ROOT_PASSWORD: ci-ephemeral-database-only
+      ADMIN_USERNAME: admin
+      ADMIN_PASSWORD: CI-Ephemeral-Admin!4726
+      PUBLIC_BASE_URL: http://localhost:5173
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -54,8 +59,20 @@ jobs:
           MYSQL_ROOT_PASSWORD: ci-ephemeral-placeholder
           ADMIN_PASSWORD: ci-ephemeral-placeholder
         run: docker compose config --quiet
-      - run: docker build -f infra/containers/coordinator.Dockerfile -t be-omnicompile-coordinator:local .
-      - run: docker build -f infra/containers/web.Dockerfile -t fe-omnicompile-frontend:local .
+      - run: npm ci
+      - name: Prepare ephemeral container secrets
+        run: |
+          mkdir -p .runtime/cloud-workers .runtime/distribution
+          openssl rand -hex 32 > .runtime/compiler-service.token
+          touch .runtime/cloud-workers/c.credential .runtime/cloud-workers/python.credential .runtime/cloud-workers/java.credential
+      - run: docker compose build
       - run: docker pull mysql:8.4
+      - run: docker tag mysql:8.4 omnicompile-mysql:8.4
       - run: node infra/containers/Verify-Images.mjs
+      - run: docker compose up -d --wait --wait-timeout 240
+      - run: node scripts/Provision-Cloud-Workers.mjs
+      - run: docker compose restart omnicompile-c-worker omnicompile-python-worker omnicompile-java-worker
+      - run: node scripts/Verify-Docker-Compilers.mjs
+      - if: always()
+        run: docker compose stop
       # No registry publishing, infrastructure creation or deployment is performed.

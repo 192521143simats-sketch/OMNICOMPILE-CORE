@@ -84,6 +84,15 @@
         "OMNICOMPILE_METRICS.md",
         "PROJECT_STATUS.md"
       ]
+    },
+    {
+      "id": "U:20261106:docker-language-workers",
+      "requirement": "Approved six-service Docker layout, separate C/Python/Java toolchains and scoped native workers, compiler routing, filesystem restrictions and preserved MySQL data; Kubernetes preparation only",
+      "status": "VERIFIED_LOCAL",
+      "implementation": "docker-compose.yml; compiler service/router; native worker capability profiles; Linux filesystem wrapper; scoped provisioning and cold volume migration",
+      "evidence": [
+        "docs/engineering/DOCKER_LANGUAGE_ACCEPTANCE_2026-11-06.md"
+      ]
     }
   ],
   "sourceSha256": "868f7b8e9c52c6ac8fde0309e146d64b38254471c51b99b3bfa6539005419b34",
@@ -388,7 +397,7 @@
       "line": 38,
       "text": "Phase 1 — Runtime and dependency stability: B:11–13, B:20 Phase 1; A:6, A:40–46, A:71, A:74–79, A:91. Safe MySQL configuration, dependency remediation, toolchain readiness, reproducible startup, environment separation.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -400,7 +409,7 @@
       "line": 40,
       "text": "Phase 2 — Architecture and contracts: B:3, B:6, B:20 Phase 2; A:7–10, A:16–24, A:43, A:46–49, A:51–52, A:66–67, A:99; A:86 Sprints 1–2. Versioned protocol, identity, enrollment, task/attempt states, capability negotiation, database evolution, authorization, error contracts.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -424,7 +433,7 @@
       "line": 44,
       "text": "Phase 4 — Coordinator, MySQL, and fault tolerance: B:6, B:11–12, B:20 Phase 4; A:16–24, A:29, A:43–49, A:57, A:59, A:64–69, A:77–79; A:86 Sprints 5–8. Network policies, mobile-aware scheduling, explainable decisions, immutable attempts, reliability, result validation, allow-listed generic/portable workloads, recovery.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -498,7 +507,7 @@
       "line": 56,
       "text": "Phase 10 — Security, CI, and operations: B:11–12, B:15–18, B:20 Phase 10; A:40–49, A:55–60, A:63–79, A:88–93; A:86 Sprints 10–12. Threat model, isolation, supply chain, dependency/secret/container scans, SBOM, auditing, health/readiness, backups, actual restore, retention, integration CI.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -696,7 +705,7 @@
       "line": 82,
       "text": "R07 — MySQL authority: differing exception language.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -708,7 +717,7 @@
       "line": 83,
       "text": "A:6 and A:46 require MySQL and forbid competing active architectures; B:3 permits reconsideration only if inspection proves it cannot meet a documented requirement, while B:11 reaffirms MySQL. Resolution: MySQL remains mandatory and authoritative for this product. Record any demonstrated fundamental incompatibility as an architectural blocker and proposed change; do not introduce a silent SQLite or in-memory fallback. Do not silently treat a database switch as satisfying the specification.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -720,7 +729,7 @@
       "line": 85,
       "text": "R08 — SQLite cleanup versus data protection: apply safety to the earlier cleanup instruction.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -852,7 +861,7 @@
       "line": 101,
       "text": "A:70, A:75–76, A:86, A:97 and A:100 require production/release work. B:0, B:14.4 and B:17 explicitly require approval for production publishing, sensitive infrastructure/account changes, paid services, real email, and irreversible/destructive actions. Resolution: fully prepare and verify reviewable packages, deployment configuration, migrations, rollback and checks first. Obtain required approval for the concrete external action as the final step. Do not treat a build request as blanket production-publishing authority. A production deployment gate remains pending until authorized execution and verification occur.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -1656,7 +1665,7 @@
       "line": 185,
       "text": "A:46 — DATABASE",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -2028,7 +2037,7 @@
       "line": 216,
       "text": "A:77 — BACKUP AND RECOVERY",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -2448,7 +2457,7 @@
       "line": 252,
       "text": "B:11 — MYSQL, DATA MODEL, AND DATABASE RELIABILITY",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -2808,7 +2817,7 @@
       "line": 296,
       "text": "→ database",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4296,7 +4305,7 @@
       "line": 464,
       "text": "5. Inspect database schema/migrations.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4452,7 +4461,7 @@
       "line": 477,
       "text": "18. Create a migration plan.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4524,7 +4533,7 @@
       "line": 489,
       "text": "Remove stale SQLite artifacts and contradictory references if they are no longer used.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4536,7 +4545,7 @@
       "line": 491,
       "text": "The active database architecture must be:",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4548,7 +4557,7 @@
       "line": 493,
       "text": "MySQL",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4560,7 +4569,7 @@
       "line": 494,
       "text": "→ authoritative persistent database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4572,7 +4581,7 @@
       "line": 496,
       "text": "Do not maintain two competing database architectures.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4608,7 +4617,7 @@
       "line": 500,
       "text": "and associated SQLite artifacts if confirmed unused.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -4620,7 +4629,7 @@
       "line": 502,
       "text": "Update documentation so it consistently describes MySQL.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -5232,7 +5241,7 @@
       "line": 559,
       "text": "+-- Database",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -9696,7 +9705,7 @@
       "line": 1075,
       "text": "Every database query must include appropriate network/user ownership filtering.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -16972,7 +16981,7 @@
       "line": 1916,
       "text": "mysql",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -17152,7 +17161,7 @@
       "line": 1937,
       "text": "Database persistence must survive application restart.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -17176,7 +17185,7 @@
       "line": 1941,
       "text": "# 46. DATABASE",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -17188,7 +17197,7 @@
       "line": 1943,
       "text": "MySQL is authoritative.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -17540,7 +17549,7 @@
       "line": 1979,
       "text": "Current MySQL-backed artifacts may remain for the current product scale.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -17588,7 +17597,7 @@
       "line": 1987,
       "text": "MySQLArtifactStore",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -19306,7 +19315,7 @@
       "line": 2198,
       "text": "database tests",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -19462,7 +19471,7 @@
       "line": 2211,
       "text": "migration tests",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -20014,7 +20023,7 @@
       "line": 2281,
       "text": "MySQL restarts.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -20878,7 +20887,7 @@
       "line": 2376,
       "text": "database load",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -23362,7 +23371,7 @@
       "line": 2663,
       "text": "DATABASE",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -23856,7 +23865,7 @@
       "line": 2722,
       "text": "→ MySQL",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24060,7 +24069,7 @@
       "line": 2752,
       "text": "# 77. BACKUP AND RECOVERY",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24072,7 +24081,7 @@
       "line": 2754,
       "text": "Database:",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24084,7 +24093,7 @@
       "line": 2756,
       "text": "scheduled backup",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24108,7 +24117,7 @@
       "line": 2758,
       "text": "restore test.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24132,7 +24141,7 @@
       "line": 2762,
       "text": "backup strategy",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24192,7 +24201,7 @@
       "line": 2770,
       "text": "Perform an actual restore test.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24240,7 +24249,7 @@
       "line": 2778,
       "text": "database loss",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24348,7 +24357,7 @@
       "line": 2789,
       "text": "backup frequency",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -24360,7 +24369,7 @@
       "line": 2790,
       "text": "restore procedure.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -26496,7 +26505,7 @@
       "line": 3039,
       "text": "database migration.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -26976,7 +26985,7 @@
       "line": 3099,
       "text": "[ ] Database complete",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -27708,7 +27717,7 @@
       "line": 3180,
       "text": "MySQL",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -28380,7 +28389,7 @@
       "line": 3260,
       "text": "database:",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -28680,7 +28689,7 @@
       "line": 3293,
       "text": "5. Implement database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -28956,7 +28965,7 @@
       "line": 3325,
       "text": "for live MySQL/coordinator/worker integration.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -29076,7 +29085,7 @@
       "line": 3344,
       "text": "[ ] database migration",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -29328,7 +29337,7 @@
       "line": 3365,
       "text": "[ ] database backup",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -29340,7 +29349,7 @@
       "line": 3366,
       "text": "[ ] restore test",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -30360,7 +30369,7 @@
       "line": 3484,
       "text": "Do NOT remove working functionality without a justified migration.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -31128,7 +31137,7 @@
       "line": 3572,
       "text": "5. Do not mark a feature complete because its screen, API route, class, or database table exists.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -31200,7 +31209,7 @@
       "line": 3578,
       "text": "11. Do not overwrite environment configuration, delete databases, remove user data, reset volumes, force-push Git history, or perform destructive cleanup without explicit authorization.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -31536,7 +31545,7 @@
       "line": 3615,
       "text": "- MySQL schema, migrations or schema initialization, persistence, transactions, and recovery logic.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -31800,7 +31809,7 @@
       "line": 3644,
       "text": "Do not start the coordinator or run verification scripts that modify application records until you have inspected their effects and confirmed the target database and existing data are safe.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -32388,7 +32397,7 @@
       "line": 3717,
       "text": "- Migration implications.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -33986,7 +33995,7 @@
       "line": 3889,
       "text": "Use the existing MySQL implementation as the authoritative database unless inspection proves that it cannot meet a documented requirement.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -40723,7 +40732,7 @@
       "line": 4659,
       "text": "- Database and service health.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -40963,7 +40972,7 @@
       "line": 4690,
       "text": "# 11. MYSQL, DATA MODEL, AND DATABASE RELIABILITY",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -40975,7 +40984,7 @@
       "line": 4692,
       "text": "MySQL is the authoritative persistent data store for the completed deployment. Preserve the existing MySQL implementation and improve it where needed.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -40987,7 +40996,7 @@
       "line": 4694,
       "text": "Do not introduce SQLite as a silent production fallback.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -40999,7 +41008,7 @@
       "line": 4696,
       "text": "## 11.1 Schema and migrations",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41035,7 +41044,7 @@
       "line": 4702,
       "text": "Define appropriate relationships, constraints, indexes, and migration procedures for:",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41191,7 +41200,7 @@
       "line": 4719,
       "text": "## 11.2 Safe database behavior",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41203,7 +41212,7 @@
       "line": 4721,
       "text": "Before any operation that may alter the database:",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41215,7 +41224,7 @@
       "line": 4723,
       "text": "1. Identify the actual database target.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41251,7 +41260,7 @@
       "line": 4726,
       "text": "4. Identify the migration or mutation being performed.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41263,7 +41272,7 @@
       "line": 4727,
       "text": "5. Create and verify a backup when required.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41311,7 +41320,7 @@
       "line": 4732,
       "text": "Never reset the database to empty, remove a Docker volume, or drop existing records as part of routine setup.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41323,7 +41332,7 @@
       "line": 4734,
       "text": "Development and test databases must be isolated from production data.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41359,7 +41368,7 @@
       "line": 4740,
       "text": "- Database connection failure.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41371,7 +41380,7 @@
       "line": 4741,
       "text": "- Database reconnection.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41407,7 +41416,7 @@
       "line": 4744,
       "text": "- Schema migration.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41467,7 +41476,7 @@
       "line": 4749,
       "text": "- Backup and restore.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41479,7 +41488,7 @@
       "line": 4751,
       "text": "Document the supported backup and restoration process.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41491,7 +41500,7 @@
       "line": 4753,
       "text": "A backup procedure is not complete until a restoration test has succeeded in a safe environment.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -41935,7 +41944,7 @@
       "line": 4808,
       "text": "- Database credentials.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -42067,7 +42076,7 @@
       "line": 4822,
       "text": "Use least-privilege database and service accounts.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -42813,7 +42822,7 @@
       "line": 4921,
       "text": "5. The required MySQL service starts or is verified as running.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -42825,7 +42834,7 @@
       "line": 4922,
       "text": "6. The coordinator starts after database readiness is established.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -42921,7 +42930,7 @@
       "line": 4934,
       "text": "If Docker is unavailable, explain the exact issue and the appropriate recovery action. Do not silently replace MySQL with an in-memory database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -42993,7 +43002,7 @@
       "line": 4943,
       "text": "- Database readiness checks.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43125,7 +43134,7 @@
       "line": 4957,
       "text": "Do not automatically reset databases or delete build artifacts, configuration files, or user data during startup.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43245,7 +43254,7 @@
       "line": 4975,
       "text": "- MySQL.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43317,7 +43326,7 @@
       "line": 4981,
       "text": "- Database migrations.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43365,7 +43374,7 @@
       "line": 4985,
       "text": "- Backups.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43449,7 +43458,7 @@
       "line": 4995,
       "text": "Do not assume that Vercel is already configured or that it automatically provides a suitable persistent coordinator runtime or database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43509,7 +43518,7 @@
       "line": 5005,
       "text": "## 14.2 Database deployment",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43533,7 +43542,7 @@
       "line": 5009,
       "text": "- Supported MySQL version.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43569,7 +43578,7 @@
       "line": 5012,
       "text": "- Migration process.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43581,7 +43590,7 @@
       "line": 5013,
       "text": "- Backup schedule.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43593,7 +43602,7 @@
       "line": 5014,
       "text": "- Restore process.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43653,7 +43662,7 @@
       "line": 5020,
       "text": "Do not expose the database publicly unless a documented and appropriately protected architecture requires it.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -43881,7 +43890,7 @@
       "line": 5054,
       "text": "- Database health.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -44553,7 +44562,7 @@
       "line": 5130,
       "text": "## 16.3 Database and API integration tests",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -44565,7 +44574,7 @@
       "line": 5132,
       "text": "Test against an isolated MySQL test database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -44757,7 +44766,7 @@
       "line": 5150,
       "text": "- Database interruption.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -44805,7 +44814,7 @@
       "line": 5155,
       "text": "Do not run destructive tests against a valuable development database or production database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -45909,7 +45918,7 @@
       "line": 5282,
       "text": "Add MySQL integration tests and browser end-to-end tests using isolated CI services where feasible.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -46317,7 +46326,7 @@
       "line": 5344,
       "text": "Do not assume the coordinator, persistent MySQL database, or native workers can be hosted by the same deployment platform without verifying its runtime capabilities.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -46593,7 +46602,7 @@
       "line": 5384,
       "text": "7. Database configuration and migrations.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -46749,7 +46758,7 @@
       "line": 5397,
       "text": "20. Backup and recovery guide.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -47049,7 +47058,7 @@
       "line": 5433,
       "text": "- Verify MySQL configuration safely.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -47061,7 +47070,7 @@
       "line": 5434,
       "text": "- Confirm that the coordinator can connect to the intended database.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -47133,7 +47142,7 @@
       "line": 5441,
       "text": "Do not delete existing database data to make this phase pass.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -47243,7 +47252,7 @@
       "line": 5453,
       "text": "- Add appropriate schema migrations.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -48270,7 +48279,7 @@
       "line": 5551,
       "text": "- Database interruption.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -48438,7 +48447,7 @@
       "line": 5569,
       "text": "- Verify database backup and restoration.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -48594,7 +48603,7 @@
       "line": 5585,
       "text": "- Verify migration and rollback procedures.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -49218,7 +49227,7 @@
       "line": 5657,
       "text": "2. Verify Docker and MySQL readiness.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -49986,7 +49995,7 @@
       "line": 5735,
       "text": "7. Verify backup restoration in a safe environment.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -50166,7 +50175,7 @@
       "line": 5754,
       "text": "11. A documented MySQL schema and migration process.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -50310,7 +50319,7 @@
       "line": 5766,
       "text": "23. Backup, restore, upgrade, and rollback procedures.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },
@@ -50670,7 +50679,7 @@
       "line": 5815,
       "text": "- Current Docker and MySQL readiness.",
       "status": "NOT_STARTED",
-      "implementation": "apps/coordinator/src/database.ts; compose.yaml; scripts/",
+      "implementation": "apps/coordinator/src/database.ts; docker-compose.yml; scripts/",
       "verification": "isolated MySQL migration/backup/restore integration",
       "evidence": []
     },

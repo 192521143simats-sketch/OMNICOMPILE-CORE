@@ -17,7 +17,7 @@ const areas = [
   [/password|authentication|login|session|csrf|rbac/i, 'apps/coordinator/src/auth.ts; apps/coordinator/src/server.ts', 'auth/API security integration'],
   [/android|apk|aab|compose|workmanager|thermal/i, 'apps/android-worker (required; absent at baseline)', 'Android unit, instrumentation, physical-device acceptance'],
   [/windows|installer|uninstall|desktop application|signing/i, 'apps/windows-worker (required; absent at baseline)', 'packaging, signature, clean Windows install/upgrade/uninstall'],
-  [/mysql|database|migration|backup|restore|sqlite/i, 'apps/coordinator/src/database.ts; compose.yaml; scripts/', 'isolated MySQL migration/backup/restore integration'],
+  [/mysql|database|migration|backup|restore|sqlite/i, 'apps/coordinator/src/database.ts; docker-compose.yml; scripts/', 'isolated MySQL migration/backup/restore integration'],
   [/compiler|compilation|artifact|gcc|javac|python|semantic|optimization/i, 'packages/compiler-c; packages/compiler-python; packages/compiler-java; apps/coordinator', 'compiler semantic differential tests and authorized artifact integration'],
   [/network|enrollment|invitation|credential|identity/i, 'apps/coordinator/src/networks.ts; packages/contracts', 'atomic invitation, identity and network-isolation integration'],
   [/task|scheduler|worker|heartbeat|protocol|lease|retry|cancel/i, 'packages/contracts; packages/orchestration; apps/coordinator; apps/worker; apps/web/src/browser-worker.ts', 'protocol, lifecycle, correctness and failure integration'],

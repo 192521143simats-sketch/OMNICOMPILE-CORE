@@ -17,7 +17,10 @@ export async function runOwnedProcess<T>(entry:URL,payload:unknown,options:{sign
   try{
     options.signal?.throwIfAborted();
     const source=entry.pathname.endsWith('.ts');
-    const child=fork(entry,[],{env,windowsHide:true,detached:process.platform!=='win32',execArgv:source?['--import','tsx']:process.execArgv,stdio:['ignore','ignore','ignore','ipc']});
+    const sandbox=process.env.OMNICOMPILE_COMPILER_SANDBOX_EXECUTABLE;
+    if(sandbox&&process.platform!=='linux')throw new Error('Configured compiler filesystem sandbox requires Linux');
+    const nodeArguments=source?['--import','tsx']:process.execArgv;
+    const child=fork(entry,[],{env,windowsHide:true,detached:process.platform!=='win32',...(sandbox?{execPath:sandbox}:{}),execArgv:sandbox?[process.execPath,...nodeArguments]:nodeArguments,stdio:['ignore','ignore','ignore','ipc']});
     return await new Promise((resolve,reject)=>{
       let result:{result:T;executionTimeMs:number}|undefined,failure:Error|undefined,aborted=false,killing:Promise<void>|undefined;
       const abortError=()=>new DOMException('Task execution cancelled','AbortError');

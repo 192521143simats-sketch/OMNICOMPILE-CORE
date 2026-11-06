@@ -5,8 +5,8 @@ import assert from 'node:assert/strict';
 const instance=randomBytes(8).toString('hex'),prefix=`omnicompile-image-${instance}`;
 const network=prefix,db=`${prefix}-mysql`,api=`${prefix}-api`,web=`${prefix}-web`;
 const owned=[];let networkCreated=false;
-const coordinatorImage=process.env.OMNICOMPILE_COORDINATOR_IMAGE??'be-omnicompile-coordinator:local';
-const webImage=process.env.OMNICOMPILE_WEB_IMAGE??'fe-omnicompile-frontend:local';
+const coordinatorImage=process.env.OMNICOMPILE_COORDINATOR_IMAGE??'omnicompile-coordinator:local';
+const webImage=process.env.OMNICOMPILE_WEB_IMAGE??'omnicompile-frontend:local';
 const env={...process.env,MYSQL_ROOT_PASSWORD:randomBytes(32).toString('hex'),MYSQL_DATABASE:`omnicompile_test_${instance}`,MYSQL_USER:'omnicompile_test',MYSQL_PASSWORD:randomBytes(32).toString('hex'),ADMIN_PASSWORD:randomBytes(32).toString('hex')};
 Object.assign(env,{DB_HOST:db,DB_PORT:'3306',DB_NAME:env.MYSQL_DATABASE,DB_USER:env.MYSQL_USER,DB_PASSWORD:env.MYSQL_PASSWORD});
 env.MYSQL_PWD=env.MYSQL_PASSWORD;
@@ -24,10 +24,9 @@ try{
  create(api,['--read-only','--tmpfs','/tmp:rw,nosuid,size=512m,mode=1777','--cap-drop','ALL','--security-opt','no-new-privileges','--network-alias','coordinator','--memory','768m','--publish','127.0.0.1::4211',...dbEnv,'--env','ADMIN_PASSWORD','--env','ADMIN_USERNAME=image-admin','--env','NODE_ENV=development','--env','HOST=0.0.0.0','--env','PORT=4211','--env',`OMNICOMPILE_TEST_INSTANCE=${instance}`,'--env','OMNICOMPILE_MIGRATION_MODE=check','--env','OMNICOMPILE_EXECUTION_MODE=disabled','--env','PUBLIC_BASE_URL=http://localhost:5173',coordinatorImage]);
  const port=Number(docker(['port',api,'4211/tcp']).split(':').at(-1));const base=`http://127.0.0.1:${port}`;
  await wait(async()=>{const response=await fetch(base+'/ready',{signal:AbortSignal.timeout(3000)});assert.equal(response.status,200);assert.equal((await response.json()).testInstance,instance);},'container coordinator readiness');
- // Compile real newer-language syntax in a disposable container temp directory.
- // This catches worker/verifier toolchain drift without touching project files.
- const compilerProbe=`const fs=require('node:fs'),os=require('node:os'),path=require('node:path'),{spawnSync}=require('node:child_process');const root=fs.mkdtempSync(path.join(os.tmpdir(),'omni-toolchain-'));function run(command,args){const result=spawnSync(command,args,{encoding:'utf8',timeout:30000});if(result.error||result.status!==0)throw new Error(command+' failed: '+String(result.stderr));return(result.stdout+result.stderr).trim();}try{const versions={node:process.version,python:run('python',['--version']),java:run('javac',['--version']),gcc:run('gcc',['-dumpfullversion'])};if(!/^Python 3\\.14\\./.test(versions.python)||!/^javac 21\\./.test(versions.java))throw new Error('Coordinator toolchain generation mismatch');fs.writeFileSync(path.join(root,'Syntax21.java'),'record Point(int x, int y) {} class Syntax21 { static int total(Object value) { return switch(value) { case Point(int x, int y) -> x + y; default -> 0; }; } }');run('javac',[path.join(root,'Syntax21.java')]);fs.writeFileSync(path.join(root,'syntax.py'),'type Coordinates = tuple[int, int]\\n');run('python',['-m','py_compile',path.join(root,'syntax.py')]);console.log(JSON.stringify({...versions,javaRecordPattern:true,pythonTypeAlias:true}));}finally{fs.rmSync(root,{recursive:true,force:true});}`;
- const toolchains=JSON.parse(docker(['exec',api,'node','-e',compilerProbe]));
+ // The coordinator must stay free of native compiler toolchains.
+ const toolchains=docker(['exec',api,'sh','-c','for tool in gcc g++ python python3 javac java; do if command -v "$tool" >/dev/null; then exit 1; fi; done; echo compiler-toolchains-absent']);
+ assert.equal(toolchains,'compiler-toolchains-absent');
  async function post(path,body,cookie){return fetch(base+path,{method:'POST',signal:AbortSignal.timeout(10000),headers:{origin:'http://localhost:5173','content-type':'application/json',...(cookie?{cookie}:{})},body:JSON.stringify(body)});}
  const login=await post('/api/auth/login',{identifier:'image-admin',password:env.ADMIN_PASSWORD});assert.equal(login.status,200);const cookie=login.headers.get('set-cookie').split(';')[0];
  assert.equal((await fetch(base+'/version',{signal:AbortSignal.timeout(5000)}).then(response=>response.json())).application,'OmniCompile Core');

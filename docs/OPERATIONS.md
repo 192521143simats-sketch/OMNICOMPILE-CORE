@@ -2,7 +2,7 @@
 
 Run `START-OMNICOMPILE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
 
-Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `OMNICOMPILE-DATA` or stopping general-purpose `MYSQL`.
+Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `omnicompile-data` or stopping general-purpose `MYSQL`.
 
 ## Environment
 
@@ -13,7 +13,7 @@ Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without 
 - `SESSION_TTL_HOURS`, `RESET_TTL_MINUTES`
 - `HEARTBEAT_STALE_MS`, `HEARTBEAT_OFFLINE_MS`, `TASK_TIMEOUT_MS`
 
-Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coordinator uses `database:3306`. Project container `OMNICOMPILE-DATA` stores schema `omnicompile` in volume `OMNICOMPILE-DATA`. General-purpose `MYSQL` uses `127.0.0.1:3306` and volume `mysql-data`. Keep secrets in the ignored local environment or Kubernetes Secret references.
+Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coordinator uses `omnicompile-mysql:3306`. Project container `omnicompile-mysql` stores schema `omnicompile` in volume `omnicompile-data`. General-purpose `MYSQL` uses `127.0.0.1:3306` and volume `mysql-data`. Keep secrets in the ignored local environment or Kubernetes Secret references.
 
 ## Full container startup and verification
 
@@ -55,3 +55,7 @@ Kubernetes rendering and official-schema checks are described in
 - Security/build gate: `npm run verify`, `npm run verify:platform`, `npm audit`.
 
 Do not use `docker compose down -v` unless permanent database deletion is explicitly intended.
+
+## Separate Docker language workers
+
+See [Docker deployment](../infra/containers/README.md) for the approved six services, retained-volume migration, scoped enrollment and compiler filesystem restrictions. General MYSQL is independently managed. The coordinator routes native verification to the matching internal language service. Run node scripts/Verify-Docker-Compilers.mjs for isolated schema and actual three-language Docker acceptance.

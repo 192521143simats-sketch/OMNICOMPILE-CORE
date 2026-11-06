@@ -20,7 +20,11 @@ data:
   ALLOWED_ORIGINS: https://omnicompile.example.invalid
   # Replace with the actual ingress-controller source CIDR; never use true.
   TRUSTED_PROXIES: ""
-  DB_HOST: mysql
+  OMNICOMPILE_C_COMPILER_URL: http://omnicompile-c-worker:4101
+  OMNICOMPILE_PYTHON_COMPILER_URL: http://omnicompile-python-worker:4101
+  OMNICOMPILE_JAVA_COMPILER_URL: http://omnicompile-java-worker:4101
+  OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+  DB_HOST: omnicompile-mysql
   DB_PORT: "3306"
   DB_NAME: omnicompile
   DB_USER: omnicompile
@@ -36,34 +40,34 @@ data:
 apiVersion: v1
 kind: Service
 metadata:
-  name: mysql
+  name: omnicompile-mysql
   namespace: omnicompile
 spec:
   clusterIP: None
-  selector: {app: mysql}
+  selector: {app: omnicompile-mysql}
   ports:
-    - {port: 3306, targetPort: 3306, name: mysql}
+    - {port: 3306, targetPort: 3306, name: omnicompile-mysql}
 ---
 apiVersion: apps/v1
 kind: StatefulSet
 metadata:
-  name: mysql
+  name: omnicompile-mysql
   namespace: omnicompile
 spec:
-  serviceName: mysql
+  serviceName: omnicompile-mysql
   replicas: 1
   selector:
-    matchLabels: {app: mysql}
+    matchLabels: {app: omnicompile-mysql}
   template:
     metadata:
-      labels: {app: mysql}
+      labels: {app: omnicompile-mysql}
     spec:
       automountServiceAccountToken: false
       terminationGracePeriodSeconds: 60
       containers:
-        - name: mysql
-          image: db-omnicompile-database:8.4
-          ports: [{containerPort: 3306, name: mysql}]
+        - name: omnicompile-mysql
+          image: omnicompile-mysql:8.4
+          ports: [{containerPort: 3306, name: omnicompile-mysql}]
           env:
             - {name: MYSQL_DATABASE, value: omnicompile}
             - {name: MYSQL_USER, value: omnicompile}
@@ -97,25 +101,25 @@ spec:
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: coordinator
+  name: omnicompile-coordinator
   namespace: omnicompile
 spec:
   # Connection ownership is process-local: do not scale until HA is implemented.
   replicas: 1
   strategy: {type: Recreate}
   selector:
-    matchLabels: {app: coordinator}
+    matchLabels: {app: omnicompile-coordinator}
   template:
     metadata:
-      labels: {app: coordinator}
+      labels: {app: omnicompile-coordinator}
     spec:
       serviceAccountName: omnicompile-coordinator
       automountServiceAccountToken: true
       terminationGracePeriodSeconds: 60
       securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
       containers:
-        - name: coordinator
-          image: be-omnicompile-coordinator:local
+        - name: omnicompile-coordinator
+          image: omnicompile-coordinator:local
           command: [node, --import, tsx, apps/coordinator/src/server.ts]
           ports: [{containerPort: 4100, name: http}]
           envFrom:
@@ -137,6 +141,7 @@ spec:
             limits: {cpu: "1", memory: 2Gi}
           volumeMounts:
             - {name: temporary-work, mountPath: /tmp}
+            - {name: compiler-token, mountPath: /run/secrets/compiler-token, subPath: token, readOnly: true}
           startupProbe:
             httpGet: {path: /ready, port: http}
             periodSeconds: 5
@@ -151,37 +156,41 @@ spec:
             periodSeconds: 15
             failureThreshold: 6
       volumes:
+        - name: compiler-token
+          secret: {secretName: omnicompile-compiler, defaultMode: 288}
         - name: temporary-work
           emptyDir: {medium: Memory, sizeLimit: 512Mi}
 ---
 apiVersion: v1
 kind: Service
 metadata:
-  name: coordinator
+  name: omnicompile-coordinator
   namespace: omnicompile
 spec:
-  selector: {app: coordinator}
+  selector: {app: omnicompile-coordinator}
   ports: [{port: 4100, targetPort: http, name: http}]
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: web
+  name: omnicompile-frontend
   namespace: omnicompile
 spec:
   replicas: 1
   selector:
-    matchLabels: {app: web}
+    matchLabels: {app: omnicompile-frontend}
   template:
     metadata:
-      labels: {app: web}
+      labels: {app: omnicompile-frontend}
     spec:
       automountServiceAccountToken: false
       securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101}
       containers:
-        - name: web
-          image: fe-omnicompile-frontend:local
+        - name: omnicompile-frontend
+          image: omnicompile-frontend:local
           ports: [{containerPort: 8080, name: http}]
+          env:
+            - {name: COORDINATOR_UPSTREAM, value: "omnicompile-coordinator:4100"}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}
@@ -197,10 +206,10 @@ spec:
 apiVersion: v1
 kind: Service
 metadata:
-  name: web
+  name: omnicompile-frontend
   namespace: omnicompile
 spec:
-  selector: {app: web}
+  selector: {app: omnicompile-frontend}
   ports: [{port: 8080, targetPort: http, name: http}]
 ---
 apiVersion: networking.k8s.io/v1
@@ -223,27 +232,27 @@ spec:
         paths:
           - path: /api
             pathType: Prefix
-            backend: {service: {name: coordinator, port: {number: 4100}}}
+            backend: {service: {name: omnicompile-coordinator, port: {number: 4100}}}
           - path: /ws
             pathType: Prefix
-            backend: {service: {name: coordinator, port: {number: 4100}}}
+            backend: {service: {name: omnicompile-coordinator, port: {number: 4100}}}
           - path: /
             pathType: Prefix
-            backend: {service: {name: web, port: {number: 8080}}}
+            backend: {service: {name: omnicompile-frontend, port: {number: 8080}}}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
-  name: mysql-internal-only
+  name: omnicompile-mysql-internal-only
   namespace: omnicompile
 spec:
   podSelector:
-    matchLabels: {app: mysql}
+    matchLabels: {app: omnicompile-mysql}
   policyTypes: [Ingress]
   ingress:
     - from:
         - podSelector:
-            matchLabels: {app: coordinator}
+            matchLabels: {app: omnicompile-coordinator}
         - podSelector:
             matchLabels: {app: migration}
       ports: [{protocol: TCP, port: 3306}]

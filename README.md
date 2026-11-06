@@ -18,7 +18,7 @@ Workers built for older protocol versions must be rebuilt and re-enrolled. See t
 
 ## Start
 
-Requirements: Node.js 22+, npm 10+, Docker Desktop, GCC, CPython 3, and JDK 21 for native Java workers. The browser-worker path requires only a modern browser and cannot provide native compiler toolchains.
+Requirements for Docker startup are Docker Desktop and Node.js 22+ for environment preparation and scoped worker provisioning. The language containers provide GCC/G++, Python and JDK 21. Clients need no installed compiler to submit jobs. Optional native execution on a Windows peer still requires its advertised local toolchain.
 
 ```bat
 START-OMNICOMPILE.bat
@@ -34,48 +34,24 @@ Users select only the language and supply a source filename plus pasted or uploa
 STOP-OMNICOMPILE.bat
 ```
 
-Shutdown preserves the project `OMNICOMPILE-DATA` volume and leaves general MYSQL running. Never use `docker compose down -v` during normal operation.
+Shutdown preserves the project `omnicompile-data` volume and leaves general MYSQL running. Never use `docker compose down -v` during normal operation.
 
 ### Docker layout
 
-`START-OMNICOMPILE.bat` starts Docker if needed, reuses/starts the independent
-`MYSQL` database, builds the genuine service images, and waits for the complete
-application. No Windows/Android application is replaced by a Docker container.
+The authoritative configuration is docker-compose.yml. Startup manages six project services on omnicompile-network.
 
-| Docker entry | Container(s) | Published endpoint | Persistent storage |
-|---|---|---|---|
-| General database | `MYSQL` | `127.0.0.1:3306` | `mysql-data` |
-| `omnicompile` Compose group | `OMNICOMPILE-BACKEND` | `4100` | MySQL-backed state |
-| Same group | `OMNICOMPILE-FRONTEND` | `5173` | Built static application |
-| Same group | `OMNICOMPILE-DATA` | `127.0.0.1:3307` | `OMNICOMPILE-DATA` |
+| Service | Responsibility | Host endpoint |
+|---|---|---|
+| omnicompile-coordinator | API, scheduling, authentication and verification routing | 4100 |
+| omnicompile-frontend | Web interface and API proxy | 5173 |
+| omnicompile-mysql | Persistent project MySQL 8.4 | 127.0.0.1:3307 |
+| omnicompile-c-worker | GCC/G++ environment and C tasks | Internal only |
+| omnicompile-python-worker | Python environment and tasks | Internal only |
+| omnicompile-java-worker | JDK environment and Java tasks | Internal only |
 
-The project database is `omnicompile`. Both local databases use root and the same
-password configured only in ignored `.env`. General MYSQL does not initialize the
-project database. The backend uses internal `database:3306`, not host3307. There
-are exactly three steady-state application containers plus general MYSQL.
-Docker requires lowercase project/image names; container/volume names retain
-uppercase. MySQL tags share actual upstream8.4 bytes, not a second database engine.
+Project data resides in omnicompile-data. General-purpose MYSQL is managed independently. Existing uppercase project-volume data must be migrated using the checksum-verified procedure before switching. Startup provisions three approved, separately authenticated worker identities using existing enrollment APIs.
 
-```powershell
-docker compose config --quiet
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File scripts/Start-Containers.ps1 -ProjectRoot .
-node scripts/Verify-Compose.mjs
-```
-
-Images are `be-omnicompile-coordinator:local`, `fe-omnicompile-frontend:local`, and
-`db-omnicompile-database:8.4` (actual shared MySQL8.4). Optional genuine sandbox
-image `oa-omnicompile-execution:local` supports the existing isolated execution
-workflow. Browser workers run in browsers; Windows workers are native apps and
-Android workers are native APKs. No decorative worker images are created.
-
-The three-service local profile compiles/distributes real jobs but explicitly
-does not run arbitrary submitted programs inside the coordinator. No privileged
-Docker socket is exposed. The optional host Docker sandbox and Kubernetes Job
-executor remain separate genuine execution options, with bounded transient task
-containers/Jobs rather than additional steady-state services. Reports disclose
-when execution was not performed. See [operations](docs/OPERATIONS.md) and
-[Kubernetes preparation](infra/kubernetes/DEPLOYMENT.md). Do not deploy Kubernetes
-resources until separately authorized and validated on the intended cluster.
+See [Docker operations](infra/containers/README.md) for migration, credentials, commands and execution boundaries. Kubernetes manifests are preparation templates.
 
 ## Workflows
 

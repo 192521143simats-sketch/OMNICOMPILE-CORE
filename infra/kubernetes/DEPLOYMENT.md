@@ -6,23 +6,27 @@ execution, containment, ingress, storage durability or public availability.
 
 ## Images
 
-From repository root, build sequentially. `db-omnicompile-database:8.4` is the
+From repository root, build sequentially. `omnicompile-mysql:8.4` is the
 approved local alias of official MySQL8.4; no native Windows/Android worker Docker
 images exist or are implied. Native workers remain actual installable packages.
 
 ```powershell
 docker pull mysql:8.4
-docker tag mysql:8.4 db-omnicompile-database:8.4
-docker build -f infra/containers/coordinator.Dockerfile -t be-omnicompile-coordinator:local .
-docker build -f infra/containers/web.Dockerfile -t fe-omnicompile-frontend:local .
+docker tag mysql:8.4 omnicompile-mysql:8.4
+docker build -f infra/containers/coordinator.Dockerfile -t omnicompile-coordinator:local .
+docker build -f infra/containers/web.Dockerfile -t omnicompile-frontend:local .
+docker build --target c-worker -f infra/containers/worker.Dockerfile -t omnicompile-c-worker:local .
+docker build --target python-worker -f infra/containers/worker.Dockerfile -t omnicompile-python-worker:local .
+docker build --target java-worker -f infra/containers/worker.Dockerfile -t omnicompile-java-worker:local .
 docker build -t oa-omnicompile-execution:local infra/sandbox
 node infra/containers/Verify-Images.mjs
 kubectl kustomize infra/kubernetes
 ```
 
 Coordinator retains tsx because shared packages export TypeScript source. GCC,
-Python and JDK support existing coordinator artifact verification, a separate
-trusted-native boundary: the execution Job does not sandbox all compilation.
+Python and JDK run in their selected language containers. The coordinator uses
+authenticated compiler-service URLs for independent artifact verification.
+The execution Job and compiler-service boundaries have separate isolation controls.
 Web serves the built SPA on8080 as UID101. Ingress sends /api and /ws directly to
 coordinator; relative same-origin client URLs need no build secret. No Docker
 socket/executable, hostPath or privileged Pod is supplied.
@@ -109,12 +113,12 @@ kubectl config current-context
 kubectl apply --dry-run=server -k PATH_TO_REVIEWED_OVERLAY
 kubectl diff -k PATH_TO_REVIEWED_OVERLAY
 python infra/kubernetes/Validate.py --kustomization PATH_TO_REVIEWED_OVERLAY --render-bootstrap | kubectl apply -f -
-kubectl -n omnicompile rollout status statefulset/mysql --timeout=300s
+kubectl -n omnicompile rollout status statefulset/omnicompile-mysql --timeout=300s
 kubectl apply -f PATH_TO_VERSIONED_MIGRATION_JOB
 kubectl -n omnicompile wait --for=condition=complete job/REVIEWED_JOB_NAME --timeout=300s
 kubectl apply -k PATH_TO_REVIEWED_OVERLAY
-kubectl -n omnicompile rollout status deployment/coordinator --timeout=300s
-kubectl -n omnicompile rollout status deployment/web --timeout=300s
+kubectl -n omnicompile rollout status deployment/omnicompile-coordinator --timeout=300s
+kubectl -n omnicompile rollout status deployment/omnicompile-frontend --timeout=300s
 ```
 
 The local image verifier creates only labelled disposable containers, an owned
@@ -153,7 +157,7 @@ acceptance sequence in this document, recording actual target-cluster results.
 ## Rollback procedure
 
 Retain prior digests,reviewed overlays,backup and migration evidence. `kubectl -n
-omnicompile rollout undo deployment/coordinator` and web undo restore app revisions only.
+omnicompile rollout undo deployment/omnicompile-coordinator` and web undo restore app revisions only.
 Check schema compatibility first: older code rejects unknown/newer ledger entries.
 Rollout undo does not roll back schema/data. Restore verified backup into a
 separate database and validate before an explicitly approved cutover. Never edit
@@ -167,8 +171,8 @@ The existing Kubernetes execution adapter remains authoritative. The rebuilt
 manifests use the approved renamed namespace, ServiceAccount, bounded Job and
 payload contracts. Existing enrolled devices must be re-enrolled after the
 approved identity reset; old credential identities are not silently preserved.
-MySQL is `db-omnicompile-database:8.4` (official MySQL8.4 base), database `omnicompile`, internal DNS `mysql:3306`, persistent
-claim template `omnicompile-data` (actual StatefulSet PVC `omnicompile-data-mysql-0`). PVCs are
+MySQL is `omnicompile-mysql:8.4` (official MySQL8.4 base), database `omnicompile`, internal DNS `omnicompile-mysql:3306`, persistent
+claim template `omnicompile-data` (actual StatefulSet PVC `omnicompile-data-omnicompile-mysql-0`). PVCs are
 retained on scale-down and StatefulSet deletion. StorageClass/PV reclaim policy
 must also be verified; this does not establish backup or high availability.
 The separate general local Docker `MYSQL` server on loopback3306 and the app
@@ -262,13 +266,13 @@ sandbox namespace `omnicompile-execution`. These are actual coordinated contract
 changes, not branding-only aliases. Re-enroll worker devices against the renamed
 coordinator. This does not migrate or certify old credentials automatically.
 
-Local image names are `be-omnicompile-coordinator:local`,
-`fe-omnicompile-frontend:local`, `db-omnicompile-database:8.4` and
+Local image names are `omnicompile-coordinator:local`,
+`omnicompile-frontend:local`, `omnicompile-mysql:8.4` and
 `oa-omnicompile-execution:local`. Before deployment, push only with separate
 approval and replace local tags with verified registry digests; the execution
 adapter requires a digest and deliberately rejects the unresolved placeholder.
 Database PVC names must be lowercase Kubernetes DNS labels. Thus Kubernetes uses
-`omnicompile-data` (StatefulSet claim `omnicompile-data-mysql-0`), while Docker's
+`omnicompile-data` (StatefulSet claim `omnicompile-data-omnicompile-mysql-0`), while Docker's
 application container may be named `OMNICOMPILE-DATA`. Do not attempt an uppercase
 Kubernetes object or volume name.
 

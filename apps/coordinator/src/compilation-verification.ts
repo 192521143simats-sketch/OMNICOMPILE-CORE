@@ -7,7 +7,12 @@ type Source={language:"c"|"python"|"java";sourceName:string;sourceText:string};
 
 /** Final published native bytes are rebuilt from authoritative source, not worker bytes. */
 export async function verifyCompilation(source:Source,worker:any,signal?:AbortSignal):Promise<any>{
-  if(signal){signal.throwIfAborted();return runCompilerProcess({action:'verify',source,worker},signal);}
+  if(signal||process.env[`OMNICOMPILE_${source.language.toUpperCase()}_COMPILER_URL`]){
+    const cancellation=signal??new AbortController().signal;
+    cancellation.throwIfAborted();
+    const {language,sourceName,sourceText}=source;
+    return runCompilerProcess({action:'verify',source:{language,sourceName,sourceText},worker},cancellation);
+  }
   if(worker.operation!==`${source.language}_compile`)throw new Error("Worker compilation language mismatch");
   const verification={method:"Independent source compilation",language:source.language};
   if(source.language==="c"){

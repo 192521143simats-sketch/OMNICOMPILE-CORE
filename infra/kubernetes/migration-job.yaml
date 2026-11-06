@@ -14,7 +14,7 @@ spec:
       securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000}
       containers:
         - name: migrate
-          image: be-omnicompile-coordinator:local
+          image: omnicompile-coordinator:local
           command: [node, --import, tsx, apps/coordinator/src/migrate.ts]
           envFrom: [{configMapRef: {name: omnicompile-config}}]
           env:

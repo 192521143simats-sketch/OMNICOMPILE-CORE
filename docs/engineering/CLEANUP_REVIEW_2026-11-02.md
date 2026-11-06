@@ -56,7 +56,7 @@ Port 3306: ticket_system, netsys, threatview, intrusion_detection_db, property_l
 - packages/: shared contracts/orchestration and existing C, Python and Java compiler implementations.
 - package.json/package-lock.json and Gradle wrapper/configuration: reproducible dependency/build definitions.
 - apps/coordinator/src/migrations/: immutable schema history, including 0011 compiler metrics; retain every migration.
-- compose.yaml: current persistent MySQL infrastructure.
+- docker-compose.yml: current persistent MySQL infrastructure.
 - infra/kubernetes/: resources.yaml (hosted services/config/storage), execution.yaml (isolated execution resources), migration-job.yaml (controlled schema upgrade), kustomization.yaml and deployment instructions. These are deployment templates, not evidence of a live cluster.
 - docs/engineering/: active architecture, requirement ledger, decisions, overrides, protocol, acceptance and historical evidence. Earlier names/dates are provenance, not trash. docs/engineering/specification/ retains authoritative supplied requirements.
 - Current Windows 0.1.1 installer/unpacked app and Android debug/unsigned release APK/AAB: retain generated deliverables in ignored build directories. Windows 0.1.0 baseline remains pending review because upgrade/install verification may need it.

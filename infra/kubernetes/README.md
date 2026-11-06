@@ -1,3 +1,32 @@
+## Language service baseline - 2026-11-05
+
+Preparation only. This revision has not been applied to a cluster.
+
+The coordinator routes compiler verification and source processing through three
+internal authenticated services on port4101. Their Deployments and Services are
+`omnicompile-c-worker`, `omnicompile-python-worker` and `omnicompile-java-worker`.
+Build their corresponding targets from `infra/containers/worker.Dockerfile` and
+replace local image tags with verified registry digests before deployment.
+
+Create `omnicompile-compiler` out of band with the key `token`. The same token is
+projected as `/run/secrets/compiler-token` for the coordinator and each compiler
+service. It is a backend compiler-service credential, never a browser secret.
+Each language worker may additionally receive a separate Secret named
+`omnicompile-<language>-worker-identity`, key `credential`. Issue that identity
+through the existing scoped enrollment and administrator approval flow. Missing
+optional identity leaves the compiler service available but does not enroll a
+peer worker. Compiler service authentication and peer enrollment are separate.
+
+The compiler pods run as UID1000 with read-only root filesystems, bounded memory
+and temporary storage, dropped capabilities and no Kubernetes token. The ingress
+policy allows compiler HTTP traffic only from coordinator pods and restricts
+egress to coordinator port4100 and kube-system DNS. Adapt DNS selectors only
+after inspecting the target cluster DNS deployment. This baseline does
+not assert kernel-grade isolation for hostile source code or a deployed cluster.
+One active coordinator remains required because socket ownership is process-local.
+The MySQL PVC template retains data and uses the approved omnicompile-data name;
+this does not move any local Docker volume or general-purpose database.
+
 # Kubernetes preparation (not a running deployment)
 
 Read-only local validation: `python infra/kubernetes/Validate.py` (kubectl + PyYAML).
@@ -54,15 +83,15 @@ kubectl config current-context
 kubectl apply --dry-run=server -k infra/kubernetes
 kubectl diff -k infra/kubernetes
 python infra/kubernetes/Validate.py --kustomization PATH_TO_REVIEWED_OVERLAY --render-bootstrap | kubectl apply -f -
-kubectl -n omnicompile rollout status statefulset/mysql --timeout=300s
+kubectl -n omnicompile rollout status statefulset/omnicompile-mysql --timeout=300s
 # Provision migration credentials/grants, then apply the reviewed migration Job.
 kubectl apply -f PATH_TO_VERSIONED_MIGRATION_JOB
 kubectl -n omnicompile wait --for=condition=complete job/REVIEWED_JOB_NAME --timeout=300s
 kubectl apply -k infra/kubernetes
-kubectl -n omnicompile rollout status deployment/coordinator --timeout=300s
-kubectl -n omnicompile rollout status deployment/web --timeout=300s
+kubectl -n omnicompile rollout status deployment/omnicompile-coordinator --timeout=300s
+kubectl -n omnicompile rollout status deployment/omnicompile-frontend --timeout=300s
 kubectl -n omnicompile get pods,services,ingress,pvc
-kubectl -n omnicompile logs deployment/coordinator --tail=100
+kubectl -n omnicompile logs deployment/omnicompile-coordinator --tail=100
 ```
 
 Do not paste logs without reviewing for sensitive operational information. Verify
@@ -89,8 +118,8 @@ backup schedule. Do not delete PVCs, run down -v or reset live data.
 For an application rollback, retain prior image digests and run:
 
 ```powershell
-kubectl -n omnicompile rollout undo deployment/coordinator
-kubectl -n omnicompile rollout undo deployment/web
+kubectl -n omnicompile rollout undo deployment/omnicompile-coordinator
+kubectl -n omnicompile rollout undo deployment/omnicompile-frontend
 ```
 
 This does not roll back schema/data. If an older image is incompatible with the

@@ -1,0 +1,241 @@
+name: omnicompile
+
+# General-purpose MYSQL is outside this Compose project.
+x-database-environment: &database-environment
+  DB_HOST: omnicompile-mysql
+  DB_PORT: "3306"
+  DB_NAME: ${DB_NAME:-omnicompile}
+  DB_USER: root
+  DB_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the ignored .env file}
+
+services:
+  omnicompile-mysql:
+    image: omnicompile-mysql:8.4
+    container_name: omnicompile-mysql
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:3307:3306"
+    environment:
+      MYSQL_DATABASE: ${DB_NAME:-omnicompile}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:?Set MYSQL_ROOT_PASSWORD in the ignored .env file}
+      # Local development coordinator connects through the private Compose network.
+      MYSQL_ROOT_HOST: "%"
+    volumes:
+      - omnicompile-data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD-SHELL", "MYSQL_PWD=\"$$MYSQL_ROOT_PASSWORD\" mysql --protocol=TCP -h127.0.0.1 -uroot --execute='SELECT 1' \"$$MYSQL_DATABASE\" >/dev/null"]
+      interval: 5s
+      timeout: 5s
+      retries: 30
+      start_period: 30s
+
+  omnicompile-coordinator:
+    image: omnicompile-coordinator:local
+    container_name: omnicompile-coordinator
+    build:
+      context: .
+      dockerfile: infra/containers/coordinator.Dockerfile
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m,mode=1777
+    volumes:
+      - type: bind
+        source: ./.runtime/distribution
+        target: /app/.runtime/distribution
+        read_only: true
+    secrets:
+      - source: compiler-token
+        target: compiler-token
+    stop_grace_period: 30s
+    environment:
+      <<: *database-environment
+      NODE_ENV: development
+      HOST: 0.0.0.0
+      PORT: "4100"
+      PUBLIC_BASE_URL: ${PUBLIC_BASE_URL:-http://localhost:5173}
+      COORDINATOR_PUBLIC_URL: ${COORDINATOR_PUBLIC_URL:-http://localhost:4100}
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-}
+      ADMIN_USERNAME: ${ADMIN_USERNAME:-admin}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-}
+      ADMIN_PASSWORD_HASH: ${ADMIN_PASSWORD_HASH:-}
+      OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+      OMNICOMPILE_C_COMPILER_URL: http://omnicompile-c-worker:4101
+      OMNICOMPILE_PYTHON_COMPILER_URL: http://omnicompile-python-worker:4101
+      OMNICOMPILE_JAVA_COMPILER_URL: http://omnicompile-java-worker:4101
+      OMNICOMPILE_MIGRATION_MODE: check
+      OMNICOMPILE_REQUIRE_ADMIN_APPROVAL: "true"
+      # No privileged Docker socket is exposed to the control plane. This local
+      # profile compiles and distributes real work, but does not run user programs.
+      OMNICOMPILE_EXECUTION_MODE: disabled
+      RESEND_ENABLED: "false"
+      POSTHOG_ENABLED: "false"
+    ports:
+      - "4100:4100"
+    depends_on:
+      omnicompile-mysql:
+        condition: service_healthy
+      omnicompile-c-worker:
+        condition: service_healthy
+      omnicompile-python-worker:
+        condition: service_healthy
+      omnicompile-java-worker:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4100/ready',{signal:AbortSignal.timeout(4000)}).then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 5s
+      retries: 12
+      start_period: 30s
+
+  omnicompile-frontend:
+    image: omnicompile-frontend:local
+    container_name: omnicompile-frontend
+    build:
+      context: .
+      dockerfile: infra/containers/web.Dockerfile
+    restart: unless-stopped
+    environment:
+      COORDINATOR_UPSTREAM: omnicompile-coordinator:4100
+    ports:
+      - "5173:8080"
+    depends_on:
+      omnicompile-coordinator:
+        condition: service_healthy
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--spider", "http://127.0.0.1:8080/healthz"]
+      interval: 10s
+      timeout: 3s
+      retries: 6
+
+  omnicompile-c-worker:
+    image: omnicompile-c-worker:local
+    container_name: omnicompile-c-worker
+    build:
+      context: .
+      dockerfile: infra/containers/worker.Dockerfile
+      target: c-worker
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m,mode=1777
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 128
+    environment:
+      OMNICOMPILE_COMPILER_LANGUAGE: c
+      OMNICOMPILE_WORKER_LANGUAGE: c
+      OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
+      COORDINATOR_URL: http://omnicompile-coordinator:4100
+    volumes:
+      - ./.runtime/cloud-workers/c.credential:/run/secrets/worker-credential:ro
+    secrets:
+      - source: compiler-token
+        target: compiler-token
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  omnicompile-python-worker:
+    image: omnicompile-python-worker:local
+    container_name: omnicompile-python-worker
+    build:
+      context: .
+      dockerfile: infra/containers/worker.Dockerfile
+      target: python-worker
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m,mode=1777
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 128
+    environment:
+      OMNICOMPILE_COMPILER_LANGUAGE: python
+      OMNICOMPILE_WORKER_LANGUAGE: python
+      OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
+      COORDINATOR_URL: http://omnicompile-coordinator:4100
+    volumes:
+      - ./.runtime/cloud-workers/python.credential:/run/secrets/worker-credential:ro
+    secrets:
+      - source: compiler-token
+        target: compiler-token
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+  omnicompile-java-worker:
+    image: omnicompile-java-worker:local
+    container_name: omnicompile-java-worker
+    build:
+      context: .
+      dockerfile: infra/containers/worker.Dockerfile
+      target: java-worker
+    restart: unless-stopped
+    init: true
+    read_only: true
+    tmpfs:
+      - /tmp:rw,nosuid,size=512m,mode=1777
+    mem_limit: 1g
+    cpus: 1
+    pids_limit: 128
+    environment:
+      OMNICOMPILE_COMPILER_LANGUAGE: java
+      OMNICOMPILE_WORKER_LANGUAGE: java
+      OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
+      COORDINATOR_URL: http://omnicompile-coordinator:4100
+    volumes:
+      - ./.runtime/cloud-workers/java.credential:/run/secrets/worker-credential:ro
+    secrets:
+      - source: compiler-token
+        target: compiler-token
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:4101/ready').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 10s
+      timeout: 3s
+      retries: 12
+      start_period: 30s
+
+volumes:
+  omnicompile-data:
+    name: omnicompile-data
+
+networks:
+  default:
+    name: omnicompile-network
+
+secrets:
+  compiler-token:
+    file: ./.runtime/compiler-service.token

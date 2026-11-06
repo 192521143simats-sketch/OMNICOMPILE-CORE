@@ -21,12 +21,8 @@ RUN npm ci --omit=dev --workspace=@omnicompile/coordinator --include-workspace-r
     && test ! -d node_modules/electron && test ! -d node_modules/vitest \
     && node --import tsx -e "Promise.all(['@omnicompile/compiler-c','@omnicompile/compiler-python','@omnicompile/compiler-java','@omnicompile/contracts','@omnicompile/orchestration','argon2'].map(name=>import(name)))"
 
-FROM python:3.14-slim-trixie@sha256:a2b82f3c48559aa0a8446d9af49826b6e2b2016f4cd2afabfe6013ec53729170
-# Match the authoritative verifier's Python/JDK generation to the sandbox and
-# supported native-worker source syntax. Node is copied from the pinned build.
-RUN apt-get update && apt-get install -y --no-install-recommends gcc libc6-dev openjdk-21-jdk-headless && rm -rf /var/lib/apt/lists/* \
-    && groupadd --gid 1000 node && useradd --uid 1000 --gid node --create-home --shell /bin/sh node
-COPY --from=build /usr/local/bin/node /usr/local/bin/node
+FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+# Native compilers are isolated in the language services.
 WORKDIR /app
 COPY --from=build --chown=node:node /app /app
 COPY --chmod=755 infra/containers/coordinator-entrypoint.sh /usr/local/bin/omnicompile-start

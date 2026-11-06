@@ -1,5 +1,9 @@
 # OmniCompile Core master implementation status
 
+## 2026-11-06 — separate Docker language workers
+
+Six approved services, authenticated language-specific routing, preserved MySQL storage and fail-closed compiler filesystem restrictions passed local acceptance. See [Docker evidence](DOCKER_LANGUAGE_ACCEPTANCE_2026-11-06.md). Kubernetes is statically validated preparation only. Program execution remains disabled in this Compose profile.
+
 ## 2026-11-01 — product identity and own-job live metrics
 
 Faculty title: **OmniCompile Core: A Zero-Trust, Fault-Tolerant Distributed Compiler
