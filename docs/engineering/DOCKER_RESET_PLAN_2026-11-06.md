@@ -60,7 +60,12 @@ Planning workflow reference: [Explore Plan & Ship in Codelit](https://codelit.io
 
 - The eight-image Compose build passed after the Docker files were regrouped. Compose configuration validation passed.
 - The isolated Docker pipeline compiled and executed valid C, Python and Java, rejected invalid submissions, checked downloads and recorded 12 verified worker results. Two concurrent jobs completed. The fixture did not modify application data.
-- The broker passed eight live cases covering execution, input, runtime failure, timeout, combined output limits, filesystem and environment isolation, and controller output integrity.
+- The broker passed ten live cases covering execution, input, runtime failure, timeout, combined output limits, filesystem and environment isolation, and controller output integrity.
 - MySQL and object storage preserved fixture data across service restarts. Admin authentication remained valid. The isolated MySQL dump and restore ran in memory and produced no backup file.
 - Workspace verification passed type checking, builds, 385 Vitest tests and 31 script tests. Eleven opt-in Vitest tests were skipped.
 - Docker images, operator commands, and verification scripts are grouped under `infra/docker`; the nine example programs are grouped by language under `samples`.
+
+- The first parallel post-rebuild run exited at the secret-read probe without a diagnostic. A direct probe confirmed HTTP 422 with no secret leakage. The serial full rerun passed, including the probe, after adding safe failure diagnostics.
+- The real browser Web Worker and packaged Windows worker used distinct identities on the same network and coordinator. The fixture verified persisted results, browser-to-native reassignment and coordinator restart recovery. ADB detected no connected Android device.
+- The image smoke test passed migration apply/check, coordinator readiness, login, authenticated frontend proxy, unauthorized access rejection and SPA fallback.
+- The project backup inventory was empty after testing. No fixture or job containers remained. The local deletion policy blocked removing the generated Windows test profile directory after the individual test logs and screenshots were removed.
