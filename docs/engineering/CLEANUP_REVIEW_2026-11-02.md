@@ -135,3 +135,5 @@ Database schema sizes from the earlier inventory are not a measurement of reclai
 ## Legacy SQLite data check
 
 On 7 November 2026, a read-only inventory found four sessions, four invitations, three nodes, three tasks and three results in the ignored legacy SQLite database. The active Docker MySQL schema had no task or result rows. The SQLite files therefore contain records absent from MySQL and should be retained pending an explicit decision about those records. Current Compose mounts and application runtime configuration use MySQL.
+
+The legacy database and its two companion files were subsequently deleted at the project owner's direction. No export or backup was created.
