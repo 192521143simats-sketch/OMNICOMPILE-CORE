@@ -27,7 +27,7 @@ goto WAIT_DOCKER
 echo [2/6] Docker Engine is ready.
 powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Initialize-Environment.ps1" -ProjectRoot "%~dp0."
 if errorlevel 1 exit /b 1
-powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\Start-Containers.ps1" -ProjectRoot "%~dp0."
+powershell.exe -NoProfile -ExecutionPolicy Bypass -File "%~dp0infra\docker\operations\Start-Containers.ps1" -ProjectRoot "%~dp0."
 if errorlevel 1 exit /b 1
 start "" "http://localhost:5173/"
 exit /b 0

@@ -13,7 +13,7 @@
     "worker": "npm run start -w @omnicompile/worker --",
     "test": "vitest run",
     "typecheck": "npm run typecheck --workspaces --if-present",
-    "verify": "npm run typecheck && npm test -- --run && node --test scripts/*.test.mjs apps/windows-worker/*.test.mjs && npm run build",
+    "verify": "npm run typecheck && npm test -- --run && node --test scripts/*.test.mjs infra/docker/operations/*.test.mjs apps/windows-worker/*.test.mjs && npm run build",
     "verify:platform": "node scripts/Run-Isolated-Integration.mjs platform",
     "verify:integration": "node scripts/Run-Isolated-Integration.mjs all && node scripts/Run-Isolated-Integration.mjs enrollment && node scripts/Run-Isolated-Integration.mjs reusable",
     "verify:artifacts": "node scripts/Run-Isolated-Integration.mjs artifacts",
@@ -32,7 +32,7 @@
     "verify:metrics": "node scripts/Run-Isolated-Integration.mjs metrics",
     "verify:windows-install": "node scripts/Run-Isolated-Integration.mjs windows-install",
     "verify:cancellation": "node scripts/Run-Isolated-Integration.mjs cancellation",
-    "sandbox:build": "docker build -t oa-omnicompile-execution:local infra/sandbox",
+    "sandbox:build": "docker compose build omnicompile-c-worker omnicompile-python-worker omnicompile-java-worker omnicompile-executor",
     "verify:execution": "node scripts/Run-Isolated-Integration.mjs execution"
   },
   "devDependencies": {

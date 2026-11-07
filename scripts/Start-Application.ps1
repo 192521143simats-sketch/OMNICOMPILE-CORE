@@ -2,11 +2,6 @@ param([Parameter(Mandatory=$true)][string]$ProjectRoot)
 $ErrorActionPreference = 'Stop'
 $runtimeDirectory = Join-Path $ProjectRoot '.runtime'
 New-Item -ItemType Directory -Force -Path $runtimeDirectory | Out-Null
-if($env:OMNICOMPILE_EXECUTION_MODE -ne 'disabled'){
-    & powershell.exe -NoProfile -ExecutionPolicy Bypass -File (Join-Path $ProjectRoot 'scripts\Prepare-ExecutionSandbox.ps1') -ProjectRoot $ProjectRoot
-    if($LASTEXITCODE -ne 0){throw 'OmniCompile Core execution environment preparation failed.'}
-}
-
 # A phone's localhost is the phone itself. Publish join links with this PC's
 # active LAN address while keeping localhost available for desktop development.
 $lanAddress = Get-NetIPConfiguration -ErrorAction SilentlyContinue |

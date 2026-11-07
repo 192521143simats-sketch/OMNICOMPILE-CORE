@@ -43,7 +43,7 @@ The persistence check created and removed an owned random test schema, restarted
 | `docker compose build` and final four changed-image rebuild | PASS |
 | `Start-Containers.ps1` and saved enrollment reuse | PASS, six healthy services |
 | `node scripts/Verify-Docker-Compilers.mjs` | PASS, fixture `08cc034adaeb5817`, nine sequential cases plus two concurrent C jobs |
-| `node infra/containers/Verify-Images.mjs` | PASS, fixture `adba05d72bb5cc11`, controlled migration apply/check, auth, user metrics/RBAC, proxy and SPA routing, non-root, toolchains absent on coordinator |
+| `node infra/docker/Verify-Images.mjs` | PASS, fixture `adba05d72bb5cc11`, controlled migration apply/check, auth, user metrics/RBAC, proxy and SPA routing, non-root, toolchains absent on coordinator |
 | `node scripts/Verify-Compose.mjs` | PASS, MySQL persistence, preserved admin credentials, DNS, six services, API/frontend recovery |
 | `python infra/kubernetes/Validate.py --openapi <official v1.34 schema>` | PASS, 89 schema/contract checks across 25 rendered resources |
 | CI YAML parsing and `git diff --check` | PASS |
@@ -89,4 +89,4 @@ START-OMNICOMPILE.bat
 STOP-OMNICOMPILE.bat
 ```
 
-Open `http://localhost:5173`. Existing administrator credentials still apply. Hash-only administrator environments require a process-scoped `OMNICOMPILE_PROVISION_ADMIN_PASSWORD` for local worker provisioning. For exact migration and runtime boundaries, see `infra/containers/README.md`.
+Open `http://localhost:5173`. Existing administrator credentials still apply. Hash-only administrator environments require a process-scoped `OMNICOMPILE_PROVISION_ADMIN_PASSWORD` for local worker provisioning. For exact migration and runtime boundaries, see `infra/docker/README.md`.

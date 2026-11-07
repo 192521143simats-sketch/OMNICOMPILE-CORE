@@ -54,14 +54,14 @@ created. Existing MySQL records and Docker volumes are preserved.
 | Final full repository verification | PASS: `npm run verify`, 351 Vitest tests, 24 Node/script tests, all workspace typechecks/builds; eleven Docker tests skipped by default and separately executed as recorded above |
 | Durable lease/recovery regressions | PASS: `npm run verify:recovery`, leases `2e7f90b18428a23a`, recovery `0717d3a94cb99de2`; actual coordinator crash/restart and MySQL interruption, stale leases, reassignment, preserved attempts and resumed compiler publication |
 | Final rebuilt package download acceptance | PASS: `86b4c6a67ca8f9da`, `OMNICOMPILE_TEST_LOCAL_DISTRIBUTION=1 npm run verify:phase9`; actual final installer/APK bytes, hashes and API negative cases |
-| Final polished container smoke | PASS: `5335e7581a7b2db9`, `node infra/containers/Verify-Images.mjs`; actual isolated MySQL, controlled migrations, coordinator readiness/login/approval gate, SPA deep links and non-root containers |
+| Final polished container smoke | PASS: `5335e7581a7b2db9`, `node infra/docker/Verify-Images.mjs`; actual isolated MySQL, controlled migrations, coordinator readiness/login/approval gate, SPA deep links and non-root containers |
 
 Primary commands executed for this increment: `npm run verify`,
 `npm run verify:web`, `npm run verify:mixed`, `npm run verify:recovery`,
 `npm run verify:phase9` (with local-distribution flag), `npm run verify:artifacts`,
 `npm run verify:execution`, `npm run package:windows`, the Android Gradle command
-below, `docker build -f infra/containers/web.Dockerfile -t omnicompile-web:phase9 .`,
-`node infra/containers/Verify-Images.mjs`, and `kubectl kustomize infra/kubernetes`.
+below, `docker build -f infra/docker/web.Dockerfile -t omnicompile-web:phase9 .`,
+`node infra/docker/Verify-Images.mjs`, and `kubectl kustomize infra/kubernetes`.
 Captured logs and screenshots are retained under ignored `.runtime`; fixtures
 clean up only their own temporary resources. Regression tests are retained in Git.
 

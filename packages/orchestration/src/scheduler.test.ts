@@ -5,6 +5,16 @@ import type {NetworkPolicy} from "@omnicompile/contracts";
 const node=(id:string,cpu:number,memory:number,runtimes={c:true,python:true,java:true},status="AVAILABLE"):SchedulableNode=>({id,status,profile:{workerType:"NATIVE",deviceType:"DESKTOP",cpuModel:"test",logicalCores:8,totalMemoryBytes:16_000,operatingSystem:"test",architecture:"x64",runtimes,toolchains:{c:{available:runtimes.c},python:{available:runtimes.python},java:{available:runtimes.java}},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:true}},resources:{cpuUtilizationPercent:cpu,freeMemoryBytes:8_000,memoryUtilizationPercent:memory,observedAt:new Date().toISOString()}});
 
 describe("resource-aware scheduler",()=>{
+  it("enforces authoritative cloud/local placement and prefers eligible local peers in hybrid mode",()=>{
+    const cloud={...node("cloud",0,0),executionLocation:"CLOUD" as const};
+    const local={...node("local",70,70),executionLocation:"LOCAL" as const};
+    expect(selectNode([cloud,local],{capability:"python",executionMode:"CLOUD_ONLY"}).selectedNodeId).toBe("cloud");
+    expect(selectNode([cloud,local],{capability:"python",executionMode:"LOCAL_ONLY"}).selectedNodeId).toBe("local");
+    expect(selectNode([cloud,local],{capability:"python",executionMode:"HYBRID"}).selectedNodeId).toBe("local");
+    local.status="OFFLINE";
+    expect(selectNode([cloud,local],{capability:"python",executionMode:"HYBRID"}).selectedNodeId).toBe("cloud");
+    expect(selectNode([cloud],{capability:"python",executionMode:"LOCAL_ONLY"}).selectedNodeId).toBeNull();
+  });
   it("does not send the additive native C task to a legacy v1 worker without that operation",()=>{const legacy=node("legacy",10,10);expect(evaluateNode(legacy,{capability:"c",requireNativeCSource:true}).eligible).toBe(false);legacy.profile.operations.nativeCSource=true;expect(evaluateNode(legacy,{capability:"c",requireNativeCSource:true}).eligible).toBe(true);expect(evaluateNode(node("legacy-ir",10,10),{capability:"ir"}).eligible).toBe(true);});
   it("rejects nodes missing the required language capability",()=>{const result=evaluateNode(node("no-java",10,10,{c:true,python:true,java:false}),{capability:"java"});expect(result.eligible).toBe(false);expect(result.reasons).toContain("java capability is unavailable");});
   it("rejects stale profiles and insufficient resources",()=>{const candidate=node("weak",10,10);candidate.resources=null;candidate.profile.logicalCores=2;const result=evaluateNode(candidate,{capability:"c",minLogicalCores:4});expect(result.reasons).toEqual(expect.arrayContaining(["requires at least 4 logical cores","no current resource snapshot"]));});

@@ -2,6 +2,8 @@ import {readFile} from 'node:fs/promises';
 import {NativeWorkerSession} from './session.js';
 import {profile} from './profiler.js';
 import {languageProfile, type WorkerLanguage} from './cloud-profile.js';
+import {requestDockerJob} from '@omnicompile/orchestration';
+import {runTaskProcess} from './task-process-controller.js';
 
 const coordinator = process.env.COORDINATOR_URL;
 const language = process.env.OMNICOMPILE_WORKER_LANGUAGE;
@@ -17,6 +19,13 @@ const session = new NativeWorkerSession({
   coordinator,
   credential,
   profile: async () => detected,
+  execute:async(payload,options={})=>{
+    if(process.env.OMNICOMPILE_EXECUTOR_URL&&payload.operation.endsWith('_compile')){
+      options.onStarted?.();
+      return requestDockerJob<Awaited<ReturnType<typeof runTaskProcess>>>({kind:'task',language:language as WorkerLanguage,payload},options.signal);
+    }
+    return runTaskProcess(payload,options);
+  },
   onState: state => {
     const status = `${state.status}:${state.nodeId}:${state.submitted}:${state.failed}`;
     if (status !== previous) {

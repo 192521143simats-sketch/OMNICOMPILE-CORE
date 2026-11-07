@@ -30,7 +30,7 @@ jobs:
       - run: npm ci
       - run: npm run verify
       - run: npm audit --omit=dev --audit-level=high
-  deployment:
+  docker:
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -43,17 +43,6 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: '24'
-      - uses: azure/setup-kubectl@v4
-        with:
-          version: v1.36.1
-      - run: python -m pip install 'PyYAML==6.0.3'
-      - run: python infra/kubernetes/Validate.py
-      - name: Validate against the official Kubernetes API schema
-        run: |
-          curl --fail --silent --show-error --location https://raw.githubusercontent.com/kubernetes/kubernetes/v1.34.0/api/openapi-spec/swagger.json --output "$RUNNER_TEMP/k8s-openapi.json"
-          echo "d3b0cdc2fda15c753206d25ab459dc7c12df64e2fd652b6809687471ea751c37  $RUNNER_TEMP/k8s-openapi.json" | sha256sum --check
-          python -m pip install 'jsonschema==4.26.0'
-          python infra/kubernetes/Validate.py --openapi "$RUNNER_TEMP/k8s-openapi.json"
       - name: Validate Compose without storing credentials
         env:
           MYSQL_ROOT_PASSWORD: ci-ephemeral-placeholder
@@ -62,17 +51,19 @@ jobs:
       - run: npm ci
       - name: Prepare ephemeral container secrets
         run: |
-          mkdir -p .runtime/cloud-workers .runtime/distribution
-          openssl rand -hex 32 > .runtime/compiler-service.token
-          touch .runtime/cloud-workers/c.credential .runtime/cloud-workers/python.credential .runtime/cloud-workers/java.credential
+          mkdir -p .runtime/docker/cloud-workers .runtime/docker/distribution .runtime/docker/secrets
+          openssl rand -hex 32 > .runtime/docker/secrets/compiler.token
+          openssl rand -hex 32 > .runtime/docker/secrets/executor.token
+          openssl rand -hex 20 > .runtime/docker/secrets/artifacts-access.token
+          openssl rand -hex 32 > .runtime/docker/secrets/artifacts-secret.token
+          touch .runtime/docker/cloud-workers/c.credential .runtime/docker/cloud-workers/python.credential .runtime/docker/cloud-workers/java.credential
       - run: docker compose build
-      - run: docker pull mysql:8.4
-      - run: docker tag mysql:8.4 omnicompile-mysql:8.4
-      - run: node infra/containers/Verify-Images.mjs
+      - run: node infra/docker/verification/Verify-Images.mjs
       - run: docker compose up -d --wait --wait-timeout 240
-      - run: node scripts/Provision-Cloud-Workers.mjs
+      - run: node infra/docker/operations/Provision-Cloud-Workers.mjs
       - run: docker compose restart omnicompile-c-worker omnicompile-python-worker omnicompile-java-worker
-      - run: node scripts/Verify-Docker-Compilers.mjs
+      - run: node infra/docker/verification/Verify-Docker-Compilers.mjs
+      - run: node infra/docker/verification/Verify-Docker-Execution.mjs
       - if: always()
         run: docker compose stop
       # No registry publishing, infrastructure creation or deployment is performed.

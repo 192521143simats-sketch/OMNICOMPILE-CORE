@@ -40,3 +40,15 @@ it('labels retained values stale when a later poll fails instead of presenting a
   vi.useFakeTimers();const fetcher=vi.fn().mockResolvedValueOnce(response(empty)).mockRejectedValueOnce(new Error('Network unavailable'));vi.stubGlobal('fetch',fetcher);const view=await mount();
   try{await act(async()=>view.root.render(<CompilerMetrics/>));await act(async()=>vi.advanceTimersByTime(3000));expect(view.host.textContent).toContain('Last values may be stale');expect(view.host.textContent).toContain('Updates interrupted');expect(view.host.querySelector('[role="alert"]')?.textContent).toContain('Unable to reach');}finally{await view.close();}
 });
+it('offers cloud and other-native platform filters and requests server-scoped data',async()=>{
+ const fetcher=vi.fn(async(_path:string)=>response(empty));vi.stubGlobal('fetch',fetcher);const view=await mount();
+ try{
+  await act(async()=>view.root.render(<CompilerMetrics jobId="JOB-ABCDE"/>));
+  const selector=view.host.querySelector<HTMLSelectElement>('[aria-label="Metrics platform"]')!;
+  expect(selector.querySelector('option[value="CLOUD"]')).not.toBeNull();
+  expect(selector.querySelector('option[value="NATIVE_OTHER"]')).not.toBeNull();
+  await act(async()=>{selector.value='CLOUD';selector.dispatchEvent(new Event('change',{bubbles:true}));});
+  expect(fetcher.mock.calls.at(-1)?.[0]).toContain('platform=CLOUD');
+  expect(fetcher.mock.calls.at(-1)?.[0]).toContain('jobId=JOB-ABCDE');
+ }finally{await view.close();}
+});

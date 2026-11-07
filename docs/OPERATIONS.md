@@ -2,7 +2,7 @@
 
 Run `START-OMNICOMPILE.bat` from the repository root. It starts Docker Desktop when necessary, polls the engine, starts the existing MySQL Compose service, waits for its healthcheck, applies idempotent coordinator migrations, and starts OmniCompile Core. Repeated starts reuse healthy services.
 
-Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `omnicompile-data` or stopping general-purpose `MYSQL`.
+Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without deleting `OMNICOMPILE-MYSQL` and `OMNICOMPILE-ARTIFACTS` or stopping general-purpose `MYSQL`.
 
 ## Environment
 
@@ -13,7 +13,7 @@ Run `STOP-OMNICOMPILE.bat` to stop application processes and containers without 
 - `SESSION_TTL_HOURS`, `RESET_TTL_MINUTES`
 - `HEARTBEAT_STALE_MS`, `HEARTBEAT_OFFLINE_MS`, `TASK_TIMEOUT_MS`
 
-Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coordinator uses `omnicompile-mysql:3306`. Project container `omnicompile-mysql` stores schema `omnicompile` in volume `omnicompile-data`. General-purpose `MYSQL` uses `127.0.0.1:3306` and volume `mysql-data`. Keep secrets in the ignored local environment or Kubernetes Secret references.
+Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coordinator uses `omnicompile-mysql:3307`. Project container `omnicompile-mysql` stores schema `omnicompile` in volume `OMNICOMPILE-MYSQL`. General-purpose `MYSQL` uses `127.0.0.1:3306` and volume `mysql`. Keep secrets in the ignored local environment.
 
 ## Full container startup and verification
 
@@ -21,7 +21,7 @@ Host processes connect to the project MySQL at `127.0.0.1:3307`. The Compose coo
 docker compose config --quiet
 docker compose build
 docker compose up -d --wait
-node scripts/Verify-Compose.mjs
+node infra/docker/verification/Verify-Compose.mjs
 docker compose ps
 docker compose stop
 ```
@@ -33,29 +33,14 @@ Normal stop/start never deletes the volume. The migration service runs the
 immutable ledger once; the API checks it at startup. `/live` is process liveness,
 while `/ready` and compatibility `/health` require database connectivity.
 
-The local container coordinator sets `OMNICOMPILE_EXECUTION_MODE=disabled` explicitly.
-Native workers still produce real C/Python/Java artifacts; reports must say program
-execution was not performed. For final program execution use the existing host
-coordinator Docker sandbox or the approved Kubernetes sandbox deployment. Never
-mount the Docker socket into the coordinator to hide this boundary. The container
-verification image uses CPython3.14 and JDK21 with distribution GCC; actual GCC
-version and Java21/Python type-alias compilation are checked by the image smoke.
-Workers using newer source-level features still need a matching verifier. Host development
-uses the installed toolchains (this Windows host has JDK21).
-
-Kubernetes rendering and official-schema checks are described in
-[Kubernetes README](../infra/kubernetes/README.md). They are not proof of a live cluster deployment.
+The private execution broker runs permitted C, Python and Java work in disposable, restricted containers. See the [Docker guide](../infra/docker/README.md) for the service boundaries and verification commands.
 
 ## Troubleshooting
 
-- Docker: `docker info`, then `docker compose ps` and `docker compose logs database`.
+- Docker: `docker info`, then `docker compose ps` and `docker compose logs omnicompile-mysql`.
 - Coordinator/dashboard: `.runtime/application.log` and `.runtime/application-error.log`.
 - No eligible worker: verify network match and required capability. Browser workers can optimize IR but cannot compile Python/Java or run GCC/JDK.
 - JDK: set `OMNICOMPILE_JDK_HOME` or `JAVA_HOME` to JDK 21 before starting a native worker.
 - Security/build gate: `npm run verify`, `npm run verify:platform`, `npm audit`.
 
 Do not use `docker compose down -v` unless permanent database deletion is explicitly intended.
-
-## Separate Docker language workers
-
-See [Docker deployment](../infra/containers/README.md) for the approved six services, retained-volume migration, scoped enrollment and compiler filesystem restrictions. General MYSQL is independently managed. The coordinator routes native verification to the matching internal language service. Run node scripts/Verify-Docker-Compilers.mjs for isolated schema and actual three-language Docker acceptance.

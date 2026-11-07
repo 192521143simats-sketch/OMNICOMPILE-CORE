@@ -6,7 +6,7 @@ import {evaluateNode,type RequiredCapability} from '@omnicompile/orchestration';
 
 type Row=Record<string,any>;
 type MetricInput={tasks:Row[];workers:Row[];telemetry:Row[];verifications:Row[];availability:Row[]};
-export const metricPlatforms=['WEB','WINDOWS','ANDROID'] as const;
+export const metricPlatforms=['WEB','WINDOWS','ANDROID','CLOUD','NATIVE_OTHER'] as const;
 const number=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
 const average=(values:number[])=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
 const ratio=(n:number,d:number)=>d?n*100/d:null;
@@ -23,7 +23,8 @@ export function summarizeCompilerMetrics(input:MetricInput,now=Date.now(),offlin
 // The SQL join is the authorization boundary for every measurement, including
 // custom C tasks whose parent relationship is stored in optimization_batch_tasks.
 const parentJoin=`JOIN compilation_jobs j ON (t.job_id=j.id OR EXISTS(SELECT 1 FROM optimization_batch_tasks b WHERE b.task_id=t.id AND b.batch_id=j.batch_id))`;
-const platformSql=`CASE WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.workerType'))='BROWSER' THEN 'WEB' WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.workerType'))='ANDROID' THEN 'ANDROID' WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.operatingSystem')) LIKE '%Windows%' THEN 'WINDOWS' ELSE 'NATIVE_OTHER' END`;
+// Cloud designation comes from administrator-approved enrollment state, not a worker claim.
+const platformSql=`CASE WHEN n.id IS NULL THEN 'UNASSIGNED' WHEN EXISTS(SELECT 1 FROM network_enrollments metric_enrollment WHERE metric_enrollment.id=n.enrollment_id AND metric_enrollment.execution_location='CLOUD') THEN 'CLOUD' WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.workerType'))='BROWSER' THEN 'WEB' WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.workerType'))='ANDROID' THEN 'ANDROID' WHEN JSON_UNQUOTE(JSON_EXTRACT(n.profile_json,'$.operatingSystem')) LIKE '%Windows%' THEN 'WINDOWS' ELSE 'NATIVE_OTHER' END`;
 export class CompilerMetrics {
  private readonly telemetryInFlight=new Set<string>();
  connectionSnapshot:(()=>ReadonlySet<string>)|undefined;
@@ -63,7 +64,7 @@ export class CompilerMetrics {
    const [verifications]=await connection.execute<RowDataPacket[]>(`SELECT v.task_id taskId,v.node_id workerId,v.outcome,v.method,v.received_at receivedAt,v.completed_at completedAt,${platformSql} platform ${verificationJoin} ORDER BY v.received_at DESC LIMIT 50`,verificationParams);
    const [history]=await connection.execute<RowDataPacket[]>(`SELECT h.job_id jobId,h.observed_at at,h.snapshot_json snapshot FROM job_worker_availability h JOIN compilation_jobs j ON j.id=h.job_id WHERE ${where} ORDER BY h.observed_at DESC LIMIT 100`,params);
    await connection.commit();const selected=(rows:Row[])=>filter.platform?rows.filter(row=>row.platform===filter.platform):rows;
-   const availability=history.map(h=>{const s=typeof h.snapshot==='string'?JSON.parse(h.snapshot):h.snapshot;return {at:h.at,jobId:h.jobId,...(filter.platform?s.platforms.find((p:Row)=>p.platform===filter.platform):s)};});
+   const availability=history.flatMap(h=>{const snapshot=typeof h.snapshot==='string'?JSON.parse(h.snapshot):h.snapshot;const measurement=filter.platform?snapshot.platforms?.find((platform:Row)=>platform.platform===filter.platform):snapshot;return measurement?[{at:h.at,jobId:h.jobId,...measurement}]:[];});
    const base=summarizeCompilerMetrics({tasks:[],workers:selected(this.workersWithConnections(workers)),telemetry:[],verifications,availability},Date.now(),this.offlineMs);
    const counts=(rows:Row[])=>{const sum=(predicate:(r:Row)=>boolean)=>rows.filter(predicate).reduce((s,r)=>s+Number(r.count),0),successful=sum(r=>r.status==='COMPLETED'),timedOut=sum(r=>r.status==='FAILED'&&r.failureReason==='TIMEOUT'),failed=sum(r=>r.status==='FAILED'&&r.failureReason!=='TIMEOUT'),totalCompleted=successful+failed+timedOut;return {successful,timedOut,failed,totalCompleted,cancelled:sum(r=>r.status==='CANCELLED'),running:sum(r=>r.status==='RUNNING'),pending:sum(r=>['QUEUED','REQUEUED','ASSIGNED','VERIFYING'].includes(r.status)),successRate:ratio(successful,totalCompleted)};};
    const timing=(rows:Row[])=>{const count=rows.reduce((s,r)=>s+Number(r.durationCount),0);return {count,averageMs:count?rows.reduce((s,r)=>s+Number(r.durationSum),0)/count:null};};

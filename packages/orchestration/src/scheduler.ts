@@ -2,16 +2,20 @@ import {networkPolicySchema,contributionPolicySchema,resourceSchema,type Capabil
 export * from "./reliability.js";
 
 export type RequiredCapability="base"|"ir"|"c"|"python"|"java";
+export type ExecutionMode="CLOUD_ONLY"|"LOCAL_ONLY"|"HYBRID";
+export type ExecutionLocation="CLOUD"|"LOCAL";
 export type TaskRequirements={
   capability:RequiredCapability;minLogicalCores?:number;minFreeMemoryBytes?:number;requireNativeCSource?:boolean;
   networkId?:string;taskKind?:string;operation?:string;operatingSystem?:string;architecture?:string;toolchainVersion?:string;
   maxDurationMs?:number;maxCpuPercent?:number;maxMemoryBytes?:number;deadlineAt?:string;affinityNodeId?:string;
+  executionMode?:ExecutionMode;
 };
 export type NodePerformance={sampleCount:number;averageExecutionTimeMs:number;successRate:number};
 export type SchedulableNode={
   id:string;networkId?:string;status:"AVAILABLE"|string;profile:CapabilityProfile;resources:ResourceSnapshot|null;
   lastHeartbeat?:string;contributionPolicy?:ContributionPolicy;reliability?:{sampleCount:number;successRate:number|null};
   historicalPerformance?:Partial<Record<RequiredCapability,NodePerformance>>;
+  executionLocation?:ExecutionLocation;
 };
 export type SchedulingContext={nowMs?:number;maxResourceAgeMs?:number;policy?:NetworkPolicy};
 export type CandidateEvaluation={nodeId:string;eligible:boolean;score:number|null;reasons:string[]};
@@ -36,6 +40,9 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
   if(!contributionResult.success)reasons.push("contribution policy is invalid");
   const policy=policyResult.success?policyResult.data:{},contribution=contributionResult.success?contributionResult.data:{};
   if(node.status!=="AVAILABLE")reasons.push(`status is ${node.status}`);
+  const location=node.executionLocation??"LOCAL";
+  if(requirements.executionMode==="CLOUD_ONLY"&&location!=="CLOUD")reasons.push("cloud-only job requires an administrator-designated cloud worker");
+  if(requirements.executionMode==="LOCAL_ONLY"&&location!=="LOCAL")reasons.push("local-only job cannot use a cloud worker");
   if(contribution.enabled===false)reasons.push("worker contribution is disabled");
   if(requirements.networkId!==undefined&&node.networkId!==requirements.networkId)reasons.push("worker belongs to another network or network identity is missing");
   if(!supports(node.profile,requirements.capability))reasons.push(`${requirements.capability} capability is unavailable`);
@@ -118,7 +125,13 @@ export function selectNode(nodes:SchedulableNode[],requirements:TaskRequirements
       evaluation.reasons.push(`${history.sampleCount} historical sample(s)`,`${history.averageExecutionTimeMs.toFixed(2)} ms average`,`success ${(history.successRate*100).toFixed(1)}%`);
     }else evaluation.reasons.push("no historical samples; resource-only score");
   }
-  const eligible=evaluations.filter((item):item is CandidateEvaluation&{score:number}=>item.eligible&&item.score!==null).sort((a,b)=>b.score-a.score||Number(b.nodeId===requirements.affinityNodeId)-Number(a.nodeId===requirements.affinityNodeId)||(a.nodeId<b.nodeId?-1:a.nodeId>b.nodeId?1:0));
+  const eligible=evaluations.filter((item):item is CandidateEvaluation&{score:number}=>item.eligible&&item.score!==null).sort((a,b)=>{
+    if(requirements.executionMode==="HYBRID"){
+      const localDifference=Number((byId.get(b.nodeId)?.executionLocation??"LOCAL")==="LOCAL")-Number((byId.get(a.nodeId)?.executionLocation??"LOCAL")==="LOCAL");
+      if(localDifference)return localDifference;
+    }
+    return b.score-a.score||Number(b.nodeId===requirements.affinityNodeId)-Number(a.nodeId===requirements.affinityNodeId)||(a.nodeId<b.nodeId?-1:a.nodeId>b.nodeId?1:0);
+  });
   const selected=eligible[0];
   if(!selected)return{selectedNodeId:null,score:null,explanation:`No eligible node satisfies ${requirements.capability} capability and resource requirements.`,evaluations};
   return{selectedNodeId:selected.nodeId,score:selected.score,explanation:`Selected ${selected.nodeId} with score ${selected.score}: ${selected.reasons.join("; ")}.`,evaluations};

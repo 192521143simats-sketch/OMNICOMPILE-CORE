@@ -30,7 +30,7 @@ export const config = {
   allowedOrigins: process.env.ALLOWED_ORIGINS,
   trustedProxies: trustedProxyPolicy(process.env.TRUSTED_PROXIES),
   testInstance: process.env.OMNICOMPILE_TEST_INSTANCE,
-  executionEnabled: ["docker","kubernetes"].includes(process.env.OMNICOMPILE_EXECUTION_MODE??"docker"),
+  executionEnabled: ["docker","docker-broker"].includes(process.env.OMNICOMPILE_EXECUTION_MODE??"docker"),
   sessionTtlHours: integer("SESSION_TTL_HOURS", 12),
   resetTtlMinutes: integer("RESET_TTL_MINUTES", 20),
   integrations: {

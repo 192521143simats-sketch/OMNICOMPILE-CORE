@@ -30,3 +30,15 @@ it('separates CPU/RAM valid readings and verification outcomes',()=>{
  const data=summarizeCompilerMetrics({tasks:[],workers:[],telemetry:[{platform:'WINDOWS',cpuPercent:20,ramPercent:null,observedAt:at},{platform:'ANDROID',cpuPercent:40,ramPercent:60,observedAt:at}],verifications:[{outcome:'VERIFIED'},{outcome:'REJECTED'},{outcome:'FAILED'},{outcome:'PENDING'}],availability:[]},Date.parse(at));
  expect(data.resources).toMatchObject({cpuPercent:30,ramPercent:60,cpuReadings:2,ramReadings:1});expect(data.verification).toMatchObject({verified:1,rejected:1,failed:1,pending:1,completed:3,rate:100/3});
 });
+it('includes cloud and other native task, worker and telemetry measurements without relabelling them as Windows',()=>{
+ const at='2026-11-01T10:00:00.000Z';
+ const data=summarizeCompilerMetrics({tasks:[
+  {status:'COMPLETED',platform:'CLOUD',assignedAt:at,receivedAt:'2026-11-01T10:00:00.120Z'},
+  {status:'COMPLETED',platform:'NATIVE_OTHER',assignedAt:at,receivedAt:'2026-11-01T10:00:00.240Z'}
+ ],workers:[{id:'cloud',platform:'CLOUD',status:'AVAILABLE',lastHeartbeat:at}],telemetry:[{platform:'CLOUD',cpuPercent:30,ramPercent:50,observedAt:at}],verifications:[],availability:[]},Date.parse(at));
+ expect(data.completion.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({count:1,averageMs:120});
+ expect(data.completion.platforms.find(row=>row.platform==='NATIVE_OTHER')).toMatchObject({count:1,averageMs:240});
+ expect(data.completion.platforms.find(row=>row.platform==='WINDOWS')).toMatchObject({count:0,averageMs:null});
+ expect(data.availability.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({registered:1,available:1,percentage:100});
+ expect(data.resources.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({cpuPercent:30,ramPercent:50,cpuReadings:1,ramReadings:1});
+});

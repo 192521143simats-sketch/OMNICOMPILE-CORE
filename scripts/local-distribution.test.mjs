@@ -24,12 +24,12 @@ test('container publisher copies only existing package bytes and uses container-
   await assert.rejects(localDistributionManifest(root),/ENOENT/);
   const entries=await publishContainerDistribution(root);assert.equal(entries.length,1);assert.equal(entries[0].platform,'WINDOWS');
   assert.equal(entries[0].filePath,'/app/.runtime/distribution/OMNICOMPILE-Worker-1.2.3-Windows-x64-Setup.exe');
-  assert.deepEqual(await readFile(join(root,'.runtime/distribution',entries[0].fileName)),windowsBytes);
+  assert.deepEqual(await readFile(join(root,'.runtime/docker/distribution',entries[0].fileName)),windowsBytes);
   assert.equal(entries[0].sha256,createHash('sha256').update(windowsBytes).digest('hex'));
-  assert.deepEqual(JSON.parse(await readFile(join(root,'.runtime/distribution/manifest.json'),'utf8')),entries);
-  await assert.rejects(readFile(join(root,'.runtime/distribution/OMNICOMPILE-Worker-2.3.4-Android-debug.apk')),/ENOENT/);
+  assert.deepEqual(JSON.parse(await readFile(join(root,'.runtime/docker/distribution/manifest.json'),'utf8')),entries);
+  await assert.rejects(readFile(join(root,'.runtime/docker/distribution/OMNICOMPILE-Worker-2.3.4-Android-debug.apk')),/ENOENT/);
   await rm(join(root,files[2][0]));assert.deepEqual(await publishContainerDistribution(root),[]);
-  assert.deepEqual(JSON.parse(await readFile(join(root,'.runtime/distribution/manifest.json'),'utf8')),[]);
+  assert.deepEqual(JSON.parse(await readFile(join(root,'.runtime/docker/distribution/manifest.json'),'utf8')),[]);
  }finally{await rm(root,{recursive:true,force:true});}
 });
 

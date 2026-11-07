@@ -12,7 +12,7 @@ OmniCompile Core combines real C, Python, and Java compiler pipelines with a coo
 4. Workers execute authorized tasks. The coordinator checks task, worker, and attempt identity and applies task-specific result verification before aggregation. Expired or interrupted attempts can be retried within policy.
 5. The compiler produces language-specific artifacts and diagnostics. The compiler workspace presents job-scoped operational metrics separately from the downloadable build report.
 
-Browser and Android workers handle supported portable workloads. Native toolchain work requires a compatible environment. Distribution applies to eligible tasks, while dependent work and final artifact generation follow the language pipeline. Hosted Kubernetes operation and hostile-code isolation have separate acceptance gates.
+Browser and Android workers handle supported portable workloads. Native toolchain work requires a compatible environment. Distribution applies to eligible tasks, while dependent work and final artifact generation follow the language pipeline. Public hosting and stronger isolation for hostile workloads have separate acceptance gates.
 
 Workers built for older protocol versions must be rebuilt and re-enrolled. See the [master build specification](OMNICOMPILE_MASTER_BUILD_SPEC.md), [security policy](SECURITY.md), and [engineering status](docs/engineering/PROJECT_STATUS.md) for requirements, operating limits, and verification evidence.
 
@@ -28,30 +28,19 @@ Open `http://localhost:5173`. On the first start, the ignored `.env` receives a 
 
 For a phone or another computer on the same Wi-Fi/LAN, use the `Mobile/LAN` URL printed by `START-OMNICOMPILE.bat` (for example, `http://192.168.0.5:5173`). Never replace its host with `localhost`: on a phone, `localhost` means the phone itself. The startup process uses the active LAN address when it generates worker invitation links.
 
-Users select only the language and supply a source filename plus pasted or uploaded source. OmniCompile Core chooses an active compatible network using the same resource-aware score and measured execution history used for worker scheduling. Network choice and compilation history are administrative concerns and are shown in the Admin dashboard. New worker identities are network-scoped (`NODE-A001`, `NODE-A002`, `NODE-B001`, and so on).
+Users select a language and execution preference and supply a source filename plus pasted or uploaded source. OmniCompile Core chooses an active compatible network using the same resource-aware score and measured execution history used for worker scheduling. Network choice and compilation history are administrative concerns and are shown in the Admin dashboard. New worker identities are network-scoped (`NODE-A001`, `NODE-A002`, `NODE-B001`, and so on).
 
 ```bat
 STOP-OMNICOMPILE.bat
 ```
 
-Shutdown preserves the project `omnicompile-data` volume and leaves general MYSQL running. Never use `docker compose down -v` during normal operation.
+Shutdown preserves the project database and artifact volumes and leaves general MYSQL untouched. Never use `docker compose down -v` during normal operation.
 
 ### Docker layout
 
-The authoritative configuration is docker-compose.yml. Startup manages six project services on omnicompile-network.
+The root `docker-compose.yml` manages eight project services. The frontend is available on port 5173 and the coordinator on port 4100. Project MySQL uses loopback port 3307 and volume `OMNICOMPILE-MYSQL`. Private artifact storage uses `OMNICOMPILE-ARTIFACTS`. The separate general-purpose `MYSQL` instance uses port 3306 and volume `mysql`.
 
-| Service | Responsibility | Host endpoint |
-|---|---|---|
-| omnicompile-coordinator | API, scheduling, authentication and verification routing | 4100 |
-| omnicompile-frontend | Web interface and API proxy | 5173 |
-| omnicompile-mysql | Persistent project MySQL 8.4 | 127.0.0.1:3307 |
-| omnicompile-c-worker | GCC/G++ environment and C tasks | Internal only |
-| omnicompile-python-worker | Python environment and tasks | Internal only |
-| omnicompile-java-worker | JDK environment and Java tasks | Internal only |
-
-Project data resides in omnicompile-data. General-purpose MYSQL is managed independently. Existing uppercase project-volume data must be migrated using the checksum-verified procedure before switching. Startup provisions three approved, separately authenticated worker identities using existing enrollment APIs.
-
-See [Docker operations](infra/containers/README.md) for migration, credentials, commands and execution boundaries. Kubernetes manifests are preparation templates.
+See [Docker operations](infra/docker/README.md) for the service inventory, execution boundaries, credentials and verification commands.
 
 ## Workflows
 

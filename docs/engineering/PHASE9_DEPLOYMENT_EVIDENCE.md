@@ -15,7 +15,7 @@ and secrets were preserved.
   or execution-disabled substitute is used by the Kubernetes configuration.
 - Separate migration CLI/Job and check-only coordinator migration startup.
 - Disposable local container acceptance script:
-  `node infra/containers/Verify-Images.mjs`.
+  `node infra/docker/Verify-Images.mjs`.
 
 ## Verification evidence
 
@@ -27,10 +27,10 @@ and secrets were preserved.
 | `npm run typecheck -w @omnicompile/coordinator` | Passed | Adapter, dispatch, CLI and migration changes. Full repository verification is recorded separately. |
 | `kubectl kustomize infra/kubernetes` | Passed, 476 lines | Local YAML transformation, not server schema/admission validation. |
 | `kubectl config current-context` | Blocked | No current context configured. |
-| Coordinator image build | Passed | `docker build -f infra/containers/coordinator.Dockerfile -t omnicompile-coordinator:phase9 .`; fresh final build exited 0. |
-| Web image build | Passed | `docker build -f infra/containers/web.Dockerfile -t omnicompile-web:phase9 .`; actual production bundle built inside image, final build exited 0. |
+| Coordinator image build | Passed | `docker build -f infra/docker/coordinator.Dockerfile -t omnicompile-coordinator:phase9 .`; fresh final build exited 0. |
+| Web image build | Passed | `docker build -f infra/docker/web.Dockerfile -t omnicompile-web:phase9 .`; actual production bundle built inside image, final build exited 0. |
 | Execution image build | Passed | `docker build -t oa-omnicompile-execution:local infra/sandbox`; actual existing runner plus Kubernetes entry built. |
-| Final `node infra/containers/Verify-Images.mjs` | Passed, fixture `65f766cf86870a1b` | Real disposable MySQL/container coordinator/web, separate migration apply/check, readiness nonce, administrator login, network creation, pending native enrollment, SPA deep-route fallback, UID1000 coordinator and UID101 web. Cleanup exited 0. |
+| Final `node infra/docker/Verify-Images.mjs` | Passed, fixture `65f766cf86870a1b` | Real disposable MySQL/container coordinator/web, separate migration apply/check, readiness nonce, administrator login, network creation, pending native enrollment, SPA deep-route fallback, UID1000 coordinator and UID101 web. Cleanup exited 0. |
 | Earlier same local image smoke | Passed, fixture `e81df023f17269ef` | Same functional assertions before final server rate-limit and distribution concurrency guards; superseded by final image smoke above. |
 | Bounded execution image Python smoke | Passed | Real read-only, network-none Docker container, PID64/memory512MiB/capability restrictions; `print(6*7)` returned `42`, exit0, measured144.03ms and13,914,112 peak memory bytes. Not Kubernetes containment evidence. |
 | Execution image tool inspection | Passed | Python3.14.8 and GCC14.2.0 inspected directly in actual image. |

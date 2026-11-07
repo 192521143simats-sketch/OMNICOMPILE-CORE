@@ -44,10 +44,10 @@ try {
   await checked('docker',['info','--format','{{.ServerVersion}}'],{timeout:30_000});
   console.log(`Creating isolated MySQL fixture ${container} (temporary storage, no developer volume)...`);
   const fixedFixturePort=mode==='phase4'?await availablePort():null;
-  await checked('docker',['create','--init','--name',container,'--label',`omnicompile.test.instance=${instance}`,'--memory','768m','--publish',`127.0.0.1:${fixedFixturePort??''}:3306`,'--tmpfs','/var/lib/mysql:rw','--env','MYSQL_ROOT_PASSWORD','--env','MYSQL_DATABASE','--env','MYSQL_USER','--env','MYSQL_PASSWORD','mysql:8.4','mysqld','--innodb-buffer-pool-size=64M','--performance-schema=OFF','--max-connections=80','--table-open-cache=256',...(mode==='phase4'?['--datadir=/omnicompile-test-data']:[])],{timeout:180_000,env:{...process.env,MYSQL_ROOT_PASSWORD:rootPassword,MYSQL_DATABASE:database,MYSQL_USER:'omnicompile_test',MYSQL_PASSWORD:password}});
+  await checked('docker',['create','--init','--name',container,'--label',`omnicompile.test.instance=${instance}`,'--memory','768m','--publish',`127.0.0.1:${fixedFixturePort??''}:3307`,'--tmpfs','/var/lib/mysql:rw','--env','MYSQL_ROOT_PASSWORD','--env','MYSQL_DATABASE','--env','MYSQL_USER','--env','MYSQL_PASSWORD','omnicompile-mysql:8.4','mysqld','--port=3307','--innodb-buffer-pool-size=64M','--performance-schema=OFF','--max-connections=80','--table-open-cache=256',...(mode==='phase4'?['--datadir=/omnicompile-test-data']:[])],{timeout:180_000,env:{...process.env,MYSQL_ROOT_PASSWORD:rootPassword,MYSQL_DATABASE:database,MYSQL_USER:'omnicompile_test',MYSQL_PASSWORD:password}});
   created=true;
   await checked('docker',['start',container]);
-  const published=await checked('docker',['port',container,'3306/tcp']);
+  const published=await checked('docker',['port',container,'3307/tcp']);
   const dbPort=Number(published.match(/127\.0\.0\.1:(\d+)/)?.[1]);
   if(!dbPort) throw new Error('Isolated MySQL port was not published on loopback.');
   await waitFor(async()=>{const connection=await mysql.createConnection({host:'127.0.0.1',port:dbPort,database,user:'omnicompile_test',password,connectTimeout:2000});try{await connection.query('SELECT 1');}finally{await connection.end();}},'isolated MySQL readiness');

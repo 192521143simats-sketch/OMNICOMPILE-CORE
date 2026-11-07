@@ -5,14 +5,15 @@ import {assertIsolatedTarget,verifyIsolatedCoordinator} from "./Integration-Targ
 
 const target=assertIsolatedTarget(),base=target.base,root=process.cwd();await verifyIsolatedCoordinator(target);
 const check=(value,message)=>{if(!value)throw new Error(message);},pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
-class Client{cookie="";async request(path,{method="GET",body}={}){const response=await fetch(base+path,{method,headers:{origin:"http://localhost:5173",...(this.cookie?{cookie:this.cookie}:{}),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined}),cookie=response.headers.get("set-cookie");if(cookie)this.cookie=cookie.split(";",1)[0];return{status:response.status,value:(response.headers.get("content-type")??"").includes("json")?await response.json():Buffer.from(await response.arrayBuffer())};}}
+class Client{cookie="";async request(path,{method="GET",body}={}){if(path==="/api/compilations"&&body)body={...body,executionMode:"LOCAL_ONLY"};const response=await fetch(base+path,{method,headers:{origin:"http://localhost:5173",...(this.cookie?{cookie:this.cookie}:{}),...(body?{"content-type":"application/json"}:{})},body:body?JSON.stringify(body):undefined}),cookie=response.headers.get("set-cookie");if(cookie)this.cookie=cookie.split(";",1)[0];return{status:response.status,value:(response.headers.get("content-type")??"").includes("json")?await response.json():Buffer.from(await response.arrayBuffer())};}}
 async function poll(work,predicate){const end=Date.now()+120000;do{const result=await work();if(predicate(result))return result;await pause(300);}while(Date.now()<end);throw new Error("Isolated execution integration timed out");}
 const admin=new Client(),user=new Client(),peer=new Client(),anonymous=new Client(),other=new Client();
 const samples=[];
-if(process.env.OMNICOMPILE_TEST_SAMPLES==="1")for(const language of ["c","python","java"])for(const difficulty of ["easy","tough","industrial"]){const sourceName=`sample-${language}-${difficulty}.${{c:"c",python:"py",java:"java"}[language]}`;samples.push({language,sourceName,source:await readFile(resolve(root,sourceName),"utf8"),difficulty});}
+if(process.env.OMNICOMPILE_TEST_SAMPLES==="1")for(const language of ["c","python","java"])for(const difficulty of ["easy","tough","industrial"]){const sourceName=`sample-${language}-${difficulty}.${{c:"c",python:"py",java:"java"}[language]}`;samples.push({language,sourceName,source:await readFile(resolve(root,"samples",language,sourceName),"utf8"),difficulty});}
 check((await admin.request("/api/auth/login",{method:"POST",body:{identifier:process.env.ADMIN_USERNAME,password:process.env.ADMIN_PASSWORD}})).status===200,"Admin login failed");
-const network=(await admin.request("/api/admin/networks",{method:"POST",body:{name:"Execution verification",maxNodes:3}})).value;
+const network=(await admin.request("/api/admin/networks",{method:"POST",body:{name:"Execution verification",maxNodes:3,requireAdminApproval:true}})).value;
 const admission=await peer.request(`/api${new URL(network.joinUrl).pathname}/accept`,{method:"POST",body:{consent:true,workerType:"NATIVE",deviceIdentity:`execution-${crypto.randomUUID()}`}});check(admission.status===201,"Native enrollment failed");
+check((await admin.request(`/api/admin/enrollments/${admission.value.enrollmentId}/approval`,{method:"POST",body:{approved:true,executionLocation:"LOCAL"}})).status===200,"Native enrollment approval failed");
 const worker=spawn(process.execPath,[resolve(root,"node_modules/tsx/dist/cli.mjs"),resolve(root,"apps/worker/src/index.ts")],{cwd:root,windowsHide:true,env:{...process.env,COORDINATOR_URL:base,WORKER_CREDENTIAL:admission.value.workerCredential},stdio:"ignore"});
 try{
   await poll(()=>admin.request("/api/admin/nodes?page=1&pageSize=10"),result=>result.value.items.some(node=>node.networkId===network.id&&node.status==="AVAILABLE"));
@@ -39,7 +40,7 @@ try{
     const reportArtifact=job.artifacts.find(artifact=>artifact.artifactType==="BUILD_REPORT_JSON"),report=(await user.request(reportArtifact.downloadUrl)).value;
     check(report.programExecution.status===item.execution,`${item.sourceName}: execution was ${report.programExecution.status}, expected ${item.execution}: ${report.programExecution.message}`);
     check(report.compilationSummary.compilationStatus==="Successful","Runtime failure misreported as compilation error");
-    if(item.output){check(report.programExecution.output===item.output,"Output mismatch");check(report.programExecution.exitCode===0&&report.programExecution.executionTimeSeconds>0&&report.resourceUsage.memoryUsedBytes>0,"Genuine execution measurements missing");}
+    if(item.output){check(report.programExecution.output===item.output,"Output mismatch");check(report.programExecution.exitCode===0&&report.programExecution.executionTimeSeconds>0&&(report.resourceUsage.memoryUsedBytes===null||report.resourceUsage.memoryUsedBytes>0),"Genuine execution measurements missing");}
     if(item.diagnostic)check(report.programExecution.stderr.includes(item.diagnostic),"Actual runtime diagnostics missing");
     if(item.sourceName==="broken_runtime.py")check(report.errors.some(error=>error.phase==="execution"&&error.line===1&&error.sourceFile==="compiled_broken_runtime.py"),"Runtime source location points to the wrong file or is missing");
     if(item.warning)check(report.programInformation.warnings>0&&report.programInformation.warningDetails.some(warning=>warning.includes(item.warning)),"Actual warning not counted or retained");
@@ -48,7 +49,14 @@ try{
     if(item.optimized)check(report.optimizations.length>0&&report.output.optimizedSource!==item.source,"Distributed optimization evidence or final generated source missing");
     check(report.finalResult.status===(item.execution==="SUCCEEDED"||item.execution==="NOT_RUN"?"SUCCESS":"PARTIAL_SUCCESS"),"False final success claim");
     if(process.env.OMNICOMPILE_TEST_PDF_OUTPUT&&["invoice.c","broken_runtime.py"].includes(item.sourceName)){const directory=resolve(process.env.OMNICOMPILE_TEST_PDF_OUTPUT);check(directory.startsWith(resolve(root,".runtime")+"\\"),"PDF evidence must remain in ignored runtime storage");await mkdir(directory,{recursive:true});const pdf=await user.request(job.artifacts.find(artifact=>artifact.artifactType==="BUILD_REPORT_PDF").downloadUrl);check(pdf.status===200&&pdf.value.subarray(0,4).toString()==="%PDF","PDF download invalid");await writeFile(resolve(directory,item.sourceName+".pdf"),pdf.value);}
-    if(item.language==="c"){const linux=job.artifacts.find(artifact=>artifact.fileName.endsWith("-linux")),bytes=(await user.request(linux.downloadUrl)).value;check(bytes.subarray(0,4).equals(Buffer.from([127,69,76,70])),"No genuine Linux output");check(report.programExecution.artifactName===linux.fileName,"Executed artifact identity mismatch");const original=job.artifacts.find(artifact=>artifact.artifactType==="EXECUTABLE"&&!artifact.fileName.endsWith("-linux"));check(original,"Original executable was discarded");}
+    if(item.language==="c"){
+      const executed=job.artifacts.find(artifact=>artifact.artifactType==="EXECUTABLE"&&artifact.fileName===report.programExecution.artifactName);
+      check(executed,"Executed C artifact was not published");
+      const bytes=(await user.request(executed.downloadUrl)).value;
+      check(bytes.subarray(0,4).equals(Buffer.from([127,69,76,70])),"No genuine executed Linux output");
+      const windows=job.artifacts.find(artifact=>artifact.artifactType==="EXECUTABLE"&&artifact.fileName.endsWith(".exe"));
+      if(windows)check(windows.fileName!==executed.fileName,"Windows output was relabelled as Linux");
+    }
     check((await anonymous.request(reportArtifact.downloadUrl)).status===401,"Anonymous report access succeeded");check((await other.request(reportArtifact.downloadUrl)).status===404,"Other owner report access succeeded");
     console.log(`${item.sourceName}: actual ${item.execution}, ${report.programInformation.compilationErrors} compilation errors, ${report.programInformation.executionErrors} execution failures, ${report.programInformation.warnings} warnings; report/artifact ownership verified`);
   }

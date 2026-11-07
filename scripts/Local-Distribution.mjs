@@ -25,7 +25,7 @@ export async function localDistributionManifest(root=process.cwd(),{allowMissing
 
 /** Publish only actual packages into the directory mounted read-only by Docker. */
 export async function publishContainerDistribution(root=process.cwd()) {
-  const destination=resolve(root,'.runtime/distribution');await mkdir(destination,{recursive:true});
+  const destination=resolve(root,'.runtime/docker/distribution');await mkdir(destination,{recursive:true});
   const entries=await localDistributionManifest(root,{allowMissing:true}),published=[];
   for(const entry of entries){
     const bytes=await readFile(entry.filePath);
@@ -37,7 +37,7 @@ export async function publishContainerDistribution(root=process.cwd()) {
   return published;
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(resolve(process.argv[1])).href){
-  const destination=resolve('.runtime/distribution/manifest.json');await mkdir(dirname(destination),{recursive:true});
+  const destination=resolve('.runtime/docker/distribution/manifest.json');await mkdir(dirname(destination),{recursive:true});
   if(process.argv.includes('--container')){
     const entries=await publishContainerDistribution();
     console.log(`Container prerelease distribution prepared: ${entries.length} actual package(s); missing platforms remain unavailable.`);

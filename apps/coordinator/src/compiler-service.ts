@@ -3,16 +3,10 @@ import {z} from 'zod';
 import {timingSafeEqual} from 'node:crypto';
 import {readFileSync,existsSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {cIrFunctionSchema} from '@omnicompile/contracts';
-import {runOwnedProcess} from '@omnicompile/orchestration';
+import {runOwnedProcess,requestDockerJob} from '@omnicompile/orchestration';
+import {compilerPayloadSchema} from './docker-executor-schema.js';
 
 const languageSchema=z.enum(['c','python','java']);
-const filename=z.string().min(1).max(255).regex(/^[A-Za-z0-9][A-Za-z0-9_.-]*$/);
-const source=z.object({language:languageSchema,sourceName:filename,sourceText:z.string().min(1).max(1_000_000)}).strict();
-const payloadSchema=z.discriminatedUnion('action',[
-  z.object({action:z.literal('verify'),source,worker:z.record(z.string(),z.unknown())}).strict(),
-  z.object({action:z.literal('c_ir'),source:z.string().min(1).max(1_000_000),sourceName:filename,base:filename,ir:z.object({kind:z.literal('OmniCompileCIR'),version:z.literal(1),functions:z.array(cIrFunctionSchema).max(1000)})}).strict()
-]);
 type Execute=(payload:unknown,signal:AbortSignal)=>Promise<unknown>;
 
 export function createCompilerService(language:z.infer<typeof languageSchema>,token:string,execute?:Execute){
@@ -20,6 +14,10 @@ export function createCompilerService(language:z.infer<typeof languageSchema>,to
   const app=Fastify({bodyLimit:20_000_000,logger:false});
   let busy=false;
   const run=execute??(async(payload,signal)=>{
+    if(process.env.OMNICOMPILE_EXECUTOR_URL){
+      const parsed=compilerPayloadSchema.parse(payload);
+      return requestDockerJob({kind:parsed.action,language,payload:parsed},signal);
+    }
     const entry=new URL(import.meta.url.endsWith('.ts')?'./compiler-process.ts':'./compiler-process.js',import.meta.url);
     return (await runOwnedProcess(entry,payload,{signal})).result;
   });
@@ -28,7 +26,7 @@ export function createCompilerService(language:z.infer<typeof languageSchema>,to
     const supplied=Buffer.from(request.headers.authorization??'');
     const expected=Buffer.from(`Bearer ${token}`);
     if(supplied.length!==expected.length||!timingSafeEqual(supplied,expected))return reply.code(401).send({error:{code:'COMPILER_AUTH_REQUIRED'}});
-    const parsed=payloadSchema.safeParse(request.body);
+    const parsed=compilerPayloadSchema.safeParse(request.body);
     if(!parsed.success)return reply.code(400).send({error:{code:'INVALID_COMPILER_REQUEST'}});
     const payload=parsed.data;
     const requested=payload.action==='c_ir'?'c':payload.source.language;
