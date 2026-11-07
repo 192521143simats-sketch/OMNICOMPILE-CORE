@@ -131,3 +131,7 @@ The user subsequently authorized deleting the six reviewed other-project databas
 - Fresh `npm run verify:artifacts` exited 0 against disposable fixture `08cb441e24b9043a`: migrations, MySQL concurrency, versioned worker protocol, and real C/Python/Java artifact generation and authorized downloads passed. After all verification, the protected database's 22 checksums still matched the pre-cleanup snapshot and its container remained healthy. No temporary test container remained.
 
 Database schema sizes from the earlier inventory are not a measurement of reclaimed Windows disk space. No purge, volume removal, Docker-data compaction, or cleanup outside the approved project residue was performed.
+
+## Legacy SQLite data check
+
+On 7 November 2026, a read-only inventory found four sessions, four invitations, three nodes, three tasks and three results in the ignored legacy SQLite database. The active Docker MySQL schema had no task or result rows. The SQLite files therefore contain records absent from MySQL and should be retained pending an explicit decision about those records. Current Compose mounts and application runtime configuration use MySQL.
