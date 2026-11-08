@@ -46,3 +46,34 @@ npm run verify
 ```
 
 The Compose verifier checks project SQL readiness, actual persistence after restart, service networking and frontend/API connectivity. Language job acceptance results are recorded in the engineering evidence report. Kubernetes preparation lives in `infra/kubernetes`; nothing here applies resources or invokes Vercel.
+
+## Low-Disk mode on Windows
+
+Run `START-OMNICOMPILE.bat -LowDisk` to enable the idle monitor. After 30
+continuous minutes without active compilation jobs or nonterminal tasks, it
+removes stopped Compose containers. A failed workload check restarts the idle
+timer. The running application remains available. The monitor exits when its
+coordinator stops or restarts.
+
+Run `STOP-OMNICOMPILE.bat -LowDisk` to stop and remove project containers
+immediately. Named MySQL and artifact volumes are preserved.
+
+Add `-ReclaimImages` to either command to remove unused images listed by the
+project Compose file. On a running stack, its in-use images are kept. After a
+reclaiming shutdown, the next normal start rebuilds any removed images.
+
+Add `-ReclaimCache` to build with and prune only the dedicated
+`omnicompile-low-disk` Buildx builder. Shared Docker build cache is retained.
+Docker Desktop can reuse reclaimed space inside its virtual disk without
+returning the same number of bytes to Windows.
+
+### Verification on 8 November 2026
+
+The Windows batch startup, shortened idle timer, Low-Disk shutdown and
+restart were exercised against Docker Desktop. A stopped one-off project
+container was removed while all eight running services and their images
+were retained. Dedicated cache reclaim removed 12.29 kB of test records
+and left that builder at 0 B. Windows free space did not increase in the
+measurement window. An artifact marker survived the shutdown and restart,
+and the Compose verification passed MySQL persistence and admin login.
+The isolated C, Python and Java run recorded 12 verified worker results.
