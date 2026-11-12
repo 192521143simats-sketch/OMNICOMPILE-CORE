@@ -54,15 +54,33 @@ export async function startAndroidParticipant(env,joinUrl){
   assert.ok(!phone('reverse','--list').split(/\r?\n/).some(line=>line.split(/\s+/).includes(target.mapping)),'Existing ADB reverse mapping must not be replaced');
   const model=phone('shell','getprop','ro.product.model').trim();
   phone('reverse',target.mapping,target.mapping);
-  let child,done,output='';
+  let child,done,launchTimer,launchError,output='';
   try{
-    child=spawn(adb,['-s',serial,'shell','am','instrument','-w','-e','class','org.omnicompile.worker.NativeNetworkTest','-e','omnicompileJoin',joinUrl,'-e','omnicompileInstance',target.instance,artifacts.applicationId+'.test/androidx.test.runner.AndroidJUnitRunner'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+    child=spawn(adb,['-s',serial,'shell','am','instrument','-w','-r','-e','class','org.omnicompile.worker.NativeNetworkTest','-e','omnicompileJoin',joinUrl,'-e','omnicompileInstance',target.instance,'-e','omnicompileCompletedTasks','7',artifacts.applicationId+'.test/androidx.test.runner.AndroidJUnitRunner'],{windowsHide:true,stdio:['ignore','pipe','pipe']});
+    if(env.OMNICOMPILE_ANDROID_ACCEPTANCE==='1'){
+      // Some Android builds defer ActivityScenario's launch from an
+      // instrumented process. Start only the disposable fixture's activity.
+      launchTimer=setTimeout(()=>{
+        if(child.exitCode!==null)return;
+        try{
+          const resumed=phone('shell','dumpsys','activity','activities').split(/\r?\n/).filter(line=>/topResumedActivity|mResumedActivity/.test(line));
+          if(!resumed.some(line=>line.includes(artifacts.applicationId+'/'))){
+            phone('shell','am','start','-a','android.intent.action.MAIN','-c','android.intent.category.LAUNCHER','-f','0x14008000','-n',artifacts.applicationId+'/org.omnicompile.worker.MainActivity');
+          }
+        }catch(error){launchError=error;}
+      },8000);
+    }
     const capture=chunk=>{output+=chunk.toString();if(output.length>2_000_000)child.kill();};child.stdout.on('data',capture);child.stderr.on('data',capture);
     done=new Promise(resolve=>{child.once('error',error=>{output+=`\nInstrumentation launch failed: ${error.message}`;resolve(-1);});child.once('exit',code=>resolve(code));});
   }catch(error){phone('reverse','--remove',target.mapping);throw error;}
+  const diagnostic=()=>output.replaceAll(joinUrl,'[REDACTED admission URL]').slice(-3500);
   return{
     model,
-    async finish(){let timer;try{assert.equal(await Promise.race([done,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Android mixed lifecycle timed out')),90000);})]),0);assert.match(output,/OK \(1 test\)/);assert.doesNotMatch(output,/FAILURES!!!|INSTRUMENTATION_FAILED/);}finally{clearTimeout(timer);}},
-    async cleanup(revoke){const errors=[];let timer;try{if(child.exitCode===null){await revoke();await Promise.race([done,new Promise(resolve=>{timer=setTimeout(resolve,60000);})]);if(child.exitCode===null)await terminateOwnedTestProcess(child);}}catch(error){errors.push(error);}finally{clearTimeout(timer);}try{phone('reverse','--remove',target.mapping);}catch(error){errors.push(error);}try{await writeFile(resolve(target.evidence,'mixed-android-instrumentation.log'),output.replaceAll(joinUrl,'[REDACTED admission URL]'));}catch(error){errors.push(error);}if(errors.length)throw new AggregateError(errors,'Android fixture cleanup failed');}
+    assertRunning(){
+      if(launchError)throw new Error('Android acceptance activity launch failed.',{cause:launchError});
+      if(child.exitCode!==null)throw new Error('Android instrumentation ended before enrollment. '+diagnostic());
+    },
+    async finish(){let timer;try{assert.equal(await Promise.race([done,new Promise((_,reject)=>{timer=setTimeout(()=>reject(new Error('Android mixed lifecycle timed out')),90000);})]),0);assert.match(output,/OK \(1 test\)/,diagnostic());assert.doesNotMatch(output,/FAILURES!!!|INSTRUMENTATION_FAILED/);}finally{clearTimeout(timer);}},
+    async cleanup(revoke){clearTimeout(launchTimer);const errors=[];let timer;try{if(child.exitCode===null){await revoke();await Promise.race([done,new Promise(resolve=>{timer=setTimeout(resolve,60000);})]);if(child.exitCode===null)await terminateOwnedTestProcess(child);}}catch(error){errors.push(error);}finally{clearTimeout(timer);}try{phone('reverse','--remove',target.mapping);}catch(error){errors.push(error);}try{await writeFile(resolve(target.evidence,'mixed-android-instrumentation.log'),output.replaceAll(joinUrl,'[REDACTED admission URL]'));}catch(error){errors.push(error);}if(errors.length)throw new AggregateError(errors,'Android fixture cleanup failed');}
   };
 }

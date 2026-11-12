@@ -33,7 +33,7 @@ try{
   expect(new URL(network.joinUrl).origin).toBe(web);
   browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
   const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
-  async function approve(workerType){let enrollment;await expect.poll(async()=>{const result=await api(`/api/admin/networks/${network.id}/enrollments?page=1&pageSize=10`);enrollment=result.items.find(item=>item.workerType===workerType&&item.approvalStatus==='PENDING');return Boolean(enrollment);},{timeout:60000}).toBe(true);await api(`/api/admin/enrollments/${enrollment.enrollmentId}/approval`,{approved:true});}
+  async function approve(workerType,assertRunning){let enrollment;await expect.poll(async()=>{assertRunning?.();const result=await api(`/api/admin/networks/${network.id}/enrollments?page=1&pageSize=10`);enrollment=result.items.find(item=>item.workerType===workerType&&item.approvalStatus==='PENDING');return Boolean(enrollment);},{timeout:60000}).toBe(true);await api(`/api/admin/enrollments/${enrollment.enrollmentId}/approval`,{approved:true});}
   await page.goto(network.joinUrl);await page.getByRole('button',{name:'Become a Worker'}).click();await approve('BROWSER');
   const browserStatus=page.getByLabel('Worker status');await expect(browserStatus).toHaveText('AVAILABLE',{timeout:30000});
   const browserNode=(await page.locator('.browser-node code').first().textContent()).trim();
@@ -44,7 +44,7 @@ try{
   await window.locator('#rotate').click();await expect(nativeStatus).toHaveText('PAUSED');await window.locator('#connect').click();await expect(nativeStatus).toHaveText('AVAILABLE',{timeout:30000});expect((await window.evaluate(()=>window.omnicompile.snapshot())).nodeId).toBe(nativeNode);
   await page.getByRole('button',{name:'Rotate private credential'}).click();await expect(browserStatus).toHaveText('PAUSED');await page.getByRole('button',{name:'Resume contribution'}).click();await expect(browserStatus).toHaveText('AVAILABLE',{timeout:30000});expect((await page.locator('.browser-node code').first().textContent()).trim()).toBe(browserNode);
   if(includeAndroid){
-    android=await startAndroidParticipant(process.env,network.joinUrl);await approve('ANDROID');
+    android=await startAndroidParticipant(process.env,network.joinUrl);await approve('ANDROID',android.assertRunning);
     await expect.poll(async()=>{const[rows]=await db.execute("SELECT id,profile_json FROM nodes WHERE network_id=? AND worker_type='ANDROID' AND status='AVAILABLE'",[network.id]);if(rows[0]){androidNode=rows[0].id;const profile=typeof rows[0].profile_json==='string'?JSON.parse(rows[0].profile_json):rows[0].profile_json;expect(profile.runtimes).toEqual({c:false,python:false,java:false});expect(profile.operations.nativeCompilation).toBe(false);}return Boolean(rows[0]);},{timeout:90000}).toBe(true);
   }
   const identities=[nativeNode,browserNode,...(androidNode?[androidNode]:[])];
@@ -69,6 +69,24 @@ try{
       if(payload.operation==='matrix_multiply')expect(result.result.matrix).toEqual([[23]]);
       if(payload.operation==='portable_benchmark')expect(result.result.checksum).toBe(1015568748);
     }
+  }
+  if(androidNode){
+    await policy(['BROWSER','NATIVE','ANDROID']);
+    const tasks=await Promise.all(Array.from({length:3},(_,index)=>submit({
+      operation:'sha256_chain',input:`three-platform overlap ${index}`,iterations:100000
+    })));
+    const results=await Promise.all(tasks.map(completed));
+    expect(new Set(results.map(result=>result.node))).toEqual(new Set(identities));
+    for(const result of results)expect(result.result.verification?.status).toBe('VERIFIED');
+    const [attempts]=await db.execute(
+      "SELECT task_id,attempt,node_id,started_at,completed_at FROM task_attempts WHERE task_id IN (?,?,?) AND status='COMPLETED'",
+      tasks.map(task=>task.id)
+    );
+    expect(attempts).toHaveLength(3);
+    const latestStart=Math.max(...attempts.map(attempt=>Date.parse(attempt.started_at)));
+    const earliestEnd=Math.min(...attempts.map(attempt=>Date.parse(attempt.completed_at)));
+    expect(earliestEnd-latestStart,'All three real worker attempts must overlap').toBeGreaterThan(0);
+    console.log(JSON.stringify({concurrentAttempts:attempts,overlapMs:earliestEnd-latestStart}));
   }
   await policy(['BROWSER','NATIVE']);
   const burst=await Promise.all(Array.from({length:6},(_,index)=>submit({operation:'sha256',input:`mixed-${index}`})));
@@ -98,7 +116,7 @@ try{
   expect(errors).toEqual([]);await page.screenshot({path:join(evidence,'mixed-browser.png')});await window.screenshot({path:join(evidence,'mixed-windows.png')});
   await page.getByRole('button',{name:'Leave network'}).click();await expect(page.getByRole('heading',{name:'Join distributed network'})).toBeVisible();
   await window.locator('#leave').click();await expect(nativeStatus).toHaveText('LEFT');
-  console.log(JSON.stringify({platforms:['actual browser Web Worker','packaged Windows native worker',...(android?['physical Android native worker']:[])],sameCoordinator:true,sameNetwork:true,distinctIdentity:true,persistedResults:true,browserToNativeReassignment:true,coordinatorRestart:true,publicInternet:false,androidIncluded:Boolean(android)}));
+  console.log(JSON.stringify({platforms:['actual browser Web Worker','packaged Windows native worker',...(android?['Android native worker']:[])],sameCoordinator:true,sameNetwork:true,distinctIdentity:true,persistedResults:true,browserToNativeReassignment:true,coordinatorRestart:true,publicInternet:false,androidIncluded:Boolean(android)}));
 }catch(error){failure=error;try{const[nodes]=await db.execute('SELECT id,status,profile_json,resource_json,last_heartbeat FROM nodes WHERE network_id=?',[network.id]);const[tasks]=await db.execute('SELECT id,status,required_capability,payload_json,scheduler_explanation FROM tasks WHERE network_id=?',[network.id]);await writeFile(join(evidence,'mixed-failure-state.json'),JSON.stringify({nodes,tasks},null,2));}catch{}throw error;}finally{
   const cleanupErrors=[];
   try{if(android)await android.cleanup(()=>api('/api/admin/networks/'+network.id+'/disable',{}));}catch(error){cleanupErrors.push(error);}
