@@ -1,0 +1,266 @@
+# Preparation template, not a verified deployment. See README.md before applying.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: omnicompile
+  labels:
+    pod-security.kubernetes.io/enforce: baseline
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: omnicompile-config
+  namespace: omnicompile
+data:
+  NODE_ENV: production
+  HOST: 0.0.0.0
+  PORT: "4100"
+  PUBLIC_BASE_URL: https://omnicompile.example.invalid
+  COORDINATOR_PUBLIC_URL: https://omnicompile.example.invalid
+  ALLOWED_ORIGINS: https://omnicompile.example.invalid
+  # Replace with the actual ingress-controller source CIDR; never use true.
+  TRUSTED_PROXIES: ""
+  OMNICOMPILE_C_COMPILER_URL: http://omnicompile-c-worker:4101
+  OMNICOMPILE_PYTHON_COMPILER_URL: http://omnicompile-python-worker:4101
+  OMNICOMPILE_JAVA_COMPILER_URL: http://omnicompile-java-worker:4101
+  OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
+  DB_HOST: omnicompile-mysql
+  DB_PORT: "3306"
+  DB_NAME: omnicompile
+  DB_USER: omnicompile
+  OMNICOMPILE_EXECUTION_MODE: docker-broker
+  OMNICOMPILE_EXECUTOR_URL: https://executor.example.invalid
+  OMNICOMPILE_EXECUTOR_TOKEN_FILE: /run/executor/token
+  OMNICOMPILE_ARTIFACT_ENDPOINT: https://artifacts.example.invalid
+  OMNICOMPILE_ARTIFACT_BUCKET: omnicompile-artifacts
+  OMNICOMPILE_ARTIFACT_ACCESS_KEY_FILE: /run/artifacts/access
+  OMNICOMPILE_ARTIFACT_SECRET_KEY_FILE: /run/artifacts/secret
+  OMNICOMPILE_MIGRATION_MODE: check
+  OMNICOMPILE_REQUIRE_ADMIN_APPROVAL: "true"
+  RESEND_ENABLED: "false"
+  POSTHOG_ENABLED: "false"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-mysql
+  namespace: omnicompile
+spec:
+  clusterIP: None
+  selector: {app: omnicompile-mysql}
+  ports:
+    - {port: 3306, targetPort: mysql, name: mysql}
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: omnicompile-mysql
+  namespace: omnicompile
+spec:
+  serviceName: omnicompile-mysql
+  replicas: 1
+  selector:
+    matchLabels: {app: omnicompile-mysql}
+  template:
+    metadata:
+      labels: {app: omnicompile-mysql}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      containers:
+        - name: omnicompile-mysql
+          image: mysql:8.4@sha256:a0225d1ea6631c8bc2385dc4c2faba17bbf1834ecf369e1659a9a382bd8d5dd7
+          ports: [{containerPort: 3306, name: mysql}]
+          env:
+            - {name: MYSQL_DATABASE, value: omnicompile}
+            - {name: MYSQL_USER, value: omnicompile}
+            - name: MYSQL_PASSWORD
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: DB_PASSWORD}}
+            - name: MYSQL_ROOT_PASSWORD
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: MYSQL_ROOT_PASSWORD}}
+          resources:
+            requests: {cpu: 100m, memory: 512Mi}
+            limits: {cpu: "1", memory: 1Gi}
+          volumeMounts: [{name: omnicompile-data, mountPath: /var/lib/mysql}]
+          startupProbe:
+            exec: {command: [sh, -c, 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1"']}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            exec: {command: [sh, -c, 'MYSQL_PWD="$MYSQL_PASSWORD" mysql -h 127.0.0.1 -u "$MYSQL_USER" "$MYSQL_DATABASE" -e "SELECT 1"']}
+            periodSeconds: 10
+          livenessProbe:
+            tcpSocket: {port: 3306}
+            periodSeconds: 20
+            failureThreshold: 6
+  persistentVolumeClaimRetentionPolicy: {whenDeleted: Retain, whenScaled: Retain}
+  volumeClaimTemplates:
+    - metadata: {name: omnicompile-data}
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests: {storage: 20Gi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnicompile-coordinator
+  namespace: omnicompile
+spec:
+  # Connection ownership is process-local: do not scale until HA is implemented.
+  replicas: 1
+  strategy: {type: Recreate}
+  selector:
+    matchLabels: {app: omnicompile-coordinator}
+  template:
+    metadata:
+      labels: {app: omnicompile-coordinator}
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 60
+      securityContext: {runAsNonRoot: true, runAsUser: 1000, runAsGroup: 1000, fsGroup: 1000}
+      containers:
+        - name: omnicompile-coordinator
+          image: omnicompile-coordinator:local
+          command: [node, --import, tsx, apps/coordinator/src/server.ts]
+          ports: [{containerPort: 4100, name: http}]
+          envFrom:
+            - configMapRef: {name: omnicompile-config}
+          env:
+            - name: DB_PASSWORD
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: DB_PASSWORD}}
+            - name: ADMIN_USERNAME
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: ADMIN_USERNAME}}
+            - name: ADMIN_PASSWORD_HASH
+              valueFrom: {secretKeyRef: {name: omnicompile-runtime, key: ADMIN_PASSWORD_HASH}}
+          securityContext:
+            allowPrivilegeEscalation: false
+            readOnlyRootFilesystem: true
+            capabilities: {drop: [ALL]}
+            seccompProfile: {type: RuntimeDefault}
+          resources:
+            requests: {cpu: 200m, memory: 512Mi}
+            limits: {cpu: "1", memory: 2Gi}
+          volumeMounts:
+            - {name: temporary-work, mountPath: /tmp}
+            - {name: executor-token, mountPath: /run/executor, readOnly: true}
+            - {name: artifact-credentials, mountPath: /run/artifacts, readOnly: true}
+            - {name: compiler-token, mountPath: /run/secrets/compiler-token, subPath: token, readOnly: true}
+          startupProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+            failureThreshold: 60
+          readinessProbe:
+            httpGet: {path: /ready, port: http}
+            periodSeconds: 5
+          livenessProbe:
+            # Existing /health includes MySQL. DB faults should remove readiness,
+            # not force coordinator restart loops and destroy live socket ownership.
+            httpGet: {path: /live, port: http}
+            periodSeconds: 15
+            failureThreshold: 6
+      volumes:
+        - name: compiler-token
+          secret: {secretName: omnicompile-compiler, defaultMode: 288}
+        - name: executor-token
+          secret: {secretName: omnicompile-executor, defaultMode: 288}
+        - name: artifact-credentials
+          secret: {secretName: omnicompile-artifacts, defaultMode: 288}
+        - name: temporary-work
+          emptyDir: {medium: Memory, sizeLimit: 512Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-coordinator
+  namespace: omnicompile
+spec:
+  selector: {app: omnicompile-coordinator}
+  ports: [{port: 4100, targetPort: http, name: http}]
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnicompile-frontend
+  namespace: omnicompile
+spec:
+  replicas: 1
+  selector:
+    matchLabels: {app: omnicompile-frontend}
+  template:
+    metadata:
+      labels: {app: omnicompile-frontend}
+    spec:
+      automountServiceAccountToken: false
+      securityContext: {runAsNonRoot: true, runAsUser: 101, runAsGroup: 101}
+      containers:
+        - name: omnicompile-frontend
+          image: omnicompile-frontend:local
+          ports: [{containerPort: 8080, name: http}]
+          env:
+            - {name: COORDINATOR_UPSTREAM, value: "omnicompile-coordinator:4100"}
+          securityContext:
+            allowPrivilegeEscalation: false
+            capabilities: {drop: [ALL]}
+            runAsNonRoot: true
+            runAsUser: 101
+            seccompProfile: {type: RuntimeDefault}
+          resources:
+            requests: {cpu: 50m, memory: 32Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+          readinessProbe: {httpGet: {path: /healthz, port: http}}
+          livenessProbe: {httpGet: {path: /healthz, port: http}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-frontend
+  namespace: omnicompile
+spec:
+  selector: {app: omnicompile-frontend}
+  ports: [{port: 8080, targetPort: http, name: http}]
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: omnicompile
+  namespace: omnicompile
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
+    nginx.ingress.kubernetes.io/ssl-redirect: "true"
+spec:
+  ingressClassName: nginx
+  tls:
+    - hosts: [omnicompile.example.invalid]
+      secretName: omnicompile-tls
+  rules:
+    - host: omnicompile.example.invalid
+      http:
+        paths:
+          - path: /api
+            pathType: Prefix
+            backend: {service: {name: omnicompile-coordinator, port: {number: 4100}}}
+          - path: /ws
+            pathType: Prefix
+            backend: {service: {name: omnicompile-coordinator, port: {number: 4100}}}
+          - path: /
+            pathType: Prefix
+            backend: {service: {name: omnicompile-frontend, port: {number: 8080}}}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: omnicompile-mysql-internal-only
+  namespace: omnicompile
+spec:
+  podSelector:
+    matchLabels: {app: omnicompile-mysql}
+  policyTypes: [Ingress]
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels: {app: omnicompile-coordinator}
+        - podSelector:
+            matchLabels: {app: migration}
+      ports: [{protocol: TCP, port: 3306}]

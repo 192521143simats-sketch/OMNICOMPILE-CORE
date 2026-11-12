@@ -1,0 +1,428 @@
+# Preparation only. No resources have been deployed.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnicompile-c-worker
+  namespace: omnicompile
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: omnicompile-c-worker
+  template:
+    metadata:
+      labels:
+        app: omnicompile-c-worker
+        omnicompile-role: compiler
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: omnicompile-c-worker
+        image: omnicompile-c-worker:local
+        ports:
+        - containerPort: 4101
+          name: compiler
+        env:
+        - name: COORDINATOR_URL
+          value: http://omnicompile-coordinator:4100
+        - name: OMNICOMPILE_EXECUTOR_URL
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
+          value: /run/executor/token
+        - name: OMNICOMPILE_COMPILER_LANGUAGE
+          value: c
+        - name: OMNICOMPILE_WORKER_LANGUAGE
+          value: c
+        - name: OMNICOMPILE_COMPILER_TOKEN_FILE
+          value: /run/secrets/compiler-token
+        - name: WORKER_CREDENTIAL_FILE
+          value: /run/worker/credential
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+            ephemeral-storage: 256Mi
+        volumeMounts:
+        - name: work
+          mountPath: /tmp
+        - name: compiler-token
+          mountPath: /run/secrets
+          readOnly: true
+        - name: executor-token
+          mountPath: /run/executor
+          readOnly: true
+        - name: worker-credential
+          mountPath: /run/worker
+          readOnly: true
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 15
+          failureThreshold: 6
+      volumes:
+      - name: work
+        emptyDir:
+          medium: Memory
+          sizeLimit: 256Mi
+      - name: compiler-token
+        secret:
+          secretName: omnicompile-compiler
+          defaultMode: 288
+          items:
+          - key: token
+            path: compiler-token
+      - name: executor-token
+        secret:
+          secretName: omnicompile-executor
+          defaultMode: 288
+      - name: worker-credential
+        secret:
+          secretName: omnicompile-c-worker-identity
+          optional: true
+          defaultMode: 288
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-c-worker
+  namespace: omnicompile
+spec:
+  selector:
+    app: omnicompile-c-worker
+  ports:
+  - name: compiler
+    port: 4101
+    targetPort: compiler
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnicompile-python-worker
+  namespace: omnicompile
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: omnicompile-python-worker
+  template:
+    metadata:
+      labels:
+        app: omnicompile-python-worker
+        omnicompile-role: compiler
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: omnicompile-python-worker
+        image: omnicompile-python-worker:local
+        ports:
+        - containerPort: 4101
+          name: compiler
+        env:
+        - name: COORDINATOR_URL
+          value: http://omnicompile-coordinator:4100
+        - name: OMNICOMPILE_EXECUTOR_URL
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
+          value: /run/executor/token
+        - name: OMNICOMPILE_COMPILER_LANGUAGE
+          value: python
+        - name: OMNICOMPILE_WORKER_LANGUAGE
+          value: python
+        - name: OMNICOMPILE_COMPILER_TOKEN_FILE
+          value: /run/secrets/compiler-token
+        - name: WORKER_CREDENTIAL_FILE
+          value: /run/worker/credential
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+            ephemeral-storage: 256Mi
+        volumeMounts:
+        - name: work
+          mountPath: /tmp
+        - name: compiler-token
+          mountPath: /run/secrets
+          readOnly: true
+        - name: executor-token
+          mountPath: /run/executor
+          readOnly: true
+        - name: worker-credential
+          mountPath: /run/worker
+          readOnly: true
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 15
+          failureThreshold: 6
+      volumes:
+      - name: work
+        emptyDir:
+          medium: Memory
+          sizeLimit: 256Mi
+      - name: compiler-token
+        secret:
+          secretName: omnicompile-compiler
+          defaultMode: 288
+          items:
+          - key: token
+            path: compiler-token
+      - name: executor-token
+        secret:
+          secretName: omnicompile-executor
+          defaultMode: 288
+      - name: worker-credential
+        secret:
+          secretName: omnicompile-python-worker-identity
+          optional: true
+          defaultMode: 288
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-python-worker
+  namespace: omnicompile
+spec:
+  selector:
+    app: omnicompile-python-worker
+  ports:
+  - name: compiler
+    port: 4101
+    targetPort: compiler
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: omnicompile-java-worker
+  namespace: omnicompile
+spec:
+  replicas: 1
+  strategy:
+    type: Recreate
+  selector:
+    matchLabels:
+      app: omnicompile-java-worker
+  template:
+    metadata:
+      labels:
+        app: omnicompile-java-worker
+        omnicompile-role: compiler
+    spec:
+      automountServiceAccountToken: false
+      terminationGracePeriodSeconds: 45
+      securityContext:
+        runAsNonRoot: true
+        runAsUser: 1000
+        runAsGroup: 1000
+        fsGroup: 1000
+      containers:
+      - name: omnicompile-java-worker
+        image: omnicompile-java-worker:local
+        ports:
+        - containerPort: 4101
+          name: compiler
+        env:
+        - name: COORDINATOR_URL
+          value: http://omnicompile-coordinator:4100
+        - name: OMNICOMPILE_EXECUTOR_URL
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
+          value: /run/executor/token
+        - name: OMNICOMPILE_COMPILER_LANGUAGE
+          value: java
+        - name: OMNICOMPILE_WORKER_LANGUAGE
+          value: java
+        - name: OMNICOMPILE_COMPILER_TOKEN_FILE
+          value: /run/secrets/compiler-token
+        - name: WORKER_CREDENTIAL_FILE
+          value: /run/worker/credential
+        securityContext:
+          allowPrivilegeEscalation: false
+          readOnlyRootFilesystem: true
+          capabilities:
+            drop:
+            - ALL
+          seccompProfile:
+            type: RuntimeDefault
+        resources:
+          requests:
+            cpu: 100m
+            memory: 256Mi
+          limits:
+            cpu: '1'
+            memory: 1Gi
+            ephemeral-storage: 256Mi
+        volumeMounts:
+        - name: work
+          mountPath: /tmp
+        - name: compiler-token
+          mountPath: /run/secrets
+          readOnly: true
+        - name: executor-token
+          mountPath: /run/executor
+          readOnly: true
+        - name: worker-credential
+          mountPath: /run/worker
+          readOnly: true
+        startupProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+          failureThreshold: 30
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /ready
+            port: compiler
+          periodSeconds: 15
+          failureThreshold: 6
+      volumes:
+      - name: work
+        emptyDir:
+          medium: Memory
+          sizeLimit: 256Mi
+      - name: compiler-token
+        secret:
+          secretName: omnicompile-compiler
+          defaultMode: 288
+          items:
+          - key: token
+            path: compiler-token
+      - name: executor-token
+        secret:
+          secretName: omnicompile-executor
+          defaultMode: 288
+      - name: worker-credential
+        secret:
+          secretName: omnicompile-java-worker-identity
+          optional: true
+          defaultMode: 288
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: omnicompile-java-worker
+  namespace: omnicompile
+spec:
+  selector:
+    app: omnicompile-java-worker
+  ports:
+  - name: compiler
+    port: 4101
+    targetPort: compiler
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: omnicompile-compiler-ingress
+  namespace: omnicompile
+spec:
+  podSelector:
+    matchLabels:
+      omnicompile-role: compiler
+  policyTypes:
+  - Ingress
+  - Egress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          app: omnicompile-coordinator
+    ports:
+    - protocol: TCP
+      port: 4101
+  egress:
+  # Replace with the private execution gateway's routed IP range.
+  - to:
+    - ipBlock: {cidr: 192.0.2.0/32}
+    ports:
+    - protocol: TCP
+      port: 443
+  - to:
+    - podSelector:
+        matchLabels:
+          app: omnicompile-coordinator
+    ports:
+    - protocol: TCP
+      port: 4100
+  - to:
+    - namespaceSelector:
+        matchLabels:
+          kubernetes.io/metadata.name: kube-system
+      podSelector:
+        matchLabels:
+          k8s-app: kube-dns
+    ports:
+    - protocol: UDP
+      port: 53
+    - protocol: TCP
+      port: 53

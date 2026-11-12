@@ -1,0 +1,32 @@
+(vercel_static) {
+	reverse_proxy {$OMNICOMPILE_VERCEL_ORIGIN} {
+		header_up Host {upstream_hostport}
+		header_up -Cookie
+		header_up -Authorization
+		header_up -Referer
+		header_down -Set-Cookie
+	}
+}
+
+# Public application origin. Vercel serves the static build behind this origin.
+{$OMNICOMPILE_DOMAIN} {
+	header {
+		Referrer-Policy no-referrer
+		X-Content-Type-Options nosniff
+		X-Frame-Options DENY
+	}
+	@coordinator path /api /api/* /ws /ws/* /health /ready
+	handle @coordinator {
+		reverse_proxy {$OMNICOMPILE_COORDINATOR_UPSTREAM}
+	}
+	@spa path / /login /signup /forgot-password /reset-password /dashboard /admin /worker /compute /settings /join/*
+	handle @spa {
+		# The static host only needs the HTML shell. Keep invitation paths and
+		# query parameters on this gateway and out of the static host's logs.
+		rewrite * /index.html?
+		import vercel_static
+	}
+	handle {
+		import vercel_static
+	}
+}

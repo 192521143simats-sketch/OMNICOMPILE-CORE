@@ -1,0 +1,13 @@
+{$OMNICOMPILE_EXECUTOR_HOST} {
+	@jobs {
+		path /jobs
+		method POST
+		remote_ip {$OMNICOMPILE_CLUSTER_EGRESS_CIDR}
+	}
+	handle @jobs {
+		reverse_proxy 127.0.0.1:4102
+	}
+	handle {
+		respond 404
+	}
+}

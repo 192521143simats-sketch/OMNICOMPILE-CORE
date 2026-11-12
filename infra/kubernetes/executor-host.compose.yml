@@ -1,0 +1,4 @@
+services:
+  omnicompile-executor:
+    ports:
+      - "127.0.0.1:4102:4102"
