@@ -4,6 +4,12 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ContributionPolicyTest {
+    @Test fun olderDevicesDoNotRequireUnavailableThermalTelemetry() {
+        val saved = ContributionPolicy(wifiOnly = true, minBattery = 60)
+        org.junit.Assert.assertEquals(saved, saved.withThermalTelemetry(true))
+        org.junit.Assert.assertEquals(saved.copy(thermalProtection = false), saved.withThermalTelemetry(false))
+    }
+
     @Test fun conservativeDefaultsBlockCellularAndLowBattery() {
         val policy = ContributionPolicy()
         assertNotNull(policy.blockReason(10, true, true, false, 0, false))

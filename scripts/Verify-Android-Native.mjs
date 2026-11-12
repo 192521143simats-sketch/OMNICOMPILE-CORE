@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import {spawn,execFileSync} from 'node:child_process';
-import {readFile,writeFile,stat} from 'node:fs/promises';
-import {createHash} from 'node:crypto';
+import {writeFile,stat} from 'node:fs/promises';
+import {assertInstalledAndroidApk} from './Android-Fixture.mjs';
 import {resolve} from 'node:path';
 import mysql from 'mysql2/promise';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
@@ -29,9 +29,7 @@ try {
   // refuses an existing enrollment instead of resetting or leaving user work.
   if(process.env.OMNICOMPILE_ANDROID_PREINSTALLED==='1'){
     for(const [name,file]of [['org.omnicompile.worker',apk],['org.omnicompile.worker.test',testApk]]){
-      const installed=phone('shell','pm','path',name).trim();assert.match(installed,/^package:\/data\/app\/[A-Za-z0-9_./=+~-]+\.apk$/);
-      const remote=phone('shell','sha256sum',installed.slice('package:'.length)).trim().split(/\s+/)[0];
-      assert.equal(remote,createHash('sha256').update(await readFile(file)).digest('hex'),'Installed APK differs from current verified build.');
+      await assertInstalledAndroidApk(adb,serial,phone('shell','pm','path',name).trim(),file);
     }
   }else{phone('install','-r','-t',apk);phone('install','-r','-t',testApk);}
   await api('/api/auth/login',{identifier:process.env.ADMIN_USERNAME,password:process.env.ADMIN_PASSWORD});

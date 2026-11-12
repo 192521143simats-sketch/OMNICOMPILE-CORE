@@ -11,6 +11,9 @@ data class ContributionPolicy(
         require(minBattery in 0..100 && maxCpuPercent in 1..100)
         require(maxTaskDurationMs in 1..30000 && maxMemoryBytes in 4*1024*1024..64*1024*1024)
     }
+    fun withThermalTelemetry(available: Boolean): ContributionPolicy =
+        if (available) this else copy(thermalProtection = false)
+
     fun blockReason(battery: Int, charging: Boolean, wifi: Boolean, metered: Boolean, thermal: Int, background: Boolean): String? = when {
         battery < minBattery -> "Battery is below the contribution threshold."
         chargingOnly && !charging -> "Waiting for charging."

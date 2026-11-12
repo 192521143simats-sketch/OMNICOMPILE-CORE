@@ -1,6 +1,7 @@
 package org.omnicompile.worker
 
 import android.app.ActivityManager
+import androidx.annotation.ChecksSdkIntAtLeast
 import android.content.*
 import android.net.*
 import android.os.*
@@ -17,7 +18,9 @@ class DeviceResources(private val context:Context) {
     private val battery get()=context.registerReceiver(null,IntentFilter(Intent.ACTION_BATTERY_CHANGED))
     fun batteryPercent():Int {val b=battery;val level=b?.getIntExtra(BatteryManager.EXTRA_LEVEL,-1)?:-1;val scale=b?.getIntExtra(BatteryManager.EXTRA_SCALE,-1)?:-1;return if(level>=0&&scale>0)(100L*level/scale).toInt() else -1}
     fun charging():Boolean {val status=battery?.getIntExtra(BatteryManager.EXTRA_STATUS,-1);return status==BatteryManager.BATTERY_STATUS_CHARGING||status==BatteryManager.BATTERY_STATUS_FULL}
-    fun thermal():Int = if(Build.VERSION.SDK_INT>=29)(context.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus else -1
+    @get:ChecksSdkIntAtLeast(api = Build.VERSION_CODES.Q)
+    val supportsThermalTelemetry get() = Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q
+    fun thermal():Int = if(supportsThermalTelemetry)(context.getSystemService(Context.POWER_SERVICE) as PowerManager).currentThermalStatus else -1
     fun network():String {val cm=connectivity;val caps=cm.getNetworkCapabilities(cm.activeNetwork)?:return "OFFLINE";return when{caps.hasTransport(NetworkCapabilities.TRANSPORT_WIFI)->"WIFI";caps.hasTransport(NetworkCapabilities.TRANSPORT_ETHERNET)->"ETHERNET";caps.hasTransport(NetworkCapabilities.TRANSPORT_CELLULAR)->"CELLULAR";else->"UNKNOWN"}}
     fun blockReason(policy:ContributionPolicy):String? {
         val type=network();if(type=="OFFLINE")return "Waiting for network connectivity."

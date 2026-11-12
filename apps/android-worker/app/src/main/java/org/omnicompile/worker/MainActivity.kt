@@ -28,7 +28,12 @@ class MainActivity:ComponentActivity() {
     override fun onStop(){AndroidRuntime.exitedForeground();super.onStop()}
     private fun connect() {
         if(Build.VERSION.SDK_INT>=33&&checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS)!=android.content.pm.PackageManager.PERMISSION_GRANTED)requestPermissions(arrayOf(android.Manifest.permission.POST_NOTIFICATIONS),10)
-        startForegroundService(Intent(this,WorkerService::class.java))
+        val service = Intent(this, WorkerService::class.java)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+            startForegroundService(service)
+        } else {
+            startService(service)
+        }
     }
     @Composable private fun WorkerScreen(shared:String) {
         val model by AndroidRuntime.state.collectAsState()
@@ -94,7 +99,13 @@ class MainActivity:ComponentActivity() {
                 Toggle("Charging only",policy.chargingOnly,!model.pending){save(policy.copy(chargingOnly=it))}
                 Toggle("Allow metered network",policy.allowMetered,!model.pending){save(policy.copy(allowMetered=it))}
                 Toggle("Allow visible background contribution",policy.allowBackground,!model.pending){save(policy.copy(allowBackground=it))}
-                Toggle("Thermal protection",policy.thermalProtection,!model.pending){save(policy.copy(thermalProtection=it))}
+                if (AndroidRuntime.device.supportsThermalTelemetry) {
+                    Toggle("Thermal protection", policy.thermalProtection, !model.pending) {
+                        save(policy.copy(thermalProtection = it))
+                    }
+                } else {
+                    Text("Thermal protection requires Android 10 or later.")
+                }
                 Text("Minimum battery: ${policy.minBattery}%")
                 Row(horizontalArrangement=Arrangement.spacedBy(8.dp)){OutlinedButton(onClick={save(policy.copy(minBattery=(policy.minBattery-5).coerceAtLeast(0)))}){Text("Battery −5%")};OutlinedButton(onClick={save(policy.copy(minBattery=(policy.minBattery+5).coerceAtMost(100)))}){Text("Battery +5%")}}
                 Text("Cooperative CPU duty target: ${policy.maxCpuPercent}% (not an OS hard cap)")

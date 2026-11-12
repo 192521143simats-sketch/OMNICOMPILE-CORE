@@ -33,7 +33,8 @@ object AndroidRuntime {
             identity=store.load()
             val saved=identity?.get("policy")?.jsonObject
             val policy=if(saved!=null)ContributionPolicy(wifiOnly=saved["wifiOnly"]!!.jsonPrimitive.boolean,chargingOnly=saved["chargingOnly"]!!.jsonPrimitive.boolean,minBattery=saved["minBattery"]!!.jsonPrimitive.int,allowMetered=saved["allowMetered"]!!.jsonPrimitive.boolean,allowBackground=saved["allowBackground"]!!.jsonPrimitive.boolean,thermalProtection=saved["thermalProtection"]!!.jsonPrimitive.boolean,maxTaskDurationMs=saved["maxTaskDurationMs"]!!.jsonPrimitive.long,maxMemoryBytes=saved["maxMemoryBytes"]!!.jsonPrimitive.long,maxCpuPercent=saved["maxCpuPercent"]!!.jsonPrimitive.int)else ContributionPolicy()
-            state.value=WorkerUiState(hasEnrollment=identity?.get("credential")!=null,networkName=identity?.get("networkName")?.jsonPrimitive?.content?:"",policy=policy)
+            val supportedPolicy = policy.withThermalTelemetry(device.supportsThermalTelemetry)
+            state.value=WorkerUiState(hasEnrollment=identity?.get("credential")!=null,networkName=identity?.get("networkName")?.jsonPrimitive?.content?:"",policy=supportedPolicy)
         } catch(_:Exception){state.update{it.copy(error="Protected configuration cannot be read. Preserve it and revoke the old enrollment through the administrator.")}}
     }
     private fun record(message:String){state.update{it.copy(logs=(it.logs+"${Instant.now()} $message").takeLast(100))}}
@@ -90,7 +91,8 @@ object AndroidRuntime {
         store.save(clean);identity=clean;inspected=null
         state.update{it.copy(hasEnrollment=false,networkName="",summary=null,connection=ConnectionState(status="LEFT"))};record("Enrollment revoked; network left.")
     }}
-    suspend fun savePolicy(policy:ContributionPolicy)=withContext(Dispatchers.IO){operation {
+    suspend fun savePolicy(requestedPolicy:ContributionPolicy)=withContext(Dispatchers.IO){operation {
+        val policy = requestedPolicy.withThermalTelemetry(device.supportsThermalTelemetry)
         check(pendingRotation==null){"Retry credential rotation before changing settings."}
         stop("PAUSED")
         val updated=JsonObject((identity?:buildJsonObject{put("deviceIdentity",UUID.randomUUID().toString())})+("policy" to policyJson(policy)))

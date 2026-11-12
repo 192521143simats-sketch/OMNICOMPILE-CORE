@@ -16,6 +16,18 @@ export function androidAcceptanceArtifacts(env){
   return{applicationId,apk:`apps/android-worker/app/${directory}/outputs/apk/debug/app-debug.apk`,testApk:`apps/android-worker/app/${directory}/outputs/apk/androidTest/debug/app-debug-androidTest.apk`};
 }
 
+export async function assertInstalledAndroidApk(adb,serial,packagePath,file){
+  assert.match(packagePath,/^package:\/data\/app\/[A-Za-z0-9_./=+~-]+\.apk$/);
+  const expected=await readFile(file);
+  // Android 7.1 may not provide sha256sum. Read the exact installed APK bytes
+  // without a PTY and check the same SHA-256 digest on the host.
+  const installed=execFileSync(adb,['-s',serial,'exec-out','cat',packagePath.slice('package:'.length)],{
+    windowsHide:true,timeout:60000,maxBuffer:expected.length+1
+  });
+  assert.equal(createHash('sha256').update(installed).digest('hex'),
+    createHash('sha256').update(expected).digest('hex'),'Installed APK differs from current verified build.');
+}
+
 export function androidFixtureTarget(env,joinUrl){
   const target=assertIsolatedTarget(env),web=new URL(env.OMNICOMPILE_TEST_WEB_BASE),link=new URL(joinUrl);
   assert.equal(web.protocol,'http:');assert.equal(web.hostname,'127.0.0.1');
@@ -37,8 +49,7 @@ export async function startAndroidParticipant(env,joinUrl){
   assertAndroidForegroundReady(phone('shell','dumpsys','power'),phone('shell','dumpsys','window','policy'));
   const artifacts=androidAcceptanceArtifacts(env);
   for(const[name,file]of[[artifacts.applicationId,artifacts.apk],[artifacts.applicationId+'.test',artifacts.testApk]]){
-    const path=phone('shell','pm','path',name).trim();assert.match(path,/^package:\/data\/app\/[A-Za-z0-9_./=+~-]+\.apk$/);
-    assert.equal(phone('shell','sha256sum',path.slice(8)).trim().split(/\s+/)[0],createHash('sha256').update(await readFile(file)).digest('hex'),'Phone APK must match the current build before acceptance');
+    await assertInstalledAndroidApk(adb,serial,phone('shell','pm','path',name).trim(),file);
   }
   assert.ok(!phone('reverse','--list').split(/\r?\n/).some(line=>line.split(/\s+/).includes(target.mapping)),'Existing ADB reverse mapping must not be replaced');
   const model=phone('shell','getprop','ro.product.model').trim();

@@ -51,3 +51,25 @@ not the PC, unless a specific ADB reverse mapping exists.
 Only bounded allowlisted portable tasks can execute natively. Android is not a
 desktop GCC/CPython/JDK host. Results are checked by the coordinator; neither
 task completion nor compilation artifacts are fabricated by the Android UI.
+
+## Android version compatibility
+
+The worker supports Android 7.1 (API 25) and later. API 25 starts contribution
+from the visible activity using the legacy service entry point and shows a
+low-priority foreground notification. Android 8 and later use a foreground
+service start and a notification channel. Android 13 and later retain the
+notification permission prompt.
+
+Gradle core-library desugaring supplies Java time APIs for telemetry on API 25.
+The worker uses the same enrollment, authentication, WebSocket and task protocol
+on all supported versions. Production connections still require HTTPS/WSS with
+system certificate validation. Older devices need a system trust store that
+trusts the endpoint's certificate chain. Thermal telemetry is available from
+API 29. On API 25–28 the app reports thermal telemetry as unavailable and does not request thermal protection from the scheduler. Wi-Fi, battery, foreground and workload limits still apply.
+
+Physical API 25 acceptance on the Redmi Y1 Lite verified the installed APK
+digests, foreground notification, three-worker enrollment, accepted task
+results, reassignment, reconnect and leave. The device needed an explicit
+foreground activity launch during its instrumentation startup. Use the
+isolated acceptance package for these tests to preserve the normal app's
+enrollment.
