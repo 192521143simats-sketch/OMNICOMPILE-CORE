@@ -14,7 +14,18 @@ const includeAndroid=process.env.OMNICOMPILE_MIXED_ANDROID==='1';
 let cookie='',browser,desktop,desktopProcess,failure,android,androidNode,network;
 const db=await mysql.createConnection({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
 async function api(path,body,method=body?'POST':'GET'){const response=await fetch(target.base+path,{method,headers:{origin:web,...(cookie?{cookie}:{}),...(body?{'content-type':'application/json'}:{})},...(body?{body:JSON.stringify(body)}:{}),signal:AbortSignal.timeout(15000)});expect(response.ok,`${path}: ${response.status}`).toBe(true);if(path==='/api/auth/login')cookie=response.headers.get('set-cookie').split(';')[0];return response.status===204?null:response.json();}
-async function completed(task){await expect.poll(async()=>(await api('/api/admin/tasks/'+task.id)).status,{timeout:90000}).toBe('COMPLETED');const[rows]=await db.execute("SELECT a.node_id,r.result_json FROM task_attempts a JOIN results r ON r.task_id=a.task_id AND r.attempt=a.attempt WHERE a.task_id=? AND a.status='COMPLETED'",[task.id]);expect(rows).toHaveLength(1);return{node:rows[0].node_id,result:typeof rows[0].result_json==='string'?JSON.parse(rows[0].result_json):rows[0].result_json};}
+async function completed(task){
+  let detail;
+  await expect.poll(async()=>{
+    detail=await api('/api/admin/tasks/'+task.id);
+    return ['COMPLETED','FAILED','CANCELLED'].includes(detail.status);
+  },{timeout:90000}).toBe(true);
+  const [attempts]=await db.execute('SELECT node_id,status,error FROM task_attempts WHERE task_id=? ORDER BY attempt',[task.id]);
+  expect(detail.status,JSON.stringify({error:detail.error,attempts})).toBe('COMPLETED');
+  const [rows]=await db.execute("SELECT a.node_id,r.result_json FROM task_attempts a JOIN results r ON r.task_id=a.task_id AND r.attempt=a.attempt WHERE a.task_id=? AND a.status='COMPLETED'",[task.id]);
+  expect(rows).toHaveLength(1);
+  return {node:rows[0].node_id,result:typeof rows[0].result_json==='string'?JSON.parse(rows[0].result_json):rows[0].result_json};
+}
 async function restart(){if(!process.send)throw new Error('Owned fault control required');const id=crypto.randomUUID();await new Promise((resolve,reject)=>{const timer=setTimeout(()=>{process.off('message',receive);reject(new Error('Coordinator restart timeout'));},60000);function receive(message){if(message.id!==id)return;process.off('message',receive);clearTimeout(timer);message.error?reject(new Error(message.error)):resolve();}process.on('message',receive);process.send({id,recoveryAction:'restartCoordinator'});});}
 try{
   await api('/api/auth/login',{identifier:process.env.ADMIN_USERNAME,password:process.env.ADMIN_PASSWORD});

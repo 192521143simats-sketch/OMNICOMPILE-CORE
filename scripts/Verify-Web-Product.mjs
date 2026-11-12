@@ -97,6 +97,7 @@ try{
         for(const item of [{language:'c',file:'sample-c-easy.c'},{language:'python',file:'sample-python-easy.py'},{language:'java',file:'sample-java-easy.java'}]){
           await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE'&&node.profile.runtimes[item.language]&&node.resources?.freeMemoryBytes>=536870912);},{timeout:30000}).toBe(true);
           await page.goto('/dashboard');await page.getByLabel('Language',{exact:true}).selectOption(item.language);
+          await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
           await page.getByLabel('Upload source file').setInputFiles(resolve("samples",item.language,item.file));
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
           await expect(page.getByRole('heading',{name:'Generated artifacts'})).toBeVisible({timeout:120000});

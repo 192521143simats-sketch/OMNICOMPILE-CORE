@@ -22,8 +22,10 @@ try{
   const networks=new NetworkService(store.pool),network=await networks.create({name:'Cancellation fixture',description:'',maxNodes:5,expiresAt:null},owner);
   const enrollment=await networks.createEnrollment(network.joinToken,'BROWSER','cancel-device-001',true),node=await networks.register(enrollment.credential,profile);
   await store.heartbeat(node.nodeId,resources);
-  const job=await store.createCompilationJob(owner,network.id,'python','cancel.py','print(1)');
-  const task=await store.createJobWorkTask(job.id,network.id,'PYTHON_COMPILE',{operation:'python_compile',source:'print(1)',sourceName:'cancel.py'},'python');
+  const source='int main(void){return 0;}';
+  const job=await store.createCompilationJob(owner,network.id,'c','cancel.c',source);
+  const runningBatch=await store.createCOptimizationBatch(network.id,lowerCToIR(source),job.id);
+  const task={id:runningBatch.tasks[0].taskId};
   await store.assignTask(task.id,node.nodeId,1,'Cancellation race',30000);await store.setTaskRunning(task.id,node.nodeId,1);
   const [before]=await store.pool.execute('SELECT lease_expires_at FROM task_attempts WHERE task_id=?',[task.id]);
   assert.equal(await store.cancelCompilationJob(job.id,'different-owner',false),undefined,'Foreign user must not cancel another job');

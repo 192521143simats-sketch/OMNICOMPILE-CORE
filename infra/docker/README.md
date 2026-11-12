@@ -45,4 +45,4 @@ node infra/docker/verification/Verify-Docker-Execution.mjs
 npm run verify
 ```
 
-The Compose verifier checks project SQL readiness, actual persistence after restart, service networking and frontend/API connectivity. Language job acceptance results are recorded in the engineering evidence report. Kubernetes preparation lives in `infra/kubernetes`; nothing here applies resources or invokes Vercel.
+The Compose verifier checks project SQL readiness, actual persistence after restart, service networking and frontend/API connectivity. Language job acceptance results are recorded in the engineering evidence report. These checks cover the local Docker Compose deployment.
