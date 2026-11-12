@@ -19,12 +19,16 @@
 	handle @coordinator {
 		reverse_proxy {$OMNICOMPILE_COORDINATOR_UPSTREAM}
 	}
-	@spa path / /login /signup /forgot-password /reset-password /dashboard /admin /worker /compute /settings /join/*
+	@spa path_regexp ^/((login|signup|forgot-password|reset-password|dashboard|admin|worker|compute|settings)/?|join/[^/]+(/(web|android|windows))?/?)?$
 	handle @spa {
 		# The static host only needs the HTML shell. Keep invitation paths and
 		# query parameters on this gateway and out of the static host's logs.
 		rewrite * /index.html?
 		import vercel_static
+	}
+	@invalidJoin path /join /join/*
+	handle @invalidJoin {
+		respond 404
 	}
 	handle {
 		import vercel_static

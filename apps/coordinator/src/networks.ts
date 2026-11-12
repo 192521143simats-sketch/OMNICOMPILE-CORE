@@ -56,6 +56,26 @@ export class NetworkService{
     const expired=Date.parse(String(row.expires_at))<=Date.now()||Boolean(row.network_expiry)&&Date.parse(String(row.network_expiry))<=Date.now();
     return{id:String(row.network_id),name:String(row.name),description:String(row.description),status:row.status,nodeCount:Number(row.nodeCount),maxNodes:Number(row.maxNodes),expiresAt:String(row.expires_at),invitationRequired:false,workerTypes:this.json(row.allowed_worker_types),accepting:row.status==="ACTIVE"&&Boolean(row.join_link_enabled)&&!expired&&!row.consumed_at&&!row.revoked_at&&Number(row.nodeCount)<Number(row.maxNodes),joinLinkStatus:!row.join_link_enabled?"REVOKED":undefined,invitationStatus:row.revoked_at?"REVOKED":row.consumed_at?"CONSUMED":expired?"EXPIRED":"PENDING"};
   }
+  async listInvitations(networkId:string){
+    const [rows]=await this.pool.execute<RowDataPacket[]>(`
+      SELECT i.id,i.created_at createdAt,i.expires_at expiresAt,i.allowed_worker_types workerTypes,
+        i.revoked_at revokedAt,i.consumed_at consumedAt,i.consumed_enrollment_id enrollmentId,n.id nodeId
+      FROM worker_invitations i
+      LEFT JOIN nodes n ON n.enrollment_id=i.consumed_enrollment_id AND n.network_id=i.network_id
+      WHERE i.network_id=?
+      ORDER BY i.created_at DESC,i.id DESC LIMIT 100`,[networkId]);
+    const checkedAt=Date.now();
+    return rows.map(row=>({
+      id:String(row.id),
+      status:row.revokedAt?'REVOKED':row.consumedAt?'EXHAUSTED':
+        Date.parse(String(row.expiresAt))<=checkedAt?'EXPIRED':'ACTIVE',
+      createdAt:String(row.createdAt),
+      expiresAt:String(row.expiresAt),
+      workerTypes:this.json(row.workerTypes),
+      enrollmentId:row.enrollmentId?String(row.enrollmentId):null,
+      nodeId:row.nodeId?String(row.nodeId):null
+    }));
+  }
   async revokeInvitation(invitationId:string){const [result]=await this.pool.execute<ResultSetHeader>("UPDATE worker_invitations SET revoked_at=? WHERE id=? AND revoked_at IS NULL AND consumed_at IS NULL",[now(),invitationId]);return result.affectedRows===1;}
   async createEnrollment(rawInvite:string,workerType:WorkerType,deviceIdentity:string,consent=false){
     if(consent!==true)throw new AdmissionError("CONSENT_REQUIRED","Explicit worker consent is required.",400);

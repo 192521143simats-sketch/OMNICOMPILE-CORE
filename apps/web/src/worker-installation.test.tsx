@@ -17,3 +17,13 @@ it("labels a controlled local package as an unsigned prerelease instead of a pub
   const html=renderToStaticMarkup(<WorkerInstallation joinUrl="https://grid.example/join/shared" platforms={[{platform:"WINDOWS",available:false,localAvailable:true,localDownloadUrl:"/api/distribution/WINDOWS/download",channel:"LOCAL_PRERELEASE",trust:"UNSIGNED_DEVELOPMENT",version:"1.2.0",fileName:"worker.exe",sha256:"a".repeat(64),sizeBytes:1234}]}/>);
   expect(html).toContain("Local prerelease");expect(html).toContain("Unsigned development package");expect(html).toContain("/api/distribution/WINDOWS/download");
 });
+
+it("shows only the chosen installer and passes the base link to the native app",()=>{
+  const html=renderToStaticMarkup(
+    <WorkerInstallation joinUrl="https://grid.example/join/shared" platforms={[]} platform="ANDROID"/>
+  );
+  expect(html).toContain("<h3>Android</h3>");
+  expect(html).not.toContain("<h3>Windows</h3>");
+  expect(html).toContain("https://grid.example/join/shared");
+  expect(html).not.toContain("/join/shared/android");
+});

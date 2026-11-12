@@ -72,7 +72,7 @@ try{
     const workerContext=await browser.newContext({baseURL:base}),workerPage=await workerContext.newPage();
     try{
       workerPage.on('pageerror',error=>failures.push(error.message));
-      await workerPage.goto(joinURL);await workerPage.getByRole('button',{name:'Become a Worker'}).click();
+      await workerPage.goto(joinURL);await workerPage.getByRole('link',{name:/Continue as Web Worker/}).click();await workerPage.getByRole('button',{name:'Become a Worker'}).click();
       await approveEnrollment('BROWSER');
       await expect(workerPage.getByText('NODE-A001',{exact:true})).toBeVisible();
       await expect(workerPage.locator('.status-available')).toBeVisible({timeout:30000});
@@ -82,7 +82,7 @@ try{
       await admin.getByRole('switch',{name:'Admission for Browser Acceptance Alpha'}).click();
       const mobileContext=await browser.newContext({baseURL:base,viewport:{width:390,height:844},isMobile:true,hasTouch:true}),mobile=await mobileContext.newPage();
       try{
-        await mobile.goto(joinURL);await expect(mobile.getByRole('button',{name:'Become a Worker'})).toBeVisible();await expect(mobile.getByRole('heading',{name:'Install a native worker'})).toBeVisible();await screenshot(mobile,'ui-join-mobile.png');await mobile.getByRole('button',{name:'Become a Worker'}).click();await approveEnrollment('BROWSER');await expect(mobile.getByText('NODE-A002',{exact:true})).toBeVisible();
+        await mobile.goto(joinURL);await expect(mobile.getByRole('link',{name:/Continue as Android Worker/})).toBeVisible();await expect(mobile.getByRole('link',{name:/Continue as Windows Worker/})).toBeVisible();await mobile.getByRole('link',{name:/Continue as Web Worker/}).click();await expect(mobile.getByRole('button',{name:'Become a Worker'})).toBeVisible();await screenshot(mobile,'ui-join-mobile.png');await mobile.getByRole('button',{name:'Become a Worker'}).click();await approveEnrollment('BROWSER');await expect(mobile.getByText('NODE-A002',{exact:true})).toBeVisible();
         expect(await mobile.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);
         const taskResponse=await context.request.post('/api/compute/tasks',{headers:{origin:base},data:{payload:{operation:'sha256',input:'abc'}}});
         expect(taskResponse.status()).toBe(201);const portableTask=await taskResponse.json();

@@ -21,7 +21,7 @@ const deleteHistory=async migrations=>{const ids=migrations.map(migration=>migra
 const id='9998_engineering_migration_probe';
 try{
   const [baseline]=await pool.query('SELECT id,checksum FROM schema_migrations ORDER BY id');
-  assert.deepEqual(baseline.map(row=>row.id),['0001_existing_schema','0002_worker_invitations','0003_reusable_network_links','0004_task_attempt_leases','0005_task_cancellation','0006_task_policy_integrity','0007_attempt_failure_reasons','0008_compute_ownership','0009_user_preferences','0010_worker_approval','0011_compiler_metrics']);
+  assert.deepEqual(baseline.map(row=>row.id),['0001_existing_schema','0002_worker_invitations','0003_reusable_network_links','0004_task_attempt_leases','0005_task_cancellation','0006_task_policy_integrity','0007_attempt_failure_reasons','0008_compute_ownership','0009_user_preferences','0010_worker_approval','0011_compiler_metrics','0012_execution_location','0013_artifact_object_storage']);
   // Owned legacy rows exercise the actual adoption/backfills, not only a synthetic migration.
   const now=new Date().toISOString();
   await pool.execute("INSERT INTO users(id,name,email,password_hash,role,created_at,updated_at) VALUES('migration-user','Legacy fixture','migration-fixture@example.invalid','not-a-login-hash','USER',?,?)",[now,now]);

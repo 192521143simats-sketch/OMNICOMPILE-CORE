@@ -11,6 +11,7 @@ import {Notice} from "./notice.js";
 import {AdminInspector} from "./admin-inspector.js";
 import {EnrollmentAdmin} from "./enrollment-admin.js";
 import {WorkerInstallation,type DistributionPlatform} from "./worker-installation.js";
+import {joinAllowsPlatform,joinPath,parseJoinRoute,WorkerChoices,type JoinPlatform,type JoinWorkerType} from "./worker-onboarding.js";
 import {Login,Signup,Forgot,Reset} from "./auth-pages.js";
 import "./terminal.css";
 
@@ -85,18 +86,106 @@ function DashboardV2(){
 }
 
 function deviceNonce(){const values=new Uint32Array(4);if(globalThis.crypto?.getRandomValues){globalThis.crypto.getRandomValues(values);return Array.from(values,value=>value.toString(16).padStart(8,"0")).join("");}return`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;}
-function Join({token}:{token:string}){
-  const[network,setNetwork]=useState<any>(null),[joined,setJoined]=useState(false),[joining,setJoining]=useState(false),[error,setError]=useState(""),[platforms,setPlatforms]=useState<DistributionPlatform[]>([]);
-  useEffect(()=>{let active=true;api("/api/distribution").then(value=>{if(active)setPlatforms(value.platforms??[]);}).catch(()=>{});return()=>{active=false;};},[]);
-  async function load(){try{const result=await api(`/api/join/${token}`);setNetwork(result.network);if(result.network.accepting)setError("");try{const existing=await api("/api/worker/me");if(existing.networkId===result.network.id)setJoined(true);}catch{/* No enrolled browser cookie: explicit consent remains required. */}}catch(cause){setNetwork(null);setError(cause instanceof Error?cause.message:String(cause));}}
-  useEffect(()=>{if(joined)return;void load();const timer=setInterval(()=>void load(),5000);return()=>clearInterval(timer)},[token,joined]);
-  async function accept(){setJoining(true);try{await api(`/api/join/${token}/accept`,{method:"POST",body:JSON.stringify({consent:true,workerType:"BROWSER",deviceIdentity:`${navigator.userAgent}|${deviceNonce()}`})});setJoined(true);}catch(cause){setError(cause instanceof Error?cause.message:String(cause));void load();}finally{setJoining(false);}}
-  const expired=network?.joinLinkStatus==="REVOKED"||network?.joinLinkStatus==="EXPIRED";
-  return <Shell title={joined?"Worker dashboard":expired?"Network link expired":"Join distributed network"} subtitle="Participation is explicit, scoped to one network, and revocable."><Notice error={error}/>{joined?<BrowserNode networkName={network?.name} onLeave={()=>{setJoined(false);void load();}}/>:network&&<div className="grid two"><div className="card"><h2>{network.name}</h2><p>{network.description}</p><dl><dt>Status</dt><dd><span className={statusClass(network.status)}>{network.status}</span></dd><dt>Nodes</dt><dd>{network.nodeCount}/{network.maxNodes}</dd><dt>Coordinator</dt><dd><code>{location.origin}</code></dd><dt>Worker options</dt><dd>Browser · Windows · Native Android</dd></dl></div><div className="card consent">{expired?<><h2>This network link has expired</h2><p role="status">The administrator has revoked this link, or the network is no longer active. You cannot join using it right now. Contact the network administrator to reopen admission.</p></>:<><h2>Continue in this browser</h2><p>OmniCompile Core will report browser capability and resource availability, maintain a heartbeat, and run only schema-validated browser-safe compute or IR optimization tasks.</p><p>It will not run shell commands, GCC, Java, Python, or OS executables.</p>{!network.accepting&&<p role="status">{network.joinLinkStatus==="FULL"?"This network is full. Try again when a worker slot becomes available.":`This link is ${String(network.invitationStatus??"unavailable").toLowerCase()}. Contact the administrator.`}</p>}{network.accepting&&network.workerTypes&&!network.workerTypes.includes("BROWSER")&&<p>This invitation is restricted to a native worker application.</p>}<button disabled={joining||!network.accepting||network.workerTypes&&!network.workerTypes.includes("BROWSER")} onClick={accept}>{joining?"Joining…":"Become a Worker"}</button></>}</div></div>}{network&&!joined&&<WorkerInstallation joinUrl={`${location.origin}/join/${encodeURIComponent(token)}`} platforms={platforms}/>}</Shell>;
+type JoinNetwork = {
+  id: string; name: string; description: string; status: string; nodeCount: number; maxNodes: number;
+  accepting: boolean; joinLinkStatus?: string; invitationStatus?: string; workerTypes?: JoinWorkerType[];
+};
+
+function Join({token,platform}:{token:string;platform?:JoinPlatform}){
+  const [network,setNetwork]=useState<JoinNetwork|null>(null);
+  const [joined,setJoined]=useState(false);
+  const [joining,setJoining]=useState(false);
+  const [error,setError]=useState("");
+  const [packages,setPackages]=useState<DistributionPlatform[]>([]);
+  const nativePlatform=platform==="android"?"ANDROID":platform==="windows"?"WINDOWS":undefined;
+  const platformAllowed=!!network&&!!platform&&joinAllowsPlatform(network.workerTypes,platform);
+
+  useEffect(()=>{
+    if (!nativePlatform || !network?.accepting || !platformAllowed) return;
+    let active=true;
+    api("/api/distribution").then(value=>{
+      if(active)setPackages(value.platforms??[]);
+    }).catch(()=>{});
+    return()=>{active=false;};
+  },[nativePlatform,network?.accepting,platformAllowed]);
+
+  async function load(){
+    try{
+      const result=await api("/api"+joinPath(token));
+      setNetwork(result.network);
+      if(result.network.accepting)setError("");
+      if(platform==="web"){
+        try{
+          const existing=await api("/api/worker/me");
+          if(existing.networkId===result.network.id)setJoined(true);
+        }catch{/* Explicit consent is required without an enrolled browser session. */}
+      }
+    }catch(cause){
+      setNetwork(null);
+      setError(cause instanceof Error?cause.message:String(cause));
+    }
+  }
+
+  useEffect(()=>{
+    if(joined)return;
+    void load();
+    const timer=setInterval(()=>void load(),5000);
+    return()=>clearInterval(timer);
+  },[token,platform,joined]);
+
+  async function accept(){
+    setJoining(true);
+    try{
+      await api("/api"+joinPath(token)+"/accept",{method:"POST",body:JSON.stringify({
+        consent:true,workerType:"BROWSER",deviceIdentity:`${navigator.userAgent}|${deviceNonce()}`
+      })});
+      setJoined(true);
+    }catch(cause){
+      setError(cause instanceof Error?cause.message:String(cause));
+      void load();
+    }finally{
+      setJoining(false);
+    }
+  }
+
+  const expired=network&&[network.joinLinkStatus,network.invitationStatus].some(status=>status==="REVOKED"||status==="EXPIRED");
+  const unavailable=network?.joinLinkStatus==="FULL"?"This network is full. Try again when a worker slot becomes available.":
+    expired?"The administrator has revoked this link, or the network is no longer active. Contact the network administrator.":
+    network?.invitationStatus==="CONSUMED"?"This invitation has already been used. Request a new invitation from the administrator.":
+    "Enrollment is currently unavailable. Contact the network administrator.";
+  const title=joined?"Worker dashboard":expired?"Network link expired":!platform||platform==="web"?"Join distributed network":
+    platform==="android"?"Join as an Android worker":"Join as a Windows worker";
+
+  return <Shell title={title} subtitle="Participation is explicit, scoped to one network, and revocable.">
+    <Notice error={error}/>
+    {!network&&!error&&<p role="status">Checking invitation…</p>}
+    {joined?<BrowserNode {...(network?{networkName:network.name}:{})} onLeave={()=>{setJoined(false);void load();}}/>:network&&<>
+      <div className="card">
+        <h2>{network.name}</h2>
+        <p>{network.description}</p>
+        <dl>
+          <dt>Status</dt><dd><span className={statusClass(network.status)}>{network.status}</span></dd>
+          <dt>Nodes</dt><dd>{network.nodeCount}/{network.maxNodes}</dd>
+          <dt>Coordinator</dt><dd><code>{location.origin}</code></dd>
+        </dl>
+        {!network.accepting&&<p role="status">{unavailable}</p>}
+      </div>
+      {!platform&&<WorkerChoices token={token} accepting={network.accepting} {...(network.workerTypes?{workerTypes:network.workerTypes}:{})}/>}
+      {platform&&<p><a href={joinPath(token)}>Choose another worker platform</a></p>}
+      {platform&&network.accepting&&!platformAllowed&&<p role="status">This invitation does not allow this platform.</p>}
+      {platform==="web"&&network.accepting&&platformAllowed&&<div className="card consent">
+        <h2>Continue in this browser</h2>
+        <p>OmniCompile Core will report browser capability and resource availability, maintain a heartbeat, and run schema-validated browser compute or IR optimization tasks.</p>
+        <button disabled={joining} onClick={accept}>{joining?"Joining…":"Become a Worker"}</button>
+      </div>}
+      {nativePlatform&&network.accepting&&platformAllowed&&
+        <WorkerInstallation joinUrl={location.origin+joinPath(token)} platforms={packages} platform={nativePlatform}/>}
+    </>}
+  </Shell>;
 }
 function WorkerPage(){return <Shell title="Worker console" subtitle="Reconnect a previously enrolled browser worker using its secure HttpOnly enrollment cookie."><BrowserNode/></Shell>}
 
-function App(){const path=location.pathname,join=path.match(/^\/join\/([^/]+)$/);if(join)return <Join token={decodeURIComponent(join[1]!)}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker")return <WorkerPage/>;return <Home/>}
+function App(){const path=location.pathname,join=parseJoinRoute(path);if(join)return <Join {...join}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker")return <WorkerPage/>;return <Home/>}
 createRoot(document.getElementById("root")!).render(<React.StrictMode><App/></React.StrictMode>);
 
 function WorkspaceRedirect(){useEffect(()=>{location.replace("/dashboard");},[]);return null;}

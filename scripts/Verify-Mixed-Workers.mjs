@@ -34,7 +34,7 @@ try{
   browser=await chromium.launch({headless:true,...(process.platform==='win32'?{channel:'msedge'}:{})});
   const page=await browser.newPage();const errors=[];page.on('pageerror',error=>errors.push(error.message));
   async function approve(workerType,assertRunning){let enrollment;await expect.poll(async()=>{assertRunning?.();const result=await api(`/api/admin/networks/${network.id}/enrollments?page=1&pageSize=10`);enrollment=result.items.find(item=>item.workerType===workerType&&item.approvalStatus==='PENDING');return Boolean(enrollment);},{timeout:60000}).toBe(true);await api(`/api/admin/enrollments/${enrollment.enrollmentId}/approval`,{approved:true});}
-  await page.goto(network.joinUrl);await page.getByRole('button',{name:'Become a Worker'}).click();await approve('BROWSER');
+  await page.goto(network.joinUrl);await page.getByRole('link',{name:/Continue as Web Worker/}).click();await page.getByRole('button',{name:'Become a Worker'}).click();await approve('BROWSER');
   const browserStatus=page.getByLabel('Worker status');await expect(browserStatus).toHaveText('AVAILABLE',{timeout:30000});
   const browserNode=(await page.locator('.browser-node code').first().textContent()).trim();
   desktop=await _electron.launch({executablePath:resolve('.runtime/windows-worker/releases/win-unpacked/OMNICOMPILE Worker.exe'),env:{...process.env,OMNICOMPILE_WORKER_DATA_DIR:data},timeout:30000});desktopProcess=desktop.process();

@@ -7,6 +7,6 @@
   "routes": [
     { "handle": "filesystem" },
     { "src": "/(?:login|signup|forgot-password|reset-password|dashboard|admin|worker|compute|settings)/?", "dest": "/index.html" },
-    { "src": "/join/[^/]+/?", "dest": "/index.html" }
+    { "src": "/join/[^/]+(?:/(?:web|android|windows))?/?", "dest": "/index.html" }
   ]
 }

@@ -13,6 +13,13 @@ try{
   const issue=()=>request(`/api/admin/networks/${created.value.id}/invitations`,{ttlMinutes:15,workerTypes:['BROWSER','NATIVE','ANDROID']},login.cookie);
   const invite=await issue();assert.equal(invite.status,201,'Admin must be able to issue a scoped single-use invitation');
   const joinPath=`/api${new URL(invite.value.joinUrl).pathname}`;
+  const invitationListPath=`/api/admin/networks/${created.value.id}/invitations`;
+  assert.equal((await request(invitationListPath)).status,401);
+  const inventory=await request(invitationListPath,undefined,login.cookie);
+  assert.equal(inventory.status,200);
+  assert.equal(inventory.value.items.find(item=>item.id===invite.value.id)?.status,'ACTIVE');
+  assert.ok(!JSON.stringify(inventory.value).includes(invite.value.joinUrl.split('/').at(-1)));
+
   assert.equal((await request(joinPath)).status,200);
   const [opened]=await pool.execute('SELECT id FROM network_enrollments WHERE network_id=?',[created.value.id]);assert.equal(opened.length,0,'Opening a link must not enroll');
   const body={consent:true,workerType:'BROWSER',deviceIdentity:'atomic-device-fixture'};
@@ -35,6 +42,11 @@ try{
   const registrations=await Promise.all([service.register(credential,profile),service.register(credential,profile)]);
   assert.equal(registrations[0].nodeId,registrations[1].nodeId,'Concurrent registration must retain one node');
   const nodeId=registrations[0].nodeId;
+  const consumed=(await request(invitationListPath,undefined,login.cookie)).value.items.find(item=>item.id===invite.value.id);
+  assert.equal(consumed.status,'EXHAUSTED');
+  assert.equal(consumed.enrollmentId,rows[0].id);
+  assert.equal(consumed.nodeId,nodeId);
+
   await pool.execute("UPDATE nodes SET status='BUSY',current_task_id='owned-task-fixture' WHERE id=?",[nodeId]);
   await service.register(credential,profile);
   const [busy]=await pool.execute('SELECT status,current_task_id FROM nodes WHERE id=?',[nodeId]);assert.equal(busy[0].status,'BUSY');assert.equal(busy[0].current_task_id,'owned-task-fixture');
