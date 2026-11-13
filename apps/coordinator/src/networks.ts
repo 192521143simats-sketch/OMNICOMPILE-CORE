@@ -31,35 +31,39 @@ export class NetworkService{
     const [rows]=await connection.execute<RowDataPacket[]>("SELECT id FROM distributed_networks WHERE id=? AND status='ACTIVE' FOR UPDATE",[networkId]);
     if(!rows[0])return false;const timestamp=now();
     await connection.execute("UPDATE distributed_networks SET status='DISABLED' WHERE id=?",[networkId]);
-    await connection.execute("UPDATE worker_invitations SET revoked_at=? WHERE network_id=? AND revoked_at IS NULL AND consumed_at IS NULL",[timestamp,networkId]);
+    await connection.execute("UPDATE worker_invitations SET revoked_at=? WHERE network_id=? AND revoked_at IS NULL AND used_count < max_uses",[timestamp,networkId]);
     await connection.execute("UPDATE network_enrollments SET status='REVOKED',consent_status='REVOKED',revoked_at=?,updated_at=? WHERE network_id=? AND status!='REVOKED'",[timestamp,timestamp,networkId]);
     await connection.execute("UPDATE nodes SET status='OFFLINE',revoked_at=?,current_task_id=NULL WHERE network_id=? AND revoked_at IS NULL",[timestamp,networkId]);return true;
   });}
 
-  async byJoinToken(raw:string){const[rows]=await this.pool.execute<RowDataPacket[]>(`SELECT n.id,n.public_id publicId,n.name,n.description,n.status,n.created_at createdAt,n.expires_at expiresAt,n.max_nodes maxNodes,(SELECT COUNT(*) FROM nodes w WHERE w.network_id=n.id AND w.revoked_at IS NULL AND w.status IN ('ONLINE','AVAILABLE','BUSY')) nodeCount FROM distributed_networks n WHERE n.join_token_hash=?`,[digest(raw)]);const row=rows[0];if(!row)return null;const expired=Boolean(row.expiresAt)&&Date.parse(String(row.expiresAt))<=Date.now();return{id:String(row.id),publicId:String(row.publicId),name:String(row.name),description:String(row.description),status:expired?"EXPIRED":String(row.status),createdAt:String(row.createdAt),expiresAt:row.expiresAt?String(row.expiresAt):null,maxNodes:Number(row.maxNodes),nodeCount:Number(row.nodeCount),accepting:String(row.status)==="ACTIVE"&&!expired&&Number(row.nodeCount)<Number(row.maxNodes)};}
+  async byJoinToken(raw:string){return this.byJoinTokenHash(digest(raw));}
+  private async byJoinTokenHash(hash:string){const[rows]=await this.pool.execute<RowDataPacket[]>(`SELECT n.id,n.public_id publicId,n.name,n.description,n.status,n.created_at createdAt,n.expires_at expiresAt,n.max_nodes maxNodes,(SELECT COUNT(*) FROM nodes w WHERE w.network_id=n.id AND w.revoked_at IS NULL AND w.status IN ('ONLINE','AVAILABLE','BUSY')) nodeCount FROM distributed_networks n WHERE n.join_token_hash=?`,[hash]);const row=rows[0];if(!row)return null;const expired=Boolean(row.expiresAt)&&Date.parse(String(row.expiresAt))<=Date.now();return{id:String(row.id),publicId:String(row.publicId),name:String(row.name),description:String(row.description),status:expired?"EXPIRED":String(row.status),createdAt:String(row.createdAt),expiresAt:row.expiresAt?String(row.expiresAt):null,maxNodes:Number(row.maxNodes),nodeCount:Number(row.nodeCount),accepting:String(row.status)==="ACTIVE"&&!expired&&Number(row.nodeCount)<Number(row.maxNodes)};}
   async isActive(networkId:string){const[rows]=await this.pool.execute<RowDataPacket[]>("SELECT id FROM distributed_networks WHERE id=? AND status='ACTIVE' AND (expires_at IS NULL OR expires_at>?)",[networkId,now()]);return Boolean(rows[0]);}
   async adminJoinLink(networkId:string){const [rows]=await this.pool.execute<RowDataPacket[]>("SELECT id,join_link_token token,join_link_enabled enabled FROM distributed_networks WHERE id=?",[networkId]);return rows[0]?{networkId:String(rows[0].id),token:String(rows[0].token),enabled:Boolean(rows[0].enabled)}:null;}
   async setJoinLinkEnabled(networkId:string,enabled:boolean){return retryTransaction(this.pool,async connection=>{if(!await this.lockNetwork(connection,networkId))return null;await connection.execute("UPDATE distributed_networks SET join_link_enabled=? WHERE id=?",[enabled,networkId]);const [rows]=await connection.execute<RowDataPacket[]>("SELECT join_link_token token FROM distributed_networks WHERE id=?",[networkId]);return{networkId,token:String(rows[0]!.token),enabled};});}
 
-  async issueInvitation(networkId:string,adminId:string,ttlMinutes=15,workerTypes:WorkerType[]=["BROWSER","NATIVE","ANDROID"]){
-    if(!Number.isInteger(ttlMinutes)||ttlMinutes<1||ttlMinutes>1440||!workerTypes.length||workerTypes.some(type=>!["BROWSER","NATIVE","ANDROID"].includes(type)))throw new AdmissionError("INVALID_INVITATION","Check invitation expiry and worker types.",400);
+  async issueInvitation(networkId:string,adminId:string,ttlMinutes=15,workerTypes:WorkerType[]=["BROWSER","NATIVE","ANDROID"],maxUses=1){
+    if(!Number.isInteger(ttlMinutes)||ttlMinutes<1||ttlMinutes>1440||!Number.isInteger(maxUses)||maxUses<1||maxUses>100||!workerTypes.length||workerTypes.some(type=>!["BROWSER","NATIVE","ANDROID"].includes(type)))throw new AdmissionError("INVALID_INVITATION","Check invitation expiry, permitted uses and worker types.",400);
     return retryTransaction(this.pool,async connection=>{
       const network=await this.lockNetwork(connection,networkId);if(!network)return null;
       const invitationId=id("INVITE"),rawToken=token(),createdAt=now(),expiresAt=new Date(Math.min(Date.now()+ttlMinutes*60_000,network.expires_at?Date.parse(String(network.expires_at)):Infinity)).toISOString();
-      await connection.execute("INSERT INTO worker_invitations(id,network_id,token_hash,created_by,created_at,expires_at,allowed_worker_types) VALUES(?,?,?,?,?,?,?)",[invitationId,networkId,digest(rawToken),adminId,createdAt,expiresAt,JSON.stringify([...new Set(workerTypes)])]);
-      return{id:invitationId,networkId,token:rawToken,expiresAt,workerTypes};
+      await connection.execute("INSERT INTO worker_invitations(id,network_id,token_hash,created_by,created_at,expires_at,allowed_worker_types,max_uses) VALUES(?,?,?,?,?,?,?,?)",[invitationId,networkId,digest(rawToken),adminId,createdAt,expiresAt,JSON.stringify([...new Set(workerTypes)]),maxUses]);
+      return{id:invitationId,networkId,token:rawToken,expiresAt,workerTypes,maxUses};
     });
   }
-  async inspectJoinToken(raw:string){
-    const [rows]=await this.pool.execute<RowDataPacket[]>("SELECT i.*,n.name,n.description,n.status,n.join_link_enabled,n.expires_at network_expiry,n.max_nodes maxNodes,(SELECT COUNT(*) FROM nodes w WHERE w.network_id=n.id AND w.revoked_at IS NULL AND w.status IN ('ONLINE','AVAILABLE','BUSY')) nodeCount FROM worker_invitations i JOIN distributed_networks n ON n.id=i.network_id WHERE i.token_hash=?",[digest(raw)]);
-    const row=rows[0];if(!row){const info=await this.byJoinToken(raw);if(!info)return null;const [states]=await this.pool.execute<RowDataPacket[]>("SELECT join_link_enabled enabled FROM distributed_networks WHERE id=?",[info.id]);const enabled=Boolean(states[0]?.enabled),full=await this.usedCapacity(this.pool,info.id)>=info.maxNodes;return{...info,reusable:true,accepting:enabled&&info.accepting&&!full,joinLinkStatus:info.status!=="ACTIVE"?"EXPIRED":!enabled?"REVOKED":full?"FULL":"ACTIVE"};}
+  async inspectJoinToken(raw:string){return this.inspectJoinTokenHash(digest(raw));}
+  async inspectJoinTokenHash(hash:string){
+    const [rows]=await this.pool.execute<RowDataPacket[]>("SELECT i.*,n.name,n.description,n.status,n.join_link_enabled,n.expires_at network_expiry,n.max_nodes maxNodes,(SELECT COUNT(*) FROM nodes w WHERE w.network_id=n.id AND w.revoked_at IS NULL AND w.status IN ('ONLINE','AVAILABLE','BUSY')) nodeCount FROM worker_invitations i JOIN distributed_networks n ON n.id=i.network_id WHERE i.token_hash=?",[hash]);
+    const row=rows[0];if(!row){const info=await this.byJoinTokenHash(hash);if(!info)return null;const [states]=await this.pool.execute<RowDataPacket[]>("SELECT join_link_enabled enabled FROM distributed_networks WHERE id=?",[info.id]);const enabled=Boolean(states[0]?.enabled),full=await this.usedCapacity(this.pool,info.id)>=info.maxNodes;return{...info,reusable:true,accepting:enabled&&info.accepting&&!full,joinLinkStatus:info.status!=="ACTIVE"?"EXPIRED":!enabled?"REVOKED":full?"FULL":"ACTIVE"};}
     const expired=Date.parse(String(row.expires_at))<=Date.now()||Boolean(row.network_expiry)&&Date.parse(String(row.network_expiry))<=Date.now();
-    return{id:String(row.network_id),name:String(row.name),description:String(row.description),status:row.status,nodeCount:Number(row.nodeCount),maxNodes:Number(row.maxNodes),expiresAt:String(row.expires_at),invitationRequired:false,workerTypes:this.json(row.allowed_worker_types),accepting:row.status==="ACTIVE"&&Boolean(row.join_link_enabled)&&!expired&&!row.consumed_at&&!row.revoked_at&&Number(row.nodeCount)<Number(row.maxNodes),joinLinkStatus:!row.join_link_enabled?"REVOKED":undefined,invitationStatus:row.revoked_at?"REVOKED":row.consumed_at?"CONSUMED":expired?"EXPIRED":"PENDING"};
+    const exhausted=Number(row.used_count)>=Number(row.max_uses);
+    const full=await this.usedCapacity(this.pool,String(row.network_id))>=Number(row.maxNodes);
+    return{id:String(row.network_id),name:String(row.name),description:String(row.description),status:row.status,nodeCount:Number(row.nodeCount),maxNodes:Number(row.maxNodes),expiresAt:String(row.expires_at),invitationRequired:false,workerTypes:this.json(row.allowed_worker_types),accepting:row.status==="ACTIVE"&&Boolean(row.join_link_enabled)&&!expired&&!exhausted&&!row.revoked_at&&!full,joinLinkStatus:!row.join_link_enabled?"REVOKED":undefined,invitationStatus:row.revoked_at?"REVOKED":exhausted?"CONSUMED":expired?"EXPIRED":"PENDING"};
   }
   async listInvitations(networkId:string){
     const [rows]=await this.pool.execute<RowDataPacket[]>(`
       SELECT i.id,i.created_at createdAt,i.expires_at expiresAt,i.allowed_worker_types workerTypes,
-        i.revoked_at revokedAt,i.consumed_at consumedAt,i.consumed_enrollment_id enrollmentId,n.id nodeId
+        i.revoked_at revokedAt,i.max_uses maxUses,i.used_count usedCount,i.consumed_enrollment_id enrollmentId,n.id nodeId
       FROM worker_invitations i
       LEFT JOIN nodes n ON n.enrollment_id=i.consumed_enrollment_id AND n.network_id=i.network_id
       WHERE i.network_id=?
@@ -67,16 +71,31 @@ export class NetworkService{
     const checkedAt=Date.now();
     return rows.map(row=>({
       id:String(row.id),
-      status:row.revokedAt?'REVOKED':row.consumedAt?'EXHAUSTED':
+      status:row.revokedAt?'REVOKED':Number(row.usedCount)>=Number(row.maxUses)?'EXHAUSTED':
         Date.parse(String(row.expiresAt))<=checkedAt?'EXPIRED':'ACTIVE',
       createdAt:String(row.createdAt),
       expiresAt:String(row.expiresAt),
       workerTypes:this.json(row.workerTypes),
+      maxUses:Number(row.maxUses),usedCount:Number(row.usedCount),
       enrollmentId:row.enrollmentId?String(row.enrollmentId):null,
       nodeId:row.nodeId?String(row.nodeId):null
     }));
   }
-  async revokeInvitation(invitationId:string){const [result]=await this.pool.execute<ResultSetHeader>("UPDATE worker_invitations SET revoked_at=? WHERE id=? AND revoked_at IS NULL AND consumed_at IS NULL",[now(),invitationId]);return result.affectedRows===1;}
+  async listInvitationRedemptions(networkId:string,invitationId:string){
+    const [invitations]=await this.pool.execute<RowDataPacket[]>(
+      'SELECT id FROM worker_invitations WHERE network_id=? AND id=?',[networkId,invitationId]);
+    if(!invitations.length)return null;
+    const [items]=await this.pool.execute<RowDataPacket[]>(`
+      SELECT r.enrollment_id enrollmentId,r.redeemed_at redeemedAt,e.worker_type workerType,
+        e.status,e.approval_status approvalStatus,n.id nodeId
+      FROM worker_invitation_redemptions r
+      JOIN network_enrollments e ON e.id=r.enrollment_id AND e.network_id=?
+      LEFT JOIN nodes n ON n.enrollment_id=e.id AND n.network_id=e.network_id
+      WHERE r.invitation_id=?
+      ORDER BY r.redeemed_at,r.enrollment_id LIMIT 100`,[networkId,invitationId]);
+    return items;
+  }
+  async revokeInvitation(invitationId:string){const [result]=await this.pool.execute<ResultSetHeader>("UPDATE worker_invitations SET revoked_at=? WHERE id=? AND revoked_at IS NULL AND used_count < max_uses",[now(),invitationId]);return result.affectedRows===1;}
   async createEnrollment(rawInvite:string,workerType:WorkerType,deviceIdentity:string,consent=false){
     if(consent!==true)throw new AdmissionError("CONSENT_REQUIRED","Explicit worker consent is required.",400);
     const [links]=await this.pool.execute<RowDataPacket[]>("SELECT id networkId FROM distributed_networks WHERE join_token_hash=?",[digest(rawInvite)]);
@@ -87,14 +106,30 @@ export class NetworkService{
       const networkId=String(identity[0]!.networkId),network=await this.lockNetwork(connection,networkId);
       const [rows]=await connection.execute<RowDataPacket[]>("SELECT * FROM worker_invitations WHERE token_hash=? AND network_id=? FOR UPDATE",[digest(rawInvite),networkId]),invite=rows[0];
       if(reusable){if(!network||!network.join_link_enabled||network.join_token_hash!==digest(rawInvite))throw new AdmissionError("JOIN_LINK_EXPIRED","This network join link has expired or been revoked. Contact the network administrator.",410);}
-      else{if(!network||!network.join_link_enabled||!invite||invite.consumed_at||invite.revoked_at||Date.parse(String(invite.expires_at))<=Date.now())throw new AdmissionError("INVITATION_UNAVAILABLE","The invitation is invalid, expired, revoked, or already used.",410);
+      else{if(!network||!network.join_link_enabled||!invite||Number(invite.used_count)>=Number(invite.max_uses)||invite.revoked_at||Date.parse(String(invite.expires_at))<=Date.now())throw new AdmissionError("INVITATION_UNAVAILABLE","The invitation is invalid, expired, revoked, or exhausted.",410);
       if(!this.json(invite.allowed_worker_types).includes(workerType))throw new AdmissionError("WORKER_TYPE_NOT_ALLOWED","This invitation does not permit that worker type.",403);}
       if(!network)throw new AdmissionError("JOIN_LINK_EXPIRED","This network is unavailable.",410);
+      const deviceHash=digest(deviceIdentity);
+      if(invite&&!reusable){
+        const [redemptions]=await connection.execute<RowDataPacket[]>(
+          'SELECT enrollment_id FROM worker_invitation_redemptions WHERE invitation_id=? AND device_identity_hash=?',
+          [invite.id,deviceHash]);
+        if(redemptions.length)throw new AdmissionError('INVITATION_DEVICE_ALREADY_ENROLLED','This device already redeemed the invitation.',409);
+      }
       if(await this.usedCapacity(connection,networkId)>=Number(network.max_nodes))throw new AdmissionError("NETWORK_FULL","All worker slots are occupied or reserved. Try again after a slot is released.",409);
       const approvalStatus=this.json(network.configuration_json)?.requireAdminApproval===true?'PENDING':'APPROVED';
       const enrollmentId=id("ENROLLMENT"),credential=token(),createdAt=now(),expiresAt=new Date(Math.min(Date.now()+30*24*3_600_000,network.expires_at?Date.parse(String(network.expires_at)):Infinity)).toISOString(),deadline=new Date(Math.min(Date.now()+(approvalStatus==='PENDING'?24*60:10)*60_000,Date.parse(expiresAt))).toISOString();
-      await connection.execute("INSERT INTO network_enrollments(id,network_id,device_identity_hash,consent_status,status,worker_type,credential_hash,created_at,updated_at,expires_at,registration_deadline,approval_status) VALUES(?,?,?,'ACCEPTED','PENDING',?,?,?,?,?,?,?)",[enrollmentId,networkId,digest(deviceIdentity),workerType,digest(credential),createdAt,createdAt,expiresAt,deadline,approvalStatus]);
-      if(!reusable)await connection.execute("UPDATE worker_invitations SET consumed_at=?,consumed_enrollment_id=? WHERE id=?",[createdAt,enrollmentId,invite!.id]);
+      await connection.execute("INSERT INTO network_enrollments(id,network_id,device_identity_hash,consent_status,status,worker_type,credential_hash,created_at,updated_at,expires_at,registration_deadline,approval_status) VALUES(?,?,?,'ACCEPTED','PENDING',?,?,?,?,?,?,?)",[enrollmentId,networkId,deviceHash,workerType,digest(credential),createdAt,createdAt,expiresAt,deadline,approvalStatus]);
+      if(invite&&!reusable){
+        await connection.execute(`INSERT INTO worker_invitation_redemptions
+          (invitation_id,enrollment_id,device_identity_hash,redeemed_at) VALUES(?,?,?,?)`,
+          [invite.id,enrollmentId,deviceHash,createdAt]);
+        // The invitation lock covers the history insert and usage update.
+        await connection.execute(`UPDATE worker_invitations SET
+          consumed_at=CASE WHEN used_count+1=max_uses THEN ? ELSE consumed_at END,
+          consumed_enrollment_id=COALESCE(consumed_enrollment_id,?),
+          used_count=used_count+1 WHERE id=?`,[createdAt,enrollmentId,invite.id]);
+      }
       return{enrollmentId,networkId,credential,expiresAt,approvalStatus};
     });
   }

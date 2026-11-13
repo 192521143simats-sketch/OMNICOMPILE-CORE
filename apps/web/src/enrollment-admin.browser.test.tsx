@@ -22,6 +22,8 @@ it("creates a one-use link, confirms copying, refreshes status and revokes only 
     expiresAt,
     createdAt,
     workerTypes: ["ANDROID"],
+    maxUses: 1,
+    usedCount: 1,
     enrollmentId: "ENROLLMENT-1",
     nodeId: "NODE-A001",
   };
@@ -35,8 +37,11 @@ it("creates a one-use link, confirms copying, refreshes status and revokes only 
       status = "REVOKED";
       return new Response(null, {status: 204});
     }
+    if (path === invitationPath + "/used/redemptions") {
+      return Response.json({items: [{enrollmentId: "ENROLLMENT-1", nodeId: "NODE-A001", workerType: "ANDROID", redeemedAt: createdAt, status: "ACTIVE", approvalStatus: "APPROVED"}]});
+    }
     if (path === invitationPath) {
-      const created = {id: "created", status, expiresAt, createdAt, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]};
+      const created = {id: "created", status, expiresAt, createdAt, maxUses: 1, usedCount: 0, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]};
       return Response.json({items: status ? [consumed, created] : [consumed]});
     }
     if (path.endsWith("/admission")) return Response.json({requireAdminApproval: true});
@@ -57,10 +62,14 @@ it("creates a one-use link, confirms copying, refreshes status and revokes only 
     expect(host.textContent).toContain("ENROLLMENT-1");
     expect(host.textContent).toContain("NODE-A001");
     expect(button("Revoke invitation")).toBeUndefined();
+    expect(host.textContent).toContain("1 / 1");
+    await act(async () => button("View redemptions")!.click());
+    expect(host.textContent).toContain("Redemptions for used");
+    expect(host.textContent).toContain("APPROVED");
     await act(async () => button("Generate invitation")!.click());
     expect(request.mock.calls).toEqual(expect.arrayContaining([[invitationPath, expect.objectContaining({
       method: "POST",
-      body: JSON.stringify({ttlMinutes: 15, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]}),
+      body: JSON.stringify({ttlMinutes: 15, maxUses: 1, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]}),
     })]]));
     expect(host.querySelector<HTMLInputElement>("input[readonly]")?.value).toBe(joinUrl);
     await act(async () => button("Copy invitation link")!.click());

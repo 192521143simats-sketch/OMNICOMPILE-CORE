@@ -225,12 +225,9 @@ kind: Ingress
 metadata:
   name: omnicompile
   namespace: omnicompile
-  annotations:
-    nginx.ingress.kubernetes.io/proxy-read-timeout: "3600"
-    nginx.ingress.kubernetes.io/proxy-send-timeout: "3600"
-    nginx.ingress.kubernetes.io/ssl-redirect: "true"
 spec:
-  ingressClassName: nginx
+  # Replace with the installed, supported ingress controller class.
+  ingressClassName: omnicompile-ingress
   tls:
     - hosts: [omnicompile.example.invalid]
       secretName: omnicompile-tls

@@ -7,7 +7,7 @@ import websocket from "@fastify/websocket";
 import type {WebSocket} from "ws";
 import {z} from "zod";
 import {encodeProtocolMessage,parseWorkerMessage,PROTOCOL_VERSION,ProtocolCompatibilityError,testTaskSchema,networkPolicySchema,portableWorkloadCatalogue,type CoordinatorMessage} from "@omnicompile/contracts";
-import {selectNode,type ExecutionMode} from "@omnicompile/orchestration";
+import {requestDockerCapabilities,selectNode,type ExecutionMode} from "@omnicompile/orchestration";
 import {selectExecutionNetwork} from './network-placement.js';
 import {metricPlatforms} from './compiler-metrics.js';
 import {aggregateCOptimization,compileCExecutable,compileCSource,lowerCToIR,type COptimizationCandidate} from "@omnicompile/compiler-c";
@@ -31,7 +31,8 @@ import {ProductIntegrations} from "./product-integrations.js";
 import {registerSettingsRoutes,UserSettingsStore} from "./user-settings.js";
 import {WorkerConnections} from "./worker-connections.js";
 import {registerWorkerStatus} from './worker-status.js';
-import {distributionMetadata,LocalDistributionRegistry} from './distribution.js';
+import {LocalDistributionRegistry} from './distribution.js';
+import {registerNativeDownloadRoutes} from './native-download.js';
 
 const SESSION_COOKIE="omnicompile_session",WORKER_COOKIE="omnicompile_worker";
 type AuthRequest=FastifyRequest&{auth?:AuthUser};
@@ -51,8 +52,10 @@ await app.register(cookie);await app.register(helmet);await app.register(cors,{o
   installRuntimeGuards(app,allowedOrigin,async()=>{await store.pool.query({sql:"SELECT 1",timeout:5000});},config.testInstance);
   app.get("/version",async()=>({application:"OmniCompile Core",applicationVersion:config.productVersion,protocolVersion:PROTOCOL_VERSION}));
   const localDistribution=new LocalDistributionRegistry(config.projectRoot,config.localDistributionManifest);
-  app.get('/api/distribution',{config:{rateLimit:{max:30,timeWindow:'1 minute'}}},async(_request,reply)=>{reply.header('Cache-Control','no-store');const local=await localDistribution.metadata();return{platforms:distributionMetadata(config.distributionManifest).platforms.map(entry=>{const candidate=local.find(item=>item.platform===entry.platform);if(entry.available)return{...entry,localAvailable:false};return{...entry,localAvailable:false,...candidate};})};});
-  app.get('/api/distribution/:platform/download',{config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(request,reply)=>{const item=await localDistribution.download((request.params as {platform:string}).platform);if(!item)return reply.code(404).send(apiError('PACKAGE_UNAVAILABLE','This local package is unavailable or failed integrity verification.'));return reply.header('Cache-Control','no-store').header('Content-Type','application/octet-stream').header('Content-Length',item.sizeBytes).header('Content-Disposition',`attachment; filename="${item.fileName}"`).header('X-Content-SHA256',item.sha256).send(item.stream);});
+  registerNativeDownloadRoutes(app, {
+    networks, pool: store.pool, local: localDistribution,
+    published: config.distributionManifest, secure: config.nodeEnv === "production",
+  });
   app.setErrorHandler((cause:any,request,reply)=>{if(cause instanceof AdmissionError)return reply.code(cause.statusCode).send(apiError(cause.code,cause.message));const status=Number(cause?.statusCode??500);if(status===429){request.log.warn({route:request.routeOptions.url},"request rate limited");return reply.code(429).send(apiError("RATE_LIMITED","Too many attempts. Wait a few minutes and try again."));}request.log.error({cause},"request failed");if(!reply.sent)reply.code(status>=400&&status<500?status:500).send(apiError(status>=400&&status<500?"REQUEST_REJECTED":"INTERNAL_ERROR",status>=400&&status<500?String(cause?.message??"The request was rejected."):"The request could not be completed."));});
   const currentUser=(request:AuthRequest)=>auth.session(request.cookies[SESSION_COOKIE]);
   const settings=new UserSettingsStore(store.pool),integrations=new ProductIntegrations(config.integrations);
@@ -150,6 +153,24 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     await finalizeJob(jobId,artifacts,{...verified.metrics,workerExecutionTimeMs:executionTimeMs},[],verified.diagnostics??[],"optimizations" in verified?verified.optimizations??[]:[],"runnableJar" in verified?verified.runnableJar:undefined);
   }
 
+  app.get("/api/admin/toolchains", {preHandler:requireAdmin, config:{rateLimit:{max:20,timeWindow:"1 minute"}}}, async (_request,reply)=>{
+    reply.header("Cache-Control","no-store");
+    if(!process.env.OMNICOMPILE_EXECUTOR_URL)return {status:"NOT_CONFIGURED",toolchains:[]};
+    try{
+      const capabilities=z.object({
+        provider:z.literal("docker"),
+        toolchains:z.array(z.object({
+          language:z.enum(["c","python","java"]),
+          reference:z.string().max(512),
+          available:z.boolean(),
+          imageId:z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
+        })).length(3).refine(items=>new Set(items.map(item=>item.language)).size===3),
+      }).parse(await requestDockerCapabilities());
+      return {status:"REACHABLE",...capabilities};
+    }catch{
+      return reply.code(503).send(apiError("TOOLCHAINS_UNAVAILABLE","The execution service could not report its toolchains."));
+    }
+  });
   app.get("/api/admin/overview",{preHandler:requireAdmin},overview);
   app.get("/api/admin/networks/:networkId/policy",{preHandler:requireAdmin},async(request,reply)=>{const {networkId}=request.params as {networkId:string};const [rows]=await store.pool.execute<any[]>("SELECT configuration_json configuration FROM distributed_networks WHERE id=? AND status='ACTIVE'",[networkId]);if(!rows[0])return reply.code(404).send(apiError("NETWORK_NOT_FOUND","The active network was not found."));return{policy:networkPolicySchema.parse((typeof rows[0].configuration==="string"?JSON.parse(rows[0].configuration):rows[0].configuration)?.policy??{})};});
   app.get("/api/admin/networks",{preHandler:requireAdmin},async(request,reply)=>{const parsed=pageSchema.safeParse(request.query);return parsed.success?networks.listNetworks(parsed.data,true):reply.code(400).send(apiError("INVALID_PAGE","Invalid pagination parameters."));});
@@ -171,8 +192,30 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     reply.header("Cache-Control","no-store");
     return {items:await networks.listInvitations(networkId)};
   });
-  app.post("/api/admin/networks/:networkId/invitations",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{const parsed=z.object({ttlMinutes:z.number().int().min(1).max(1440).default(15),workerTypes:z.array(z.enum(["BROWSER","NATIVE","ANDROID"])).min(1).max(3).default(["BROWSER","NATIVE","ANDROID"])}).safeParse(request.body??{});if(!parsed.success)return reply.code(400).send(apiError("INVALID_INVITATION","Check invitation expiration and allowed worker types."));const{networkId}=request.params as{networkId:string},invite=await networks.issueInvitation(networkId,request.auth!.id,parsed.data.ttlMinutes,parsed.data.workerTypes);if(!invite)return reply.code(409).send(apiError("NETWORK_UNAVAILABLE","The network no longer accepts workers."));await auth.audit("ADMIN",request.auth!.id,"INVITATION_CREATED","NETWORK",networkId,{invitationId:invite.id,workerTypes:invite.workerTypes});return reply.header("Cache-Control","no-store").code(201).send({id:invite.id,networkId,expiresAt:invite.expiresAt,workerTypes:invite.workerTypes,joinUrl:`${config.publicBaseUrl}/join/${invite.token}`});});
-  app.post("/api/admin/invitations/:invitationId/revoke",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{const{invitationId}=request.params as{invitationId:string};if(!await networks.revokeInvitation(invitationId))return reply.code(404).send(apiError("INVITATION_UNAVAILABLE","The unused invitation was not found."));await auth.audit("ADMIN",request.auth!.id,"INVITATION_REVOKED","INVITATION",invitationId);return reply.code(204).send();});
+  app.get("/api/admin/networks/:networkId/invitations/:invitationId/redemptions",{preHandler:requireAdmin},async(request,reply)=>{
+    const {networkId,invitationId}=request.params as {networkId:string;invitationId:string};
+    const items=await networks.listInvitationRedemptions(networkId,invitationId);
+    if(!items)return reply.code(404).send(apiError("INVITATION_NOT_FOUND","The invitation was not found in this network."));
+    return reply.header("Cache-Control","no-store").send({items});
+  });
+  app.post("/api/admin/networks/:networkId/invitations",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{
+    const parsed=z.object({
+      ttlMinutes:z.number().int().min(1).max(1440).default(15),
+      maxUses:z.number().int().min(1).max(100).default(1),
+      workerTypes:z.array(z.enum(["BROWSER","NATIVE","ANDROID"])).min(1).max(3).default(["BROWSER","NATIVE","ANDROID"])
+    }).safeParse(request.body??{});
+    if(!parsed.success)return reply.code(400).send(apiError("INVALID_INVITATION","Check invitation expiration, permitted uses and allowed worker types."));
+    const {networkId}=request.params as {networkId:string};
+    const {ttlMinutes,maxUses,workerTypes}=parsed.data;
+    const invite=await networks.issueInvitation(networkId,request.auth!.id,ttlMinutes,workerTypes,maxUses);
+    if(!invite)return reply.code(409).send(apiError("NETWORK_UNAVAILABLE","The network no longer accepts workers."));
+    await auth.audit("ADMIN",request.auth!.id,"INVITATION_CREATED","NETWORK",networkId,{invitationId:invite.id,workerTypes:invite.workerTypes,maxUses:invite.maxUses});
+    return reply.header("Cache-Control","no-store").code(201).send({
+      id:invite.id,networkId,expiresAt:invite.expiresAt,workerTypes:invite.workerTypes,maxUses:invite.maxUses,
+      joinUrl:`${config.publicBaseUrl}/join/${invite.token}`
+    });
+  });
+  app.post("/api/admin/invitations/:invitationId/revoke",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{const{invitationId}=request.params as{invitationId:string};if(!await networks.revokeInvitation(invitationId))return reply.code(404).send(apiError("INVITATION_UNAVAILABLE","An invitation with remaining uses was not found."));await auth.audit("ADMIN",request.auth!.id,"INVITATION_REVOKED","INVITATION",invitationId);return reply.code(204).send();});
   app.post("/api/admin/networks/:networkId/disable",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{const{networkId}=request.params as{networkId:string};if(!await networks.disable(networkId))return reply.code(404).send(apiError("NETWORK_NOT_FOUND","The active network was not found."));for(const[nodeId,socket]of workers){const node=await store.pool.execute<any[]>("SELECT network_id networkId FROM nodes WHERE id=?",[nodeId]);if(node[0][0]?.networkId===networkId){socket.close(1008,"Network disabled");workers.delete(nodeId);}}await auth.audit("ADMIN",request.auth!.id,"NETWORK_DISABLED","NETWORK",networkId);await broadcast();return reply.code(204).send();});
   app.patch("/api/admin/networks/:networkId/policy",{preHandler:requireAdmin},async(request:AuthRequest,reply)=>{const parsed=networkPolicySchema.safeParse(request.body);if(!parsed.success)return reply.code(400).send(apiError("INVALID_NETWORK_POLICY","Check the network scheduling policy."));const {networkId}=request.params as {networkId:string};const changed=await store.pool.execute<any>("UPDATE distributed_networks SET configuration_json=JSON_SET(configuration_json,'$.policy',CAST(? AS JSON)) WHERE id=? AND status='ACTIVE'",[JSON.stringify(parsed.data),networkId]);if(changed[0].affectedRows!==1)return reply.code(404).send(apiError("NETWORK_NOT_FOUND","The active network was not found."));await auth.audit("ADMIN",request.auth!.id,"NETWORK_POLICY_UPDATED","NETWORK",networkId,parsed.data);await dispatchPending();return {policy:parsed.data};});
   app.get("/api/tasks/catalogue",{preHandler:requireUser},async()=>({items:Object.values(portableWorkloadCatalogue).map(({inputSchema,resultSchema,...item})=>item)}));

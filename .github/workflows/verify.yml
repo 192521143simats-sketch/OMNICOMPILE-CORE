@@ -30,6 +30,32 @@ jobs:
       - run: npm ci
       - run: npm run verify
       - run: npm audit --omit=dev --audit-level=high
+  deployment-manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Render and validate Kubernetes manifests without a cluster
+        shell: bash
+        run: |
+          set -euo pipefail
+          tools="$RUNNER_TEMP/omnicompile-manifest-tools"
+          mkdir -p "$tools"
+          curl -fsSL --retry 3 https://dl.k8s.io/release/v1.36.1/bin/linux/amd64/kubectl -o "$tools/kubectl"
+          curl -fsSL --retry 3 https://github.com/yannh/kubeconform/releases/download/v0.8.0/kubeconform-linux-amd64.tar.gz -o "$tools/kubeconform.tar.gz"
+          (
+            cd "$tools"
+            sha256sum --check <<'CHECKSUMS'
+          629d3f410e09bf49b64ae7079f7f0bda1191efed311f7d37fdbab0ad5b0ec2b7  kubectl
+          9bc2bffbf71f261128533edaf912153948b7ff238f9a531ae6d34466ec287883  kubeconform.tar.gz
+          CHECKSUMS
+            chmod +x kubectl
+            tar -xzf kubeconform.tar.gz kubeconform
+          )
+          "$tools/kubectl" kustomize infra/kubernetes > "$RUNNER_TEMP/omnicompile-manifests.yaml"
+          "$tools/kubeconform" -strict -summary -kubernetes-version 1.36.1 \
+            -schema-location 'https://raw.githubusercontent.com/yannh/kubernetes-json-schema/3f9a43d91bb63cd92fc8e3e7201302138eec072f/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json' \
+            "$RUNNER_TEMP/omnicompile-manifests.yaml" infra/kubernetes/migration-job.yaml
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 45

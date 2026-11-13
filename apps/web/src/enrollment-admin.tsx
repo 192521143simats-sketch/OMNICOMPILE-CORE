@@ -28,18 +28,31 @@ type Invitation = {
   expiresAt: string;
   createdAt: string;
   workerTypes: InvitationPlatform[];
+  maxUses: number;
+  usedCount: number;
   enrollmentId?: string | null;
   nodeId?: string | null;
+};
+
+type Redemption = {
+  enrollmentId: string;
+  nodeId?: string | null;
+  workerType: InvitationPlatform;
+  redeemedAt: string;
+  status: string;
+  approvalStatus: string;
 };
 
 function ScopedInvitations({networkId}: {networkId: string}) {
   const invitationPath = `/api/admin/networks/${encodeURIComponent(networkId)}/invitations`;
   const [items, setItems] = useState<Invitation[]>([]);
   const [ttlMinutes, setTtlMinutes] = useState("15");
+  const [maxUses, setMaxUses] = useState("1");
   const [platforms, setPlatforms] = useState<InvitationPlatform[]>(
     Object.keys(workerPlatforms) as InvitationPlatform[]
   );
   const [created, setCreated] = useState<{id: string; joinUrl: string} | null>(null);
+  const [history, setHistory] = useState<{id: string; items: Redemption[]} | null>(null);
   const [pending, setPending] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
@@ -61,14 +74,14 @@ function ScopedInvitations({networkId}: {networkId: string}) {
     return () => controller.abort();
   }, [invitationPath]);
 
-  async function act(run: () => Promise<void>) {
+  async function act(run: () => Promise<void>, reload = true) {
     if (pending) return;
     setPending(true);
     setError("");
     setMessage("");
     try {
       await run();
-      await refresh();
+      if (reload) await refresh();
     } catch (cause) {
       setError((cause as Error).message);
     } finally {
@@ -92,23 +105,27 @@ function ScopedInvitations({networkId}: {networkId: string}) {
     setPlatforms(current => checked ? [...current, platform] : current.filter(item => item !== platform));
   }
 
-  return <section aria-label="Single-use invitations">
-    <h3>Single-use invitations</h3>
-    <p>Each invitation can enroll one worker on the selected network.</p>
+  return <section aria-label="Scoped invitations">
+    <h3>Scoped invitations</h3>
+    <p>Choose how many devices may enroll. Each device can redeem an invitation once.</p>
     <form onSubmit={event => {
       event.preventDefault();
       void act(async () => {
         const invitation = await api(invitationPath, {
           method: "POST",
-          body: JSON.stringify({ttlMinutes: Number(ttlMinutes), workerTypes: platforms}),
+          body: JSON.stringify({ttlMinutes: Number(ttlMinutes), maxUses: Number(maxUses), workerTypes: platforms}),
         });
         setCreated({id: invitation.id, joinUrl: invitation.joinUrl});
-        setMessage("Single-use invitation created.");
+        setMessage("Invitation created.");
       });
     }}>
       <label>Invitation expires after (minutes)
         <input type="number" required min={1} max={1440} value={ttlMinutes}
           onChange={event => setTtlMinutes(event.target.value)} disabled={pending}/>
+      </label>
+      <label>Maximum invitation uses
+        <input type="number" required min={1} max={100} value={maxUses}
+          onChange={event => setMaxUses(event.target.value)} disabled={pending}/>
       </label>
       <fieldset disabled={pending}>
         <legend>Allowed worker platforms</legend>
@@ -135,15 +152,22 @@ function ScopedInvitations({networkId}: {networkId: string}) {
     </button>
     <div className="table-wrap">
       <table>
-        <thead><tr><th>Invitation</th><th>Platforms</th><th>Status</th><th>Expires</th><th>Enrollment / node</th><th>Actions</th></tr></thead>
+        <thead><tr><th>Invitation</th><th>Platforms</th><th>Status</th><th>Expires</th><th>Uses</th><th>First enrollment / node</th><th>Actions</th></tr></thead>
         <tbody>
           {items.map(item => <tr key={item.id}>
             <td><code>{item.id}</code><br/><small>{new Date(item.createdAt).toLocaleString()}</small></td>
             <td>{item.workerTypes.map(platform => workerPlatforms[platform]).join(", ")}</td>
             <td><span className="status">{item.status}</span></td>
             <td><time dateTime={item.expiresAt}>{new Date(item.expiresAt).toLocaleString()}</time></td>
+            <td>{item.usedCount} / {item.maxUses}</td>
             <td>{item.enrollmentId ? <code>{item.enrollmentId}</code> : "â€”"}{item.nodeId && <><br/><code>{item.nodeId}</code></>}</td>
-            <td>{item.status === "ACTIVE" && <button type="button" className="danger" disabled={pending}
+            <td>
+              {item.usedCount > 0 && <button type="button" className="secondary" disabled={pending}
+                onClick={() => void act(async () => {
+                  const response = await api(`${invitationPath}/${encodeURIComponent(item.id)}/redemptions`);
+                  setHistory({id: item.id, items: response.items});
+                }, false)}>View redemptions</button>}
+              {item.status === "ACTIVE" && <button type="button" className="danger" disabled={pending}
               onClick={() => void act(async () => {
                 await api(`/api/admin/invitations/${encodeURIComponent(item.id)}/revoke`, {method: "POST"});
                 setCreated(current => current?.id === item.id ? null : current);
@@ -154,5 +178,14 @@ function ScopedInvitations({networkId}: {networkId: string}) {
         </tbody>
       </table>
     </div>
+    {history && <div className="notice">
+      <p>Redemptions for <code>{history.id}</code></p>
+      <button type="button" className="secondary" onClick={() => setHistory(null)}>Close redemptions</button>
+      <ul>{history.items.map(item => <li key={item.enrollmentId}>
+        <time dateTime={item.redeemedAt}>{new Date(item.redeemedAt).toLocaleString()}</time>{" "}
+        {workerPlatforms[item.workerType]} <code>{item.enrollmentId}</code>{" "}
+        {item.nodeId && <code>{item.nodeId}</code>} {item.approvalStatus} · {item.status}
+      </li>)}</ul>
+    </div>}
   </section>;
 }

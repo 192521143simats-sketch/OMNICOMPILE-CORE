@@ -10,6 +10,7 @@ import {api} from "./api.js";
 import {Notice} from "./notice.js";
 import {AdminInspector} from "./admin-inspector.js";
 import {EnrollmentAdmin} from "./enrollment-admin.js";
+import {AdminToolchains} from "./admin-toolchains.js";
 import {WorkerInstallation,type DistributionPlatform} from "./worker-installation.js";
 import {joinAllowsPlatform,joinPath,parseJoinRoute,WorkerChoices,type JoinPlatform,type JoinWorkerType} from "./worker-onboarding.js";
 import {Login,Signup,Forgot,Reset} from "./auth-pages.js";
@@ -57,7 +58,7 @@ function AdminV2(){
   return <Shell user={user} title="Dashboard" subtitle="Monitor coordinator health, distributed networks, workers, compilation history, and security events.">
     <div className="tabs"><button className={tab==="overview"?"active":"secondary"} onClick={()=>{setTab("overview");setPage(1)}}>Overview</button><button className={tab==="workloads"?"active":"secondary"} onClick={()=>{setTab("workloads");setPage(1)}}>Tasks &amp; jobs</button><button className={tab==="audit"?"active":"secondary"} onClick={()=>{setTab("audit");setPage(1)}}>Audit</button><button className="secondary refresh-button" disabled={refreshing} onClick={refresh}>{refreshing?<><span className="spinner"/>Refreshing…</>:"Refresh"}</button>{refreshedAt&&<span className="refresh-time">Updated {refreshedAt.toLocaleTimeString()}</span>}</div>
     <Notice error={error}/>{inspection&&<AdminInspector {...inspection} onClose={()=>setInspection(null)}/>}
-    {tab==="overview"&&<><EnrollmentAdmin networks={networkPage.items}/><div className="metrics"><Metric name="Coordinator" value={overview?.coordinator.status??"—"}/><Metric name="Active networks" value={overview?.summary.activeNetworks??0}/><Metric name="Online workers" value={overview?.summary.onlineWorkers??0}/><Metric name="Busy workers" value={overview?.summary.busyWorkers??0}/><Metric name="Active jobs" value={overview?.summary.activeJobs??0}/><Metric name="Queued / failed" value={`${overview?.summary.queuedTasks??0} / ${overview?.summary.failedTasks??0}`}/></div>
+    {tab==="overview"&&<><EnrollmentAdmin networks={networkPage.items}/><AdminToolchains/><div className="metrics"><Metric name="Coordinator" value={overview?.coordinator.status??"—"}/><Metric name="Active networks" value={overview?.summary.activeNetworks??0}/><Metric name="Online workers" value={overview?.summary.onlineWorkers??0}/><Metric name="Busy workers" value={overview?.summary.busyWorkers??0}/><Metric name="Active jobs" value={overview?.summary.activeJobs??0}/><Metric name="Queued / failed" value={`${overview?.summary.queuedTasks??0} / ${overview?.summary.failedTasks??0}`}/></div>
       <form className="card inline-form" onSubmit={createNetwork}><h2>Create distributed network</h2><label>Name<input value={network.name} onChange={e=>setNetwork({...network,name:e.target.value})}/></label><label>Description<input value={network.description} onChange={e=>setNetwork({...network,description:e.target.value})}/></label><label>Node limit<input type="number" min="1" value={network.maxNodes} onChange={e=>setNetwork({...network,maxNodes:Number(e.target.value)})}/></label><button>Create network</button>{joinUrl&&<div className="notice"><b>Default network join link</b><p>{joinLink?.enabled?"Invoked — multiple devices can consent and join, subject to the node limit.":"Revoked — this link is unavailable until the administrator invokes it."}</p><div className="copy"><code>{joinUrl}</code><button type="button" className={copyState==="copied"?"copy-success":""} onClick={copyJoinLink}>{copyState==="copied"?"✓ Copied":copyState==="failed"?"Copy failed — retry":"Copy"}</button>{joinLink&&<button type="button" role="switch" aria-checked={joinLink.enabled} onClick={()=>toggleJoinLink(joinLink.networkId,!joinLink.enabled)}>{joinLink.enabled?"Revoke link":"Invoke link"}</button>}</div></div>}{invitationNotice&&<p role="status">{invitationNotice}</p>}</form>
       <section><div className="section-title"><h2>Networks and worker nodes</h2><span className="muted">Only active networks are listed. Capacity counts connected nodes.</span></div><DataTable items={networkPage.items} columns={[{label:"Network",render:x=><><strong>Network {x.networkCode}</strong><br/><span>{x.name}</span></>},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Capacity",render:x=>`${x.nodeCount}/${x.maxNodes}`},{label:"Action",render:x=><><button onClick={()=>showJoinLink(x.id)}>Show / copy link</button> <button className="secondary" onClick={()=>setInspection({kind:"network",id:x.id})}>Scheduling policy</button> <button role="switch" aria-label={`Admission for ${x.name}`} aria-checked={Boolean(x.joinLinkEnabled)} disabled={x.status!=="ACTIVE"} onClick={()=>toggleJoinLink(x.id,!x.joinLinkEnabled)}>{x.joinLinkEnabled?"Revoke link":"Invoke link"}</button> <button className="danger" disabled={x.status!=="ACTIVE"} onClick={()=>disable(x.id)}>Disable</button></>}]} /><Pagination page={page} totalPages={networkPage.totalPages} onChange={setPage}/><h3>Worker nodes</h3><DataTable items={nodesData.items} columns={[{label:"Node ID",render:x=><code>{x.id}</code>},{label:"Network",render:x=>x.networkName},{label:"Type",render:x=>x.workerType},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Last heartbeat",render:x=>new Date(x.lastHeartbeat).toLocaleString()},{label:"Actions",render:x=><><button className="secondary" onClick={()=>setInspection({kind:"node",id:x.id,node:x})}>Inspect node</button> <button className="danger" onClick={()=>revoke(x.id)}>Revoke node</button></>}]}/><Pagination page={nodePage} totalPages={nodesData.totalPages} onChange={setNodePage}/></section></>}
     {tab==="workloads"&&<><section><h2>Compilation history</h2><DataTable items={jobs.items} columns={[{label:"Job",render:x=><code>{x.id}</code>},{label:"Source",render:x=>`${x.sourceName} (${x.language.toUpperCase()})`},{label:"Network",render:x=>x.networkName?`Network ${x.networkCode} — ${x.networkName}`:"—"},{label:"Participating nodes",render:x=><ul className="node-list compact">{x.participatingNodes?.length?x.participatingNodes.map((node:string)=><li key={node}><code>{node}</code></li>):<li>—</li>}</ul>},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Details",render:x=><button className="secondary" onClick={()=>setInspection({kind:"job",id:x.id})}>Inspect job</button>},{label:"Artifact",render:x=>x.artifactId?<a href={`/api/artifacts/${x.artifactId}/download`}>{x.fileName}</a>:"—"}]} /><Pagination page={jobPage} totalPages={jobs.totalPages} onChange={setJobPage}/></section><section><h2>Distributed task attempts</h2><DataTable items={tasks.items} columns={[{label:"Task",render:x=><code>{x.id}</code>},{label:"Network",render:x=>x.networkName},{label:"Kind",render:x=>x.kind},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Attempts",render:x=>x.attemptCount},{label:"Assigned node",render:x=>x.assignedNodeId??"—"},{label:"Details",render:x=><button className="secondary" onClick={()=>setInspection({kind:"task",id:x.id})}>Inspect task</button>}]} /><Pagination page={taskPage} totalPages={tasks.totalPages} onChange={setTaskPage}/></section></>}
@@ -96,18 +97,39 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
   const [joined,setJoined]=useState(false);
   const [joining,setJoining]=useState(false);
   const [error,setError]=useState("");
-  const [packages,setPackages]=useState<DistributionPlatform[]>([]);
+  const [download,setDownload]=useState<{artifact:DistributionPlatform;downloadUrl:string}|null>(null);
+  const [downloadError,setDownloadError]=useState("");
+  const [downloadPending,setDownloadPending]=useState(false);
+  const [downloadRequest,setDownloadRequest]=useState(0);
   const nativePlatform=platform==="android"?"ANDROID":platform==="windows"?"WINDOWS":undefined;
   const platformAllowed=!!network&&!!platform&&joinAllowsPlatform(network.workerTypes,platform);
 
   useEffect(()=>{
-    if (!nativePlatform || !network?.accepting || !platformAllowed) return;
+    if(!nativePlatform||!network?.accepting||!platformAllowed)return;
     let active=true;
-    api("/api/distribution").then(value=>{
-      if(active)setPackages(value.platforms??[]);
-    }).catch(()=>{});
-    return()=>{active=false;};
-  },[nativePlatform,network?.accepting,platformAllowed]);
+    let expiry:number|undefined;
+    setDownload(null);
+    setDownloadError("");
+    setDownloadPending(true);
+    api("/api/enrollment/download-authorize",{
+      method:"POST",body:JSON.stringify({token,platform:nativePlatform}),
+    }).then(value=>{
+      if(!active)return;
+      setDownload({artifact:value.artifact,downloadUrl:value.downloadUrl});
+      expiry=window.setTimeout(()=>{
+        setDownload(null);
+        setDownloadError("Download authorization expired. Request another download.");
+      },value.expiresInSeconds*1000);
+    }).catch(cause=>{
+      if(active)setDownloadError(cause instanceof Error?cause.message:String(cause));
+    }).finally(()=>{
+      if(active)setDownloadPending(false);
+    });
+    return()=>{
+      active=false;
+      if(expiry!==undefined)window.clearTimeout(expiry);
+    };
+  },[token,nativePlatform,network?.accepting,platformAllowed,downloadRequest]);
 
   async function load(){
     try{
@@ -178,8 +200,17 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
         <p>OmniCompile Core will report browser capability and resource availability, maintain a heartbeat, and run schema-validated browser compute or IR optimization tasks.</p>
         <button disabled={joining} onClick={accept}>{joining?"Joining…":"Become a Worker"}</button>
       </div>}
-      {nativePlatform&&network.accepting&&platformAllowed&&
-        <WorkerInstallation joinUrl={location.origin+joinPath(token)} platforms={packages} platform={nativePlatform}/>}
+      {nativePlatform&&network.accepting&&platformAllowed&&<>
+        {downloadPending&&<p role="status">Checking device compatibility and package availability…</p>}
+        {downloadError&&<p role="status">{downloadError}</p>}
+        {!downloadPending&&<WorkerInstallation
+          joinUrl={location.origin+joinPath(token)}
+          platforms={download?[download.artifact]:[]}
+          platform={nativePlatform}
+          {...(download?{authorizedUrl:download.downloadUrl}:{})}
+        />}
+        {!downloadPending&&<button type="button" onClick={()=>setDownloadRequest(value=>value+1)}>Request a new download</button>}
+      </>}
     </>}
   </Shell>;
 }

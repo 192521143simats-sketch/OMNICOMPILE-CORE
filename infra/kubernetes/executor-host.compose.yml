@@ -2,3 +2,7 @@ services:
   omnicompile-executor:
     ports:
       - "127.0.0.1:4102:4102"
+    environment:
+      OMNICOMPILE_EXECUTOR_IMAGE_C:
+      OMNICOMPILE_EXECUTOR_IMAGE_PYTHON:
+      OMNICOMPILE_EXECUTOR_IMAGE_JAVA:

@@ -1,10 +1,47 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
+import {createServer} from 'node:http';
+import {mkdtemp,rm,writeFile} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {once} from 'node:events';
 import {Readable} from 'node:stream';
 import {createHash} from 'node:crypto';
-import {S3ArtifactStorage,artifactObjectKey,type ObjectClient} from './artifact-storage.js';
+import {S3ArtifactStorage,artifactObjectKey,configuredArtifactStorage,type ObjectClient} from './artifact-storage.js';
 
 const digest=(value:Buffer)=>createHash('sha256').update(value).digest('hex');
 describe('durable artifact storage',()=>{
+  it('signs regional S3-compatible requests with the configured region',async()=>{
+    const directory=await mkdtemp(join(tmpdir(),'omni-artifact-region-'));
+    let signatureScope:string|undefined;
+    const server=createServer((request,response)=>{
+      signatureScope=request.headers.authorization;
+      response.writeHead(204).end();
+    });
+    let storage:S3ArtifactStorage|undefined;
+    try{
+      server.listen(0,'127.0.0.1');
+      await once(server,'listening');
+      const address=server.address();
+      if(!address||typeof address==='string')throw new Error('Missing fixture listener');
+      const credential=join(directory,'fixture-credential');
+      await writeFile(credential,'fixture-secret');
+      vi.stubEnv('OMNICOMPILE_ARTIFACT_ENDPOINT','http://127.0.0.1:'+address.port);
+      vi.stubEnv('OMNICOMPILE_ARTIFACT_ACCESS_KEY_FILE',credential);
+      vi.stubEnv('OMNICOMPILE_ARTIFACT_SECRET_KEY_FILE',credential);
+      vi.stubEnv('OMNICOMPILE_ARTIFACT_REGION','ap-mumbai-1');
+      storage=configuredArtifactStorage('region_fixture');
+      if(!storage)throw new Error('Missing configured storage');
+      await storage.remove(storage.objectKey('JOB-ABCDE','ARTIFACT-one'));
+      expect(signatureScope).toContain('/ap-mumbai-1/s3/aws4_request');
+      vi.stubEnv('OMNICOMPILE_ARTIFACT_REGION','invalid/region');
+      expect(()=>configuredArtifactStorage('region_fixture')).toThrow('Invalid artifact signing region');
+    }finally{
+      storage?.close();
+      await new Promise<void>(resolve=>server.close(()=>resolve()));
+      vi.unstubAllEnvs();
+      await rm(directory,{recursive:true,force:true});
+    }
+  });
   it('rejects path injection and verifies stored bytes before publishing metadata',async()=>{
     expect(()=>artifactObjectKey('../other','ARTIFACT-one')).toThrow();
     const bytes=Buffer.from('compiled output');

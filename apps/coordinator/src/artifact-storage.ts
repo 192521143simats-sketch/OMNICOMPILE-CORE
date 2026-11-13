@@ -124,6 +124,8 @@ export function configuredArtifactStorage(databaseName=process.env.DB_NAME??''):
     if(value.length<8||value.length>4096)throw new Error('Invalid artifact storage credential configuration');
     return value;
   }
-  const client=new S3Client({endpoint:url.href,region:'us-east-1',forcePathStyle:true,maxAttempts:3,requestHandler:{connectionTimeout:3000,requestTimeout:15000},credentials:{accessKeyId:credential('OMNICOMPILE_ARTIFACT_ACCESS_KEY_FILE'),secretAccessKey:credential('OMNICOMPILE_ARTIFACT_SECRET_KEY_FILE')}});
+  const region=process.env.OMNICOMPILE_ARTIFACT_REGION?.trim()||'us-east-1';
+  if(!/^[a-z0-9][a-z0-9-]{0,62}$/.test(region))throw new Error('Invalid artifact signing region');
+  const client=new S3Client({endpoint:url.href,region,forcePathStyle:true,maxAttempts:3,requestHandler:{connectionTimeout:3000,requestTimeout:15000},credentials:{accessKeyId:credential('OMNICOMPILE_ARTIFACT_ACCESS_KEY_FILE'),secretAccessKey:credential('OMNICOMPILE_ARTIFACT_SECRET_KEY_FILE')}});
   return new S3ArtifactStorage(client,process.env.OMNICOMPILE_ARTIFACT_BUCKET??'omnicompile-artifacts',databaseName);
 }

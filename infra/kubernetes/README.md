@@ -2,7 +2,7 @@
 
 Render locally with `kubectl kustomize infra/kubernetes`. The render uses
 placeholder DNS names, a documentation-only broker CIDR and local image tags.
-Set the public HTTPS hostname, ingress class, trusted proxy CIDR, private
+Set the public HTTPS hostname, supported ingress class, trusted proxy CIDR, private
 executor and object-storage endpoints, and immutable registry image references
 before cluster validation.
 
@@ -29,6 +29,8 @@ starting the coordinator. Use a unique Job name per release and the same
 coordinator image digest as the rollout. The MySQL StatefulSet retains its
 PVC. Select a storage class and validate backup and restore before launch.
 
+The placeholder ingress class must be replaced with the class of a maintained controller. Configure its WebSocket timeouts, TLS and redirect policy and validate them in staging. The former community ingress-nginx class is retired. [Kubernetes retirement notice](https://kubernetes.io/blog/2026/01/29/ingress-nginx-statement/)
+
 The Ingress routes `/api` and `/ws` to the coordinator and SPA requests to the
 frontend. For the optional Vercel static origin, use the same-origin gateway
 described in the sibling Vercel directory. The external broker and storage
@@ -54,3 +56,11 @@ by the coordinator and workers, and restrict port 443 to the same cluster egress
 range at the firewall. The broker itself binds only to host loopback through
 the Compose override. Use a dedicated host because the broker's Docker socket
 grants it authority over that Docker daemon.
+
+For a hosted release, configure all three broker variables
+`OMNICOMPILE_EXECUTOR_IMAGE_C`, `OMNICOMPILE_EXECUTOR_IMAGE_PYTHON`, and
+`OMNICOMPILE_EXECUTOR_IMAGE_JAVA` with immutable registry digest references.
+Pull those exact images to the execution host before startup. The broker
+creates child environments with `--pull never` and readiness verifies the same
+configured image references. Configure `OMNICOMPILE_ARTIFACT_REGION` to match a
+regional S3-compatible endpoint when it differs from the default `us-east-1`.

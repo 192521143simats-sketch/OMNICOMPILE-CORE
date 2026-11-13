@@ -11,6 +11,8 @@ import {applyMigrations} from "./migrations.js";
 import {CompilerMetrics} from './compiler-metrics.js';
 import {configuredArtifactStorage,type S3ArtifactStorage} from './artifact-storage.js';
 import {artifactObjectStorageMigration} from './migrations/0013-artifact-object-storage.mjs';
+import {nativeDownloadGrantsMigration} from './migrations/0014-native-download-grants.mjs';
+import {invitationRedemptionsMigration} from './migrations/0015-invitation-redemptions.mjs';
 import {executionLocationMigration} from './migrations/0012-execution-location.mjs';
 import {compilerMetricsMigration} from './migrations/0011-compiler-metrics.mjs';
 import {nativeArtifacts} from './compiler-artifacts.js';
@@ -33,13 +35,15 @@ export type StoredArtifact={artifactType:"SOURCE"|"GENERATED_SOURCE"|"EXECUTABLE
 
 type PreparedArtifact=StoredArtifact & {id:string;digest:string;storageKey:string|null};
 
+export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration()];}
+
 export class Store {
   private readonly verifyingTasks=new Set<string>();
   readonly metrics:CompilerMetrics;
   private artifactMaintenance:ReturnType<typeof setInterval>|undefined;
   private artifactMaintenanceRunning=false;
   private constructor(readonly pool:Pool,private readonly artifactStorage:S3ArtifactStorage|undefined){this.metrics=new CompilerMetrics(pool,Number(process.env.HEARTBEAT_OFFLINE_MS??30_000));}
-  static async connect(config:DatabaseConfig){const pool=mysql.createPool({host:config.host,port:config.port,database:config.name,user:config.user,password:config.password,waitForConnections:true,connectionLimit:10,queueLimit:0,timezone:"Z",decimalNumbers:true});const store=new Store(pool,configuredArtifactStorage(config.name));try{const mode=process.env.OMNICOMPILE_MIGRATION_MODE??'apply';if(mode!=='apply'&&mode!=='check')throw new Error('Invalid migration mode');await applyMigrations(pool,config.name,[existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration()],mode);await store.artifactStorage?.initialize();return store;}catch(error){await pool.end();throw error;}}
+  static async connect(config:DatabaseConfig){const pool=mysql.createPool({host:config.host,port:config.port,database:config.name,user:config.user,password:config.password,waitForConnections:true,connectionLimit:10,queueLimit:0,timezone:"Z",decimalNumbers:true});const store=new Store(pool,configuredArtifactStorage(config.name));try{const mode=process.env.OMNICOMPILE_MIGRATION_MODE??'apply';if(mode!=='apply'&&mode!=='check')throw new Error('Invalid migration mode');await applyMigrations(pool,config.name,databaseMigrationPlan(),mode);await store.artifactStorage?.initialize();return store;}catch(error){await pool.end();throw error;}}
   async close(){if(this.artifactMaintenance)clearInterval(this.artifactMaintenance);this.artifactStorage?.close();await this.pool.end();}
   async reconcileArtifactStorage(options:{apply?:boolean}={}){
     if(!this.artifactStorage)throw new Error('Artifact object storage is not configured');
