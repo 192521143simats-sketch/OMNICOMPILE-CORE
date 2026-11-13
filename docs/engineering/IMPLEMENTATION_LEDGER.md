@@ -100,3 +100,21 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   execution containers. All eight Compose services were healthy, and project
   MySQL was reachable on port 3307. The workspace gate passed 403 Vitest cases
   and 31 script tests, with 11 opt-in cases skipped by the default gate.
+
+### Local Kubernetes acceptance attempt
+
+- Created a disposable kind cluster with its own kubeconfig. The default
+  Kubernetes v1.37.0 control plane failed to bootstrap. The digest-pinned
+  v1.34.0 retry reached Ready and admitted the native overlay resources.
+- The local fixture used a runc RuntimeClass, loopback frontend routing,
+  and database-backed artifacts. It did not exercise gVisor, production
+  ingress, or object storage. The project Docker database was separate.
+- Loading the six existing Docker images into the kind node drove host C:
+  free space below 1 GB. The kind cluster was deleted to stop the import.
+  The import exited 137 after teardown. No compiler Job, browser acceptance,
+  download, or broker/node failure recovery test ran on this cluster.
+- All eight project Compose services remained healthy. Resume part 6 with
+  adequate free space on the drive that holds Docker Desktop's Linux disk.
+  First create the digest-pinned kind v1.34.0 cluster, then load images one at
+  a time and verify each in the node before applying the overlay. Keep parts
+  7–13 open at their documented gates. No cloud resources were deployed.
