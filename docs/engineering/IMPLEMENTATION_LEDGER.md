@@ -167,3 +167,23 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   the fix. Artifact and failure-recovery acceptance remain open. The browser
   artifact run hit the fixture origin check after a port-forward change.
   No cloud deployment was performed.
+
+### Live Part 6 acceptance follow-up
+
+- On the local kind v1.34 cluster, enrolled all three language workers,
+  submitted jobs through the authenticated frontend origin, and downloaded
+  nonempty C executable, Python bytecode and Java JAR artifacts.
+- Edge cancelled a running Kubernetes execution through the administrator
+  UI. MySQL retained CANCELLED with its slot released, and Kubernetes had
+  no Job, Pod or input ConfigMap for that execution.
+- Forced replacement of the broker Pod during a separate live execution.
+  The replacement reached Ready. The interrupted execution persisted as
+  CANCELLED with a released slot and no Kubernetes resources for its ID.
+- Removed four orphaned Pods and their input ConfigMaps from earlier
+  runs. The execution namespace then had zero execution-labeled resources.
+  All eight project Docker Compose services were healthy.
+- Local evidence covers broker failure on kind using runc and database-backed
+  artifacts. It does not cover loss of a Kubernetes node, the production
+  sandbox RuntimeClass, or deployed object storage. Those gates stay open.
+  Docker data is on D:. The installed Docker Desktop application and Windows
+  integration are still on C:. No cloud deployment was performed.
