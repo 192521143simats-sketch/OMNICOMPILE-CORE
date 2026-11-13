@@ -302,3 +302,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   and MySQL to zero to protect the Docker data disk. The migration and
   managed-cluster acceptance remain pending. All eight Compose services
   stayed healthy. No cloud deployment occurred.
+
+- D: subsequently fell to 23,220,224 bytes free. Docker engine calls
+  stalled and the managed Kubernetes API timed out. A graceful Docker
+  Desktop stop timed out after 60 seconds and left Desktop reporting
+  stopping. Preserve the WSL disk and persistent volumes. Once host
+  space is available, recover the engine, check Compose and the managed
+  context, and resume the scaled-down workloads and database migration.
