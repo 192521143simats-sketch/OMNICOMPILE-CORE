@@ -309,3 +309,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   stopping. Preserve the WSL disk and persistent volumes. Once host
   space is available, recover the engine, check Compose and the managed
   context, and resume the scaled-down workloads and database migration.
+
+- After the user freed space, D: had 6,049,480,704 bytes available.
+  Docker Desktop startup still timed out listing WSL distributions, and
+  wsl --shutdown did not return during observation. A Windows restart
+  is pending. After restart, check docker info and docker volume ls
+  before starting workloads. Verify Compose with docker compose ps
+  and the managed node with kubectl --context docker-desktop get nodes.
+  Resume MySQL first, run the migration Job, then resume the coordinator,
+  broker and Java deployment. Keep the existing Docker disk and PVCs.
