@@ -50,9 +50,11 @@ export async function runOwnedProcess<T>(entry:URL,payload:unknown,options:{sign
         else if(message?.type==='failed'){failure=Object.assign(new Error(message.message),{diagnostics:message.diagnostics});}
       });
       child.once('error',error=>{failure=error;});
-      child.once('close',async()=>{
+      child.once('close',async code=>{
         clearTimeout(timeout);options.signal?.removeEventListener('abort',cancel);await killing;
-        if(failure instanceof TaskTerminationUnconfirmedError)reject(failure);else if(aborted)reject(abortError());else if(failure)reject(failure);else if(result)resolve(result);else reject(new Error('Native task process exited without a result'));
+        if(failure instanceof TaskTerminationUnconfirmedError)reject(failure);else if(aborted)reject(abortError());else if(failure)reject(failure);else if(result)resolve(result);
+        else if(sandbox&&code===126)reject(new Error('The compiler filesystem sandbox could not initialize. Check runtime support and the sandbox configuration.'));
+        else reject(new Error('Native task process exited without a result'));
       });
       child.send({payload},error=>{if(error){failure=error;void terminate();}});
     });

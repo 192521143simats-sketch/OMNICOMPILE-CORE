@@ -258,3 +258,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   Function not implemented. Restored the fixture to acceptance-runc and
   kept the repository's gVisor configuration and Landlock wrapper intact.
   The gVisor compiler gate requires a compatible isolation design or runtime.
+
+- Re-ran the Docker execution suite after the cgroup v2 switch. C, Python
+  and Java runtime checks, cancellation, timeouts and isolation passed,
+  with zero remaining job containers. Added an explicit diagnostic for
+  exit 126 from the configured filesystem wrapper. The wrapper continues
+  to fail closed. Orchestration type checks and all 15 targeted process
+  and broker tests passed.
