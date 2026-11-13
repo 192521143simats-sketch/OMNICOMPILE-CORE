@@ -376,3 +376,8 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   a Running Python execution. The replacement became Ready, MySQL
   recorded CANCELLED and released the slot, and the Job, Pod, and input
   ConfigMap were gone. Compose services remained healthy.
+
+- Repeated authenticated C, Python and Java downloads on the managed
+  cluster with the rebuilt broker image and without a source mount.
+  The executable, bytecode, and JAR were all nonempty. The execution
+  namespace had no labeled Jobs, Pods or input ConfigMaps after the run.
