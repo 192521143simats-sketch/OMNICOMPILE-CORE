@@ -147,3 +147,23 @@ The Docker broker runs disposable language jobs on a trusted execution host.
 - Guest filesystem trim discarded 1,072,750,592 bytes, but the Windows
   VHDX remained 25,995,247,616 bytes. This did not close the D: capacity
   gap. The disk was not moved and the Part 6 runtime gate was not rerun.
+
+### Docker relocation and real local Kubernetes retest
+
+- Docker Desktop moved its WSL disks to D:/Docker/DockerDesktopWSL.
+  The old data disk path on C: is absent. All nine container IDs and all three
+  named volumes survived, including the stopped general-purpose MySQL
+  container. Project MySQL row counts matched before and after relocation.
+  Docker Desktop application files and Windows integration remain on C:.
+- Docker compiler and execution regressions passed after the move, including
+  12 verified worker results and zero remaining Docker job containers.
+- On disposable kind v1.34.0, real C, Python and Java compilation Jobs ran
+  successfully twice. The fixture used runc. The full Kubernetes Service DNS
+  name resolved the frontend proxy login failure. Edge then verified admin
+  login and persisted execution history against the live cluster.
+- The broker now sends explicit JSON Content-Length, including for Kubernetes
+  DELETE options. Old Pods and ConfigMaps from the first run were still
+  present during inspection. The second run passed all three languages with
+  the fix. Artifact and failure-recovery acceptance remain open. The browser
+  artifact run hit the fixture origin check after a port-forward change.
+  No cloud deployment was performed.

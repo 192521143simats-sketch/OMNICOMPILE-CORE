@@ -198,7 +198,7 @@ spec:
           image: omnicompile-frontend:local
           ports: [{containerPort: 8080, name: http}]
           env:
-            - {name: COORDINATOR_UPSTREAM, value: "omnicompile-coordinator:4100"}
+            - {name: COORDINATOR_UPSTREAM, value: "omnicompile-coordinator.omnicompile.svc.cluster.local:4100"}
           securityContext:
             allowPrivilegeEscalation: false
             capabilities: {drop: [ALL]}

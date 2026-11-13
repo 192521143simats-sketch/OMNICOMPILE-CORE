@@ -17,9 +17,11 @@ export function inClusterApi():ClusterApi {
   return async(method,path,body,signal)=>{
     const bounded=AbortSignal.any([AbortSignal.timeout(8000),...(signal?[signal]:[])]);
     const [token,ca]=await Promise.all([readFile(account+'/token','utf8'),readFile(account+'/ca.crt')]);
+    const payload=body===undefined?undefined:JSON.stringify(body);
     return new Promise((resolve,reject)=>{
       const req=request({hostname,port:process.env.KUBERNETES_SERVICE_PORT_HTTPS??443,method,path,ca,signal:bounded,
-        headers:{Authorization:'Bearer '+token.trim(),'Content-Type':'application/json'}},response=>{
+        headers:{Authorization:'Bearer '+token.trim(),'Content-Type':'application/json',
+          ...(payload===undefined?{}:{'Content-Length':Buffer.byteLength(payload)})}},response=>{
         const chunks:Buffer[]=[];let bytes=0;
         response.on('error',reject);
         response.on('data',(chunk:Buffer)=>{
@@ -35,7 +37,7 @@ export function inClusterApi():ClusterApi {
         });
       });
       req.on('error',reject);
-      req.end(body===undefined?undefined:JSON.stringify(body));
+      req.end(payload);
     });
   };
 }
