@@ -3,6 +3,8 @@ import {spawn} from 'node:child_process';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
+import {KubernetesExecutionProvider,inClusterApi} from './kubernetes-execution.js';
+import {Store} from './database.js';
 import {dockerJobSchema,type DockerJob} from './docker-executor-schema.js';
 
 type CommandResult={code:number;stdout:string};
@@ -76,7 +78,7 @@ type Run=(job:DockerJob,signal:AbortSignal)=>Promise<unknown>;
 export function createDockerExecutor(
   token: string,
   run?: Run,
-  {images = localToolchainImages, command = dockerCommand}: {images?: ToolchainImages; command?: Command} = {}
+  {images = localToolchainImages, command = dockerCommand, kubernetes}: {images?: ToolchainImages; command?: Command; kubernetes?: KubernetesExecutionProvider} = {}
 ) {
   const execute: Run = run ?? ((job, signal) => runDockerJob(job, signal, command, images));
   if(token.length<32)throw new Error('The execution service requires a scoped credential.');
@@ -92,6 +94,10 @@ export function createDockerExecutor(
   const inspectImages = (references: string[], signal?: AbortSignal) =>
     command(['image', 'inspect', '--format', '{{.Id}}', ...references], undefined, signal).catch(() => null);
   app.get('/ready',async(_request,reply)=>{
+    if(kubernetes){
+      try{await kubernetes.ready();return {status:'ready',service:'omnicompile-executor'};}
+      catch{return reply.code(503).send({status:'unavailable',service:'omnicompile-executor'});}
+    }
     const inspected=await inspectImages(Object.values(images));
     if(!inspected||inspected.code!==0)return reply.code(503).send({status:'unavailable',service:'omnicompile-executor'});
     return {status:'ready',service:'omnicompile-executor'};
@@ -109,8 +115,18 @@ export function createDockerExecutor(
   let capabilityInspection: ReturnType<typeof inspectToolchains> | undefined;
   app.get('/capabilities', {onRequest: authenticate}, async (_request, reply) => {
     reply.header('Cache-Control', 'no-store');
+    if(kubernetes)return {provider:'kubernetes',toolchains:Object.entries(images).map(([language,reference])=>({language,reference,available:null,imageId:null}))};
     capabilityInspection ??= inspectToolchains().finally(() => { capabilityInspection = undefined; });
     return {provider: 'docker', toolchains: await capabilityInspection};
+  });
+  app.get('/executions',{onRequest:authenticate},async(_request,reply)=>{
+    reply.header('Cache-Control','no-store');
+    return {provider:kubernetes?'kubernetes':'docker',items:kubernetes?await kubernetes.list():[]};
+  });
+  app.post('/executions/:id/cancel',{onRequest:authenticate},async(request,reply)=>{
+    const id=(request.params as {id:string}).id;
+    if(!kubernetes||!/^[0-9a-f-]{36}$/.test(id)||!await kubernetes.cancel(id))return reply.code(409).send({error:{code:'EXECUTION_NOT_ACTIVE',message:'This execution cannot be cancelled.'}});
+    return reply.code(202).send({status:'CANCEL_REQUESTED'});
   });
   app.post('/jobs',{onRequest:authenticate},async(request,reply)=>{
     const parsed=dockerJobSchema.safeParse(request.body);
@@ -119,8 +135,8 @@ export function createDockerExecutor(
     const abort=new AbortController();active.add(abort);
     const timer=setTimeout(()=>abort.abort(),120_000);
     const disconnected=()=>{if(!reply.raw.writableEnded)abort.abort();};reply.raw.once('close',disconnected);
-    try{return {result:await execute(parsed.data,abort.signal)};}
-    catch(cause){const error=cause as Error&{diagnostics?:unknown};return reply.code(422).send({error:{code:'ISOLATED_JOB_FAILED',message:error.message,diagnostics:error.diagnostics}});}
+    try{return {result:await (kubernetes?kubernetes.run(parsed.data,abort.signal):execute(parsed.data,abort.signal))};}
+    catch(cause){const error=cause as Error&{diagnostics?:unknown};return reply.code((error as {statusCode?:number}).statusCode===429?429:422).send({error:{code:'ISOLATED_JOB_FAILED',message:error.message,diagnostics:error.diagnostics}});}
     finally{clearTimeout(timer);reply.raw.off('close',disconnected);active.delete(abort);}
   });
   app.addHook('preClose',async()=>{for(const controller of active)controller.abort();});
@@ -129,7 +145,22 @@ export function createDockerExecutor(
 
 async function main(){
   const token=readFileSync(process.env.OMNICOMPILE_EXECUTOR_TOKEN_FILE??'/run/secrets/executor-token','utf8').trim();
-  const app=createDockerExecutor(token,undefined,{images:resolveToolchainImages()});await app.listen({host:'0.0.0.0',port:4102});
+  const images=resolveToolchainImages();
+  const provider=process.env.OMNICOMPILE_EXECUTION_PROVIDER??'docker';
+  if(!['docker','kubernetes'].includes(provider))throw new Error('Invalid execution provider.');
+  const api=provider==='kubernetes'?inClusterApi():undefined;
+  const store=api?await Store.connect({host:process.env.DB_HOST!,port:Number(process.env.DB_PORT??3306),
+    name:process.env.DB_NAME!,user:process.env.DB_USER!,password:process.env.DB_PASSWORD!}):undefined;
+  const kubernetes=store&&api?new KubernetesExecutionProvider(store.pool,api,
+    process.env.OMNICOMPILE_EXECUTION_NAMESPACE??'omnicompile-execution',
+    process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images):undefined;
+  const app=createDockerExecutor(token,undefined,{images,...(kubernetes?{kubernetes}:{})});
+  if(kubernetes){
+    const timer=setInterval(()=>void kubernetes.reconcile().catch(()=>console.error('Execution reconciliation failed.')),5000);
+    timer.unref();
+    app.addHook('onClose',async()=>{clearInterval(timer);await store?.close();});
+  }
+  await app.listen({host:'0.0.0.0',port:4102});
   for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{void app.close();});
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)void main().catch(()=>{console.error('Docker execution service initialization failed.');process.exit(1);});
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)void main().catch(()=>{console.error('Execution service initialization failed.');process.exit(1);});

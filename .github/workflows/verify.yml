@@ -53,9 +53,10 @@ jobs:
             tar -xzf kubeconform.tar.gz kubeconform
           )
           "$tools/kubectl" kustomize infra/kubernetes > "$RUNNER_TEMP/omnicompile-manifests.yaml"
+          "$tools/kubectl" kustomize infra/kubernetes-native > "$RUNNER_TEMP/omnicompile-native.yaml"
           "$tools/kubeconform" -strict -summary -kubernetes-version 1.36.1 \
             -schema-location 'https://raw.githubusercontent.com/yannh/kubernetes-json-schema/3f9a43d91bb63cd92fc8e3e7201302138eec072f/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json' \
-            "$RUNNER_TEMP/omnicompile-manifests.yaml" infra/kubernetes/migration-job.yaml
+            "$RUNNER_TEMP/omnicompile-manifests.yaml" "$RUNNER_TEMP/omnicompile-native.yaml" infra/kubernetes/migration-job.yaml
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 45

@@ -64,3 +64,32 @@ Pull those exact images to the execution host before startup. The broker
 creates child environments with `--pull never` and readiness verifies the same
 configured image references. Configure `OMNICOMPILE_ARTIFACT_REGION` to match a
 regional S3-compatible endpoint when it differs from the default `us-east-1`.
+
+## Native Kubernetes execution provider
+
+The optional overlay at `infra/kubernetes-native` reuses the existing execution
+broker API. Docker Compose continues to select Docker. The overlay creates a
+private broker and a separate namespace for short-lived, isolated Jobs. It
+requires migration 0017, the existing executor token Secret and an
+`execution-images` ConfigMap in the application namespace with keys `c`,
+`python`, and `java`, each set to a release image pinned by digest. Replace
+local application image references with registry references for staging.
+The configured `gvisor` RuntimeClass must be installed and validated on the
+selected worker nodes. Verify CNI default-deny enforcement and API reachability
+from the broker on the target cluster.
+
+Render locally with `kubectl kustomize infra/kubernetes-native`. The broker
+admits at most two executions through unique MySQL slots, with a matching
+namespace quota. Each execution has a persisted UUID, Job deadline, and
+TTL fallback. Cleanup verifies the Job UID before requesting foreground
+deletion and holds the slot until the Job is gone. A restarted broker cleans up
+expired executions. Interrupted callers must resubmit through the existing
+coordinator recovery policy. Admin Overview shows recent execution states and
+lets administrators request cancellation.
+
+Before enabling this overlay, verify registry pulls, migration ordering,
+RuntimeClass isolation, Kubernetes API connectivity and projected input mounting
+on a disposable cluster. Verify the kubelet log size and rotation policy can
+carry the maximum broker response without truncation. Then exercise real C,
+Python and Java jobs, concurrent admission, cancellation, and cleanup after
+broker and node interruption. The overlay has no live-cluster acceptance yet.

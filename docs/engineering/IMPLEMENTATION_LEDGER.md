@@ -33,7 +33,7 @@ The Docker broker runs disposable language jobs on a trusted execution host.
 | 3. Platform onboarding | Separate web, Windows and Android flows, compatibility checks, download grants and verified packages | Browser consent uses the existing admission endpoint. Migration 0014 and guarded downloads passed the isolated MySQL integration with actual local packages. Browser platform signals can be spoofed and do not establish native identity. |
 | 4. Native enrollment and releases | Windows installer, Android APK, secure storage, credentials, recovery and device evidence | Native acceptance covers the common protocol, physical API 25 and the API 37 emulator. Verify signed packages through the new guarded download flow and test clean installation. |
 | 5. Toolchains and connector | Versioned GCC, Python and JDK images, provider abstraction, capabilities and health | The local Docker broker has three real language images and isolated execution tests. Immutable image selection and authenticated capability discovery passed locally. A provider contract with persisted job identity remains open. |
-| 6. Kubernetes execution | Ephemeral Kubernetes Jobs, capacity, cancellation, leases and orphan reconciliation | The current Kubernetes render uses a private external Docker broker. A Kubernetes-native provider, lifecycle records, quotas, cleanup under node loss and verified per-job isolation remain open. |
+| 6. Kubernetes execution | Ephemeral Kubernetes Jobs, capacity, cancellation, leases and orphan reconciliation | Optional native broker overlay, persisted execution IDs, two-slot admission, cancellation and reconciliation implemented. Isolated MySQL and simulated Kubernetes lifecycle passed. Live RuntimeClass, node-loss and real Job acceptance remain open. |
 | 7. Performance and scaling | Capacity-aware queues, provisioning telemetry, prewarm and measured scaling | The Docker broker bounds concurrency. Measure queue, provision and execution stages before selecting a safe prewarm or autoscaling policy. |
 | 8. Project input and dependency analysis | Multi-file C, Python and Java, dependency validation and resource limits | The working compiler accepts single-source jobs, with distributed C function-level IR. Add project manifests and language-specific graph validation before introducing partition scheduling. |
 | 9. Distributed reconstruction | Independent partitions, linking or packaging, verification and owned outputs | Existing result verification, bounded leases and object-backed artifacts are in place. Validate project reconstruction against trusted builds and verify retry under a worker interruption. |
@@ -77,3 +77,19 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   11 skipped by the default workspace gate. The rebuilt Docker compiler
   acceptance passed C, Python and Java and recorded 12 verified worker
   results. Its fixtures were removed.
+
+### Kubernetes execution provider
+
+- Migrations 0016 and 0017 persist execution identity, capacity reservations,
+  terminal outcomes and pending cleanup. The private broker checks MySQL and
+  Kubernetes API access for readiness. The execution namespace caps Job
+  provisioning and denies workload network traffic.
+- Isolated MySQL with a simulated Kubernetes API verified persisted IDs,
+  two-slot admission, cancellation, failed deletion retry and expired work
+  recovery. The administrator execution history and cancel action passed
+  Edge verification using simulated Kubernetes responses. Edge also verified
+  sign-in and the execution history view against the live Docker stack.
+- The optional overlay renders 26 resources. CI now validates the base and the
+  overlay. No cluster was modified. Next gate is disposable-cluster acceptance
+  of the sandbox RuntimeClass, image pulls, real C/Python/Java Jobs, log
+  transfer, and cleanup after broker and node interruption.

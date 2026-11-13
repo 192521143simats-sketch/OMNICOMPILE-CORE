@@ -3,7 +3,7 @@ import {setTimeout as delay} from 'node:timers/promises';
 
 export type DockerJobRequest={kind:'verify'|'c_ir'|'task'|'execute';language:'c'|'python'|'java';payload:unknown};
 
-function brokerRequest(path: '/jobs' | '/capabilities'){
+function brokerRequest(path: '/jobs' | '/capabilities' | '/executions' | `/executions/${string}/cancel`){
   const configured=process.env.OMNICOMPILE_EXECUTOR_URL;
   if(!configured)throw new Error('The Docker execution service is not configured.');
   const url=new URL(path,configured);
@@ -32,6 +32,13 @@ export async function requestDockerCapabilities():Promise<unknown>{
   const response=await fetch(url,{headers:{authorization},signal:AbortSignal.timeout(8000),redirect:'error'});
   if(!response.ok){await response.body?.cancel();throw new Error('The Docker execution service capability check failed.');}
   return readBrokerJson(response,16_384);
+}
+
+export async function requestExecutionStatus(id?:string):Promise<{status:number;body:unknown}>{
+  if(id&&!/^[0-9a-f-]{36}$/.test(id))throw new Error('Invalid execution ID.');
+  const {url,authorization}=brokerRequest(id?`/executions/${id}/cancel`:'/executions');
+  const response=await fetch(url,{method:id?'POST':'GET',headers:{authorization},signal:AbortSignal.timeout(8000),redirect:'error'});
+  return {status:response.status,body:await readBrokerJson(response,65_536)};
 }
 
 /** Internal authenticated transport. Never falls back to host execution. */

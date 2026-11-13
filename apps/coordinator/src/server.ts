@@ -7,7 +7,7 @@ import websocket from "@fastify/websocket";
 import type {WebSocket} from "ws";
 import {z} from "zod";
 import {encodeProtocolMessage,parseWorkerMessage,PROTOCOL_VERSION,ProtocolCompatibilityError,testTaskSchema,networkPolicySchema,portableWorkloadCatalogue,type CoordinatorMessage} from "@omnicompile/contracts";
-import {requestDockerCapabilities,selectNode,type ExecutionMode} from "@omnicompile/orchestration";
+import {requestExecutionStatus,requestDockerCapabilities,selectNode,type ExecutionMode} from "@omnicompile/orchestration";
 import {selectExecutionNetwork} from './network-placement.js';
 import {metricPlatforms} from './compiler-metrics.js';
 import {aggregateCOptimization,compileCExecutable,compileCSource,lowerCToIR,type COptimizationCandidate} from "@omnicompile/compiler-c";
@@ -158,11 +158,11 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     if(!process.env.OMNICOMPILE_EXECUTOR_URL)return {status:"NOT_CONFIGURED",toolchains:[]};
     try{
       const capabilities=z.object({
-        provider:z.literal("docker"),
+        provider:z.enum(["docker","kubernetes"]),
         toolchains:z.array(z.object({
           language:z.enum(["c","python","java"]),
           reference:z.string().max(512),
-          available:z.boolean(),
+          available:z.boolean().nullable(),
           imageId:z.string().regex(/^sha256:[a-f0-9]{64}$/).nullable(),
         })).length(3).refine(items=>new Set(items.map(item=>item.language)).size===3),
       }).parse(await requestDockerCapabilities());
@@ -170,6 +170,27 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     }catch{
       return reply.code(503).send(apiError("TOOLCHAINS_UNAVAILABLE","The execution service could not report its toolchains."));
     }
+  });
+  app.get("/api/admin/executions",{preHandler:requireAdmin},async(_request,reply)=>{
+    reply.header("Cache-Control","no-store");
+    try{
+      const result=await requestExecutionStatus();
+      if(result.status!==200)throw new Error("Broker unavailable");
+      return z.object({provider:z.enum(["docker","kubernetes"]),items:z.array(z.object({
+        id:z.uuid(),language:z.enum(["c","python","java"]),kind:z.string(),state:z.string(),
+        createdAt:z.string(),finishedAt:z.string().nullable()
+      })).max(50)}).parse(result.body);
+    }catch{return reply.code(503).send(apiError("EXECUTIONS_UNAVAILABLE","Execution history is unavailable."));}
+  });
+  app.post("/api/admin/executions/:id/cancel",{preHandler:requireAdmin},async(request,reply)=>{
+    const id=z.uuid().safeParse((request.params as {id:string}).id);
+    if(!id.success)return reply.code(400).send(apiError("INVALID_EXECUTION","Choose a valid execution."));
+    try{
+      const result=await requestExecutionStatus(id.data);
+      if(result.status===409)return reply.code(409).send(apiError("EXECUTION_NOT_ACTIVE","This execution cannot be cancelled."));
+      if(result.status!==202)throw new Error("Broker unavailable");
+      return reply.code(202).send({status:"CANCEL_REQUESTED"});
+    }catch{return reply.code(503).send(apiError("EXECUTIONS_UNAVAILABLE","The execution service could not cancel this execution."));}
   });
   app.get("/api/admin/overview",{preHandler:requireAdmin},overview);
   app.get("/api/admin/networks/:networkId/policy",{preHandler:requireAdmin},async(request,reply)=>{const {networkId}=request.params as {networkId:string};const [rows]=await store.pool.execute<any[]>("SELECT configuration_json configuration FROM distributed_networks WHERE id=? AND status='ACTIVE'",[networkId]);if(!rows[0])return reply.code(404).send(apiError("NETWORK_NOT_FOUND","The active network was not found."));return{policy:networkPolicySchema.parse((typeof rows[0].configuration==="string"?JSON.parse(rows[0].configuration):rows[0].configuration)?.policy??{})};});
