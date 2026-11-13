@@ -293,3 +293,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   and a separate MySQL claim. The native overlay remains the cloud
   preparation path. The installed Desktop CLI reported Kubernetes
   disabled, so deployment on the managed context is pending activation.
+
+- Docker Desktop kind v1.36.1 reached Running with a Ready control-plane
+  node. Applied the desktop overlay on the docker-desktop context and
+  confirmed the separate 1 GiB MySQL claim bound. The frontend, C and
+  Python Pods reached Ready. Host D: free space fell below 400 MB during
+  image imports. Scaled the initializing coordinator, broker, Java worker
+  and MySQL to zero to protect the Docker data disk. The migration and
+  managed-cluster acceptance remain pending. All eight Compose services
+  stayed healthy. No cloud deployment occurred.
