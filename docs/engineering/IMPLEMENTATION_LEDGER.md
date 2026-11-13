@@ -356,3 +356,15 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   the recovery migration Job completed. Coordinator, broker, and Java
   rollouts completed. Compose and native cloud manifests still use
   their existing image versions. The Desktop compiler flow is next.
+
+- On Docker Desktop's managed cluster, enrolled the C, Python and Java
+  workers, then compiled all three languages and downloaded nonempty
+  artifacts through authenticated browser-origin requests. Repeated
+  the three-language check after mounting the current broker source
+  because the available coordinator image predated the DELETE framing
+  fix. Removed seven older orphaned runner Pods and input ConfigMaps.
+- The managed Edge administrator UI cancelled a live Python execution.
+  The broker returned a non-success response and persisted CANCELLED.
+  The execution namespace had no labeled resources after the repeated
+  compiler and cancellation checks. A rebuilt broker image and a managed
+  cluster recovery rerun remain open.
