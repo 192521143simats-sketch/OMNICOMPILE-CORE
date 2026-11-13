@@ -318,3 +318,16 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   and the managed node with kubectl --context docker-desktop get nodes.
   Resume MySQL first, run the migration Job, then resume the coordinator,
   broker and Java deployment. Keep the existing Docker disk and PVCs.
+
+- Windows restarted and Docker recovered from the WSL stall. The project
+  MySQL and artifact volumes are present, and all eight Compose services
+  are healthy. Docker Desktop Kubernetes reports its node Ready. The
+  Kubernetes MySQL image's mysqld --version probe exited 139, while the
+  Compose binary reported MySQL 8.4.13. Scaled the Kubernetes database
+  back down with its claim retained. The migration still needs a working
+  Kubernetes MySQL process.
+- Updated user Android SDK and MinGW paths and Android Studio's SDK
+  settings for the relocation to C:. ADB 37.0.1 ran from the new path.
+  The SDK's build-tools and command-line tools directories were absent.
+  All 13 C code-generation tests passed with the relocated GCC and its
+  bin directory on PATH. Machine PATH still needs an elevated update.

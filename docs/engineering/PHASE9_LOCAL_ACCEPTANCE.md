@@ -87,7 +87,7 @@ with a development key. Hashes establish bytes, not release publisher trust.
 Android build from `apps/android-worker`:
 
 ```powershell
-$env:ANDROID_HOME = 'D:/Android/Sdk'
+$env:ANDROID_HOME = 'C:/Android/SDK'
 $env:JAVA_HOME = 'C:/Program Files/Java/jdk-21.0.12.1'
 ./gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleDebugAndroidTest :app:assembleRelease :app:bundleRelease :app:lintDebug --no-daemon --console=plain
 ```

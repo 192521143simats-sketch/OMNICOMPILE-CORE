@@ -81,7 +81,7 @@ npm run verify:recovery
 npm run package:windows
 ```
 
-Use an actual installed GCC on PATH (this host: D:/GnuWin32/MinGW/bin), CPython and
+Use an actual installed GCC on PATH (this host: C:/Program Files/GnuWin32/MinGW/bin), CPython and
 JDK for compiler regressions. Initial full verification without GCC produced14
 genuine failures; adding the existing compiler to the test environment fixes the
 prerequisite rather than weakening or skipping compiler tests. No .env, database,

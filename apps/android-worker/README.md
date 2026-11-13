@@ -26,7 +26,7 @@ and build-tools36.0.0. Configure ANDROID_HOME externally or ignored local.proper
 
 ```powershell
 $env:JAVA_HOME='C:/Program Files/Java/jdk-21.0.12.1'
-$env:ANDROID_HOME='D:/Android/Sdk'
+$env:ANDROID_HOME='C:/Android/SDK'
 ./gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:bundleRelease --no-daemon
 ```
 
