@@ -287,3 +287,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   The runc Pod succeeded. The gVisor Pod failed with "Function not
   implemented" from Landlock. Both probe Pods were removed. This isolates
   the remaining compatibility issue to the selected runtime environment.
+
+- Added the Docker Desktop Kubernetes overlay over the existing native
+  manifests and rendered it locally. It uses loopback access, local runc,
+  and a separate MySQL claim. The native overlay remains the cloud
+  preparation path. The installed Desktop CLI reported Kubernetes
+  disabled, so deployment on the managed context is pending activation.

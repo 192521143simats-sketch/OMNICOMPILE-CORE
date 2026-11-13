@@ -1,0 +1,56 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../kubernetes-native
+  - runtime-class.yaml
+patches:
+  - target:
+      kind: Ingress
+    patch: |
+      $patch: delete
+      apiVersion: networking.k8s.io/v1
+      kind: Ingress
+      metadata:
+        name: unused
+  - target:
+      kind: ConfigMap
+      name: omnicompile-config
+    patch: |
+      - op: replace
+        path: /data/NODE_ENV
+        value: development
+      - op: replace
+        path: /data/PUBLIC_BASE_URL
+        value: http://127.0.0.1:15173
+      - op: replace
+        path: /data/COORDINATOR_PUBLIC_URL
+        value: http://127.0.0.1:15173
+      - op: replace
+        path: /data/ALLOWED_ORIGINS
+        value: http://127.0.0.1:15173
+      - op: replace
+        path: /data/OMNICOMPILE_ARTIFACT_ENDPOINT
+        value: ""
+  - target:
+      kind: Deployment
+      name: omnicompile-executor
+    patch: |
+      apiVersion: apps/v1
+      kind: Deployment
+      metadata:
+        name: omnicompile-executor
+      spec:
+        template:
+          spec:
+            containers:
+              - name: broker
+                env:
+                  - name: OMNICOMPILE_SANDBOX_RUNTIME_CLASS
+                    value: omnicompile-desktop-runc
+  - target:
+      kind: StatefulSet
+      name: omnicompile-mysql
+    patch: |
+      - op: replace
+        path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
+        value: 1Gi

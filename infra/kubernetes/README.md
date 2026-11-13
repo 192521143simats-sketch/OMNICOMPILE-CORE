@@ -112,3 +112,27 @@ cgroup v2 fixture could start a gVisor sandbox, but gVisor release-20261109.0
 returned ENOSYS for the Landlock syscall. A RuntimeClass that starts Pods
 therefore still needs this compatibility check. Keep the compiler wrapper
 enabled and record the runtime and toolchain image digest with the result.
+
+### Docker Desktop Kubernetes
+
+Use the built-in Kubernetes view to create a local cluster and confirm that
+`docker desktop kubernetes status` reports Running. Check
+`kubectl --context docker-desktop get nodes` before applying anything.
+Render the local overlay with `kubectl kustomize infra/kubernetes-desktop`.
+It inherits the native execution broker and uses the local runc RuntimeClass,
+a 1 GiB MySQL claim, database-backed artifacts, and a loopback web origin.
+Keep the existing Compose database separate.
+
+Build the existing Compose images before rollout. Ensure the Desktop
+provisioner can resolve the local application tags and the exact compiler
+digests. Create the existing runtime, migration, compiler, executor, and
+artifact Secrets and the execution-images ConfigMap in the omnicompile
+namespace. Apply the overlay, wait for MySQL readiness, then apply the
+separate migration Job. Enroll the three language workers as documented
+above. Use `kubectl --context docker-desktop -n omnicompile port-forward
+svc/omnicompile-frontend 15173:8080` for browser acceptance.
+
+For cloud preparation, use the native overlay with the target cluster's
+sandbox RuntimeClass, registry digests, TLS ingress, persistent database
+storage, and private object storage. Keep the local overlay on the
+docker-desktop context.
