@@ -248,3 +248,13 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   HTTP 422 with the execution-deadline diagnostic. MySQL recorded TIMED_OUT
   with a NULL slot, and the execution namespace contained no matching Job,
   Pod, or input ConfigMap. The node was uncordoned afterward.
+
+- Enabled unified cgroup v2 in the host WSL configuration and restarted
+  Docker Desktop. The engine reported cgroup version 2, and the existing
+  kind node restarted on cgroup2fs. All eight Compose services were healthy.
+- With gVisor enabled on the fixture, the real C Job's sandbox and runner
+  started. The compiler child failed closed. A direct probe in the same
+  RuntimeClass confirmed the compiler wrapper's Landlock syscall returned
+  Function not implemented. Restored the fixture to acceptance-runc and
+  kept the repository's gVisor configuration and Landlock wrapper intact.
+  The gVisor compiler gate requires a compatible isolation design or runtime.
