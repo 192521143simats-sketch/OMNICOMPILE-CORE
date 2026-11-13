@@ -209,3 +209,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   Desktop installer offers a custom application path, but relocating the
   existing all-users install requires elevation and a verified recovery
   copy of the WSL disk. The disk itself is already on D:.
+
+- Repeated C, Python and Java compilation and authenticated artifact
+  downloads after binding SeaweedFS to a 1 GiB ReadWriteOnce claim in kind.
+  Replaced the storage Pod using a Recreate rollout and downloaded all
+  three artifacts again through the same authenticated endpoints. The C
+  executable, Python bytecode and Java JAR matched byte for byte. This
+  validates Pod replacement on a retained local volume. Node-level storage
+  failover and off-node backups remain separate checks.
