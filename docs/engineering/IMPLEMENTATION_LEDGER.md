@@ -338,3 +338,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   the Kubernetes Pod reported exit 135 from ldd and did not start MySQL.
   This narrows the problem to the managed node environment or its unpacked
   image dependencies. Removed the probes and retained the database claim.
+
+- Compared SHA-256 hashes for all 75 libraries resolved by the working
+  Docker MySQL image. The Kubernetes probe read the same bytes. On the
+  managed node, the MySQL binary still exited 139 after copying it to
+  /tmp, and direct invocation through the loader exited 135 even with
+  the loader cache disabled. The probes did not mount the MySQL claim.
+  These checks found no byte mismatch in the executable or its linked
+  libraries. The managed-node startup failure remains open.
