@@ -265,3 +265,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   exit 126 from the configured filesystem wrapper. The wrapper continues
   to fail closed. Orchestration type checks and all 15 targeted process
   and broker tests passed.
+
+- Joined a second worker to the disposable kind cluster, loaded the pinned
+  Python image on it, and cordoned the control-plane node for scheduling.
+  The broker on the control plane completed a Python runtime Job on the
+  worker over the real Kubernetes API (HTTP 200). The control plane was
+  uncordoned and both nodes returned Ready. The intended in-flight stop
+  command was rejected before execution, so cross-node loss recovery
+  remains unverified.
