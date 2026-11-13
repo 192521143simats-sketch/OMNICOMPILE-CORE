@@ -93,3 +93,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   overlay. No cluster was modified. Next gate is disposable-cluster acceptance
   of the sandbox RuntimeClass, image pulls, real C/Python/Java Jobs, log
   transfer, and cleanup after broker and node interruption.
+
+- Post-build Docker regressions passed C, Python and Java compilation and
+  artifact delivery, with 12 verified worker results. Runtime checks passed
+  cancellation, timeout, output limits and isolation, with zero remaining
+  execution containers. All eight Compose services were healthy, and project
+  MySQL was reachable on port 3307. The workspace gate passed 403 Vitest cases
+  and 31 script tests, with 11 opt-in cases skipped by the default gate.
