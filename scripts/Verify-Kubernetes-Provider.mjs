@@ -11,6 +11,7 @@ const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB
 const jobs=new Map();
 const label='omnicompile.io/execution-id';
 let complete=true;
+let failureReason;
 const failedDeletes=new Set();
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
@@ -37,7 +38,7 @@ const api=async(method,path,body)=>{
   if(method==='GET'&&name==='jobs?limit=1')return {items:[]};
   if(method==='GET'){
     const record=jobs.get(name);
-    return record?{...record,status:{succeeded:complete?1:0}}:null;
+    return record?{...record,status:{succeeded:complete?1:0,conditions:failureReason?[{type:'Failed',status:'True',reason:failureReason}]:[]}}:null;
   }
   if(method==='DELETE'){
     assert.equal(body.preconditions.uid,jobs.get(name)?.metadata.uid);
@@ -67,6 +68,13 @@ try{
   await provider.reconcile();
   assert.equal((await create().list())[0].state,'SUCCEEDED');
   complete=false;
+  failureReason='DeadlineExceeded';
+  await assert.rejects(start(),/execution deadline/i);
+  await provider.reconcile();
+  const [deadline]=await provider.list();
+  assert.equal(deadline.state,'TIMED_OUT');
+  assert.equal(jobs.size,0);
+  failureReason=undefined;
   const first=start(),second=start();
   const settled=Promise.allSettled([first,second]);
   const rows=await running();

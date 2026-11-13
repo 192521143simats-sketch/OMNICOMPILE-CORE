@@ -146,8 +146,13 @@ export class KubernetesExecutionProvider {
         if(rows[0]?.state==='CANCEL_REQUESTED'){abort.abort();bounded.throwIfAborted();}
         const state=await this.api('GET',this.jobs+'/'+name,undefined,bounded);
         if(state?.metadata?.uid!==uid)throw new Error('Execution Job identity changed.');
-        if(state.status?.conditions?.some((condition:any)=>condition.type==='Failed'&&condition.status==='True'))
-          throw new Error('Execution Job failed.');
+        const failure=state.status?.conditions?.find((condition:{type:string;status:string;reason?:string})=>
+          condition.type==='Failed'&&condition.status==='True');
+        if(failure?.reason==='DeadlineExceeded'){
+          outcome='TIMED_OUT';
+          throw new Error('The Kubernetes Job exceeded its execution deadline.');
+        }
+        if(failure)throw new Error('Execution Job failed.');
         if(state.status?.succeeded===1)break;
         await delay(750,undefined,{signal:bounded});
       }

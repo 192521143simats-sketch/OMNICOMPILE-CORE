@@ -236,3 +236,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   fixture's acceptance-runc setting. The repository overlay still
   specifies gvisor. Retry on a cgroup v2 local fixture and verify all
   three toolchains before closing the sandbox gate.
+
+- Added a regression for the Kubernetes Job DeadlineExceeded condition.
+  It reproduced a generic failure before the fix. The broker now persists
+  TIMED_OUT, returns a deadline diagnostic, and releases the slot after
+  cleanup. The isolated MySQL provider regression and coordinator type
+  check passed. This test simulates the Kubernetes API response.
