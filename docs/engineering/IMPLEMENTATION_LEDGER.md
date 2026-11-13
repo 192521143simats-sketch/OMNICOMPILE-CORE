@@ -226,3 +226,13 @@ The Docker broker runs disposable language jobs on a trusted execution host.
 - The non-sparse Docker data disk measured 28,142,731,264 bytes. Neither
   drive had enough free space for a full recovery copy on this host at
   preflight. The working Desktop application was kept installed on C:.
+
+- Installed checksum-verified gVisor release-20261109.0 in the disposable
+  kind node and tested the gvisor RuntimeClass through the real broker.
+  The C runner never started. containerd reported a cgroup path error
+  while creating the sandbox on the cgroup v1 Docker Desktop host
+  (cannot set up cgroup for root relative to /kubelet.slice). The
+  broker failed the request without returning an artifact. Restored the
+  fixture's acceptance-runc setting. The repository overlay still
+  specifies gvisor. Retry on a cgroup v2 local fixture and verify all
+  three toolchains before closing the sandbox gate.
