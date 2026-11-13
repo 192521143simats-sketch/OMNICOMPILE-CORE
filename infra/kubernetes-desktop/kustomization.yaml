@@ -54,3 +54,6 @@ patches:
       - op: replace
         path: /spec/volumeClaimTemplates/0/spec/resources/requests/storage
         value: 1Gi
+      - op: replace
+        path: /spec/template/spec/containers/0/image
+        value: mysql:8.4.9@sha256:c36050afdca850f23cef85703f84c7531a5ae155a11b5ee1c60acb09937c4084

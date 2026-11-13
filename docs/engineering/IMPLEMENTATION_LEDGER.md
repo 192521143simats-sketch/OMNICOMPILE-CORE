@@ -346,3 +346,13 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   the loader cache disabled. The probes did not mount the MySQL claim.
   These checks found no byte mismatch in the executable or its linked
   libraries. The managed-node startup failure remains open.
+
+- On Docker Desktop Kubernetes, the MySQL 8.4.13 binary failed even
+  with its linked libraries copied to writable storage. The standalone
+  kind fixture ran that version successfully. MySQL 8.4.9 passed a
+  no-volume probe on Docker Desktop. A read-only inventory confirmed
+  the managed PVC was empty before switching the local overlay to the
+  verified 8.4.9 digest. MySQL then became Ready on the same claim and
+  the recovery migration Job completed. Coordinator, broker, and Java
+  rollouts completed. Compose and native cloud manifests still use
+  their existing image versions. The Desktop compiler flow is next.
