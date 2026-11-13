@@ -118,3 +118,19 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   First create the digest-pinned kind v1.34.0 cluster, then load images one at
   a time and verify each in the node before applying the overlay. Keep parts
   7–13 open at their documented gates. No cloud resources were deployed.
+
+### Docker storage preflight for the Part 6 rerun
+
+- The active WSL data VHDX on C: was 25,995,247,616 bytes and was not sparse.
+  D: had 21,556,916,224 bytes free, a shortfall of 4,438,331,392 bytes
+  before allowing space for kind and the toolchain images. Docker Desktop
+  stayed running on C: with all eight Compose services healthy.
+- Clearing the regenerable npm download cache increased C: free space by
+  1,269,370,880 bytes at measurement. The expired local fixture password file
+  was removed. Docker volumes and project data were preserved.
+- Free capacity on D: for the current VHDX and the Kubernetes test workload.
+  Then use Docker Desktop Settings, Resources, Advanced, Disk image location
+  to move the disk. After Docker restarts, compare the container and volume
+  inventory and check the project database and artifact endpoints before
+  retrying the pinned kind test. Part 6 stays open and no cloud resources
+  were deployed.
