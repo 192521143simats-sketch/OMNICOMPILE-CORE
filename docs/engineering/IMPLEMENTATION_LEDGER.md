@@ -331,3 +331,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   The SDK's build-tools and command-line tools directories were absent.
   All 13 C code-generation tests passed with the relocated GCC and its
   bin directory on PATH. Machine PATH still needs an elevated update.
+
+- Compared the managed Kubernetes MySQL probe with a fresh Compose-engine
+  container using the same OCI image digest. The MySQL binary SHA-256
+  matched. The fresh Docker container returned the version successfully;
+  the Kubernetes Pod reported exit 135 from ldd and did not start MySQL.
+  This narrows the problem to the managed node environment or its unpacked
+  image dependencies. Removed the probes and retained the database claim.
