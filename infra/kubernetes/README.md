@@ -93,3 +93,22 @@ on a disposable cluster. Verify the kubelet log size and rotation policy can
 carry the maximum broker response without truncation. Then exercise real C,
 Python and Java jobs, concurrent admission, cancellation, and cleanup after
 broker and node interruption. The overlay has no live-cluster acceptance yet.
+
+### Local sandbox compatibility check
+
+Before running the language suite, exercise the compiler image's Landlock
+wrapper in the target RuntimeClass. The following command is suitable as the
+container command in a disposable restricted Pod using the pinned C image.
+
+```yaml
+command: ["/usr/local/bin/omnicompile-compiler-sandbox", "/usr/bin/true"]
+env:
+  - name: TMPDIR
+    value: /tmp
+```
+
+Require a successful Pod exit before submitting compilation jobs. The local
+cgroup v2 fixture could start a gVisor sandbox, but gVisor release-20261109.0
+returned ENOSYS for the Landlock syscall. A RuntimeClass that starts Pods
+therefore still needs this compatibility check. Keep the compiler wrapper
+enabled and record the runtime and toolchain image digest with the result.
