@@ -134,3 +134,16 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   inventory and check the project database and artifact endpoints before
   retrying the pinned kind test. Part 6 stays open and no cloud resources
   were deployed.
+
+### Docker storage recheck
+
+- D: still had 21,556,916,224 bytes free. Its large directories held
+  user files, installed software, or development toolchains. The Android
+  SDK temporary download directories contained no files.
+- Removed the unused kind v1.37.0 test image (1.34 GB of Docker-reported
+  image usage). Builder pruning reclaimed 0 bytes. The pinned v1.34.0
+  test image, all three volumes, and the stopped general-purpose MYSQL
+  container were preserved. All eight project services stayed healthy.
+- Guest filesystem trim discarded 1,072,750,592 bytes, but the Windows
+  VHDX remained 25,995,247,616 bytes. This did not close the D: capacity
+  gap. The disk was not moved and the Part 6 runtime gate was not rerun.
