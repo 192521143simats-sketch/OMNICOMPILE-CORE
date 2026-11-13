@@ -273,3 +273,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   uncordoned and both nodes returned Ready. The intended in-flight stop
   command was rejected before execution, so cross-node loss recovery
   remains unverified.
+
+- Stopped the disposable second worker after observing a Running Python
+  execution Pod assigned to it. The in-flight request returned HTTP 422
+  without a result and persisted TIMED_OUT. A fresh submission on the
+  surviving node returned the expected stdout (42) and persisted SUCCEEDED.
+  After the worker restarted and became Ready, Kubernetes removed the
+  original Job and Pod. Both SQL slots were released and no execution
+  resources remained. This validates a fresh submission after node loss.
