@@ -187,3 +187,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   sandbox RuntimeClass, or deployed object storage. Those gates stay open.
   Docker data is on D:. The installed Docker Desktop application and Windows
   integration are still on C:. No cloud deployment was performed.
+
+- On the single-node kind fixture, cordoned the node and stopped kubelet.
+  The control plane reported the node Ready condition as Unknown. After
+  restarting kubelet and uncordoning, the node returned to Ready, the
+  broker was available, and a fresh Python compilation returned HTTP 200.
+  This confirms service restoration. Cross-node recovery of an in-flight
+  execution still needs a multi-node fixture.
