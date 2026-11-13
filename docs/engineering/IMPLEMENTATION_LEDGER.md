@@ -242,3 +242,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   TIMED_OUT, returns a deadline diagnostic, and releases the slot after
   cleanup. The isolated MySQL provider regression and coordinator type
   check passed. This test simulates the Kubernetes API response.
+
+- Applied the deadline fix to the disposable kind broker and repeated the
+  cordoned-node test against the real Kubernetes API. The request returned
+  HTTP 422 with the execution-deadline diagnostic. MySQL recorded TIMED_OUT
+  with a NULL slot, and the execution namespace contained no matching Job,
+  Pod, or input ConfigMap. The node was uncordoned afterward.
