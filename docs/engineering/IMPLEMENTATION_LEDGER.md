@@ -368,3 +368,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   The execution namespace had no labeled resources after the repeated
   compiler and cancellation checks. A rebuilt broker image and a managed
   cluster recovery rerun remain open.
+
+- Rebuilt the coordinator image from the repository and rolled out the
+  managed broker using omnicompile-coordinator:desktop-27547b8. Verified
+  the deadline fix was present inside the image, removed the temporary
+  source mount and deleted its ConfigMap. Replaced the broker Pod during
+  a Running Python execution. The replacement became Ready, MySQL
+  recorded CANCELLED and released the slot, and the Job, Pod, and input
+  ConfigMap were gone. Compose services remained healthy.
