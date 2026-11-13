@@ -281,3 +281,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   After the worker restarted and became Ready, Kubernetes removed the
   original Job and Pod. Both SQL slots were released and no execution
   resources remained. This validates a fresh submission after node loss.
+
+- Ran the documented Landlock preflight on the same cgroup v2 kind node
+  using the same digest-pinned C image and restricted Pod settings.
+  The runc Pod succeeded. The gVisor Pod failed with "Function not
+  implemented" from Landlock. Both probe Pods were removed. This isolates
+  the remaining compatibility issue to the selected runtime environment.
