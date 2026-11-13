@@ -194,3 +194,18 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   broker was available, and a fresh Python compilation returned HTTP 200.
   This confirms service restoration. Cross-node recovery of an in-flight
   execution still needs a multi-node fixture.
+
+### Kubernetes S3-compatible artifact verification
+
+- Ran the three language cases again on local kind with a dedicated
+  SeaweedFS S3 service, a fixture bucket, and newly generated credentials.
+  Authenticated frontend-origin requests downloaded the C executable,
+  Python bytecode, and Java JAR. MySQL recorded 15 object-backed artifacts
+  and zero inline content bytes for those records. The execution namespace
+  had no labeled Jobs, Pods or input ConfigMaps after completion.
+- This fixture used disposable object storage. Persistent object-store
+  recovery and production gVisor remain separate acceptance gates.
+- All eight Docker Compose services were healthy. The supported Docker
+  Desktop installer offers a custom application path, but relocating the
+  existing all-users install requires elevation and a verified recovery
+  copy of the WSL disk. The disk itself is already on D:.
