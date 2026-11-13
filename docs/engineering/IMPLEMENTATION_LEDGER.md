@@ -217,3 +217,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   executable, Python bytecode and Java JAR matched byte for byte. This
   validates Pod replacement on a retained local volume. Node-level storage
   failover and off-node backups remain separate checks.
+
+- With the only kind node cordoned, a real Python Job was admitted but its
+  Pod remained Pending. The broker returned HTTP 422 after the scheduling
+  deadline, removed the Job, Pod, and input ConfigMap, and the node was
+  uncordoned and confirmed Ready. This verifies cleanup when no eligible
+  node can schedule the work.
+- The non-sparse Docker data disk measured 28,142,731,264 bytes. Neither
+  drive had enough free space for a full recovery copy on this host at
+  preflight. The working Desktop application was kept installed on C:.
