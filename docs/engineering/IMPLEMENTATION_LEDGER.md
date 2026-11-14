@@ -387,3 +387,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   MySQL recorded CANCELLED with a NULL slot for execution
   a22caf7f-348d-4dcc-b4b0-249c0049ced7. No labeled Jobs, Pods, ConfigMaps,
   or NetworkPolicies remained. All eight Docker Compose services were healthy.
+
+- Repeated the Docker compiler regression in disposable fixture 903b7f22651b9593.
+  Four valid submissions produced native C executables, Python bytecode and a
+  Java JAR. Two concurrent jobs and 12 verification outcomes were verified.
+  Invalid sources failed, the secret-read probe was denied, and the fixture
+  reported no developer-data changes. The fixture containers were removed.
+  With the relocated MinGW bin directory on PATH, npm run verify passed
+  403 Vitest tests, 31 Node tests and the workspace build. Eleven opt-in
+  Vitest tests were skipped by this command.
