@@ -3,7 +3,7 @@ import {api} from "./api.js";
 
 type ExecutionHistory={
   provider:"docker"|"kubernetes";
-  items:Array<{id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;runnerDurationMs?:number|null}>;
+  items:Array<{id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;runnerDurationMs?:number|null;provisioningDurationMs?:number|null}>;
 };
 type Toolchains = {
   status:"NOT_CONFIGURED"|"REACHABLE";
@@ -53,6 +53,7 @@ export function AdminToolchains(){
     {history?.provider==="kubernetes"&&history.items.length===0&&<p role="status">No executions recorded.</p>}
     {history?.items.length?<ul aria-label="Recent executions">{history.items.map(item=><li key={item.id}>
       <code>{item.id}</code> · {item.language.toUpperCase()} · {item.kind} · {item.state} · {new Date(item.createdAt).toLocaleString()}
+      {item.provisioningDurationMs!=null&&<> · Provisioning {item.provisioningDurationMs.toLocaleString()} ms</>}
       {item.runnerDurationMs!=null&&<> · Runner lifetime {item.runnerDurationMs.toLocaleString()} ms</>}
       {["PROVISIONING","RUNNING"].includes(item.state)&&<button type="button" className="secondary" disabled={checkingHistory}
         onClick={()=>void refreshHistory(item.id)}>Cancel execution</button>}

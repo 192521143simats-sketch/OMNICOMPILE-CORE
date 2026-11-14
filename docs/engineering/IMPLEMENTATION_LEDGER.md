@@ -505,3 +505,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   verified the same record in the authenticated admin API and UI after
   coordinator rollout. Anonymous access returned 401. No runner
   resources remained, and all eight Compose services stayed healthy.
+
+- Added nullable Kubernetes provisioning duration (Job creation to runner
+  start) to the broker, admin response and execution history display.
+  Migration 0019 preserves existing records. The isolated MySQL provider test
+  verified 2,000 ms of provisioning independently of 3,000 ms of runner
+  lifetime. Workspace typecheck passed. Live rollout and queue instrumentation
+  remain open.

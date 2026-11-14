@@ -19,7 +19,7 @@ const api=async(method,path,body)=>{
     assert.equal(body.spec.template.spec.automountServiceAccountToken,false);
     assert.equal(body.spec.template.spec.runtimeClassName,'sandbox-test');
     assert.equal(body.spec.activeDeadlineSeconds,105);
-    const record={metadata:{...body.metadata,uid:randomUUID()}};
+    const record={metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:'2025-12-31T23:59:58Z'}};
     jobs.set(record.metadata.name,record);
     return record;
   }
@@ -69,6 +69,7 @@ try{
   const [completed]=await create().list();
   assert.equal(completed.state,'SUCCEEDED');
   assert.equal(completed.runnerDurationMs,3000);
+  assert.equal(completed.provisioningDurationMs,2000);
   complete=false;
   failureReason='DeadlineExceeded';
   await assert.rejects(start(),/execution deadline/i);
