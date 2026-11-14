@@ -444,3 +444,13 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   attempt with the new image digests hit its Job deadline before returning
   a probe result. Restored the known working local digest configuration.
   Kubernetes verification of the hardened images remains open.
+
+- Pulled the three hardened toolchain images into the Docker Desktop kind
+  node under unique local tags, checked the resulting image IDs, then set
+  the broker ConfigMap to those immutable digests. This avoided the node's
+  stale local tag and the prior Job provisioning deadline. The rebuilt
+  Python launcher denied socket creation with EPERM inside a local Pod.
+  Through the packaged broker, the full opt-in sandbox file passed 12/12,
+  including the runner's non-root, filesystem and network checks. No
+  execution Jobs, Pods, ConfigMaps or NetworkPolicies remained. This was
+  verified on the Desktop runc RuntimeClass. The gVisor gate remains open.
