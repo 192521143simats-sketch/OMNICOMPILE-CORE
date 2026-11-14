@@ -496,3 +496,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   and the provider integration against isolated MySQL passed. The test
   verified that a three-second runner interval survives provider recreation.
   Live rollout and separate provisioning and queue measurements remain open.
+
+- Rolled migration 0018 out with a dedicated Job on Docker Desktop
+  Kubernetes and rebuilt the broker, coordinator and frontend images.
+  A live Python execution returned stdout 42 and persisted a 3,000 ms
+  runner lifetime. The first Edge check found that the coordinator
+  response schema stripped the timing field. Extended the schema and
+  verified the same record in the authenticated admin API and UI after
+  coordinator rollout. Anonymous access returned 401. No runner
+  resources remained, and all eight Compose services stayed healthy.
