@@ -474,3 +474,17 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   module. Removed the probe, RuntimeClass and temporary runtime files
   and restored the fixture's containerd configuration. No compiler
   acceptance is claimed for Kata.
+
+### Part 7 initial local timing baseline
+
+- Queried existing successful broker records on Docker Desktop Kubernetes.
+  Creation-to-completion elapsed time for execute requests was 6,700 ms
+  mean for C (10 samples, 4,669–9,762 ms), 9,536 ms for Python (19 samples,
+  4,661–26,195 ms), and 4,634 ms for Java (6 samples, 3,182–5,629 ms).
+  These historical samples mix acceptance runs and image revisions.
+  Java execution used a prebuilt JAR. Java task requests measured
+  16,781 ms mean (8 samples, 7,768–56,775 ms).
+- The current schema records creation and completion. It cannot separate
+  queueing, provisioning, and toolchain execution from these timestamps.
+  Use explicit stage timestamps and a controlled workload before sizing
+  capacity or judging prewarming. This baseline does not close Part 6 or 7.
