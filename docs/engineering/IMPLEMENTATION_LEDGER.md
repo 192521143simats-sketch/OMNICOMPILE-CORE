@@ -403,3 +403,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   services healthy and all six local Kubernetes deployments Available.
   The same MySQL PVC remained bound and retained the known CANCELLED
   execution with its slot released. No compiler execution resources remained.
+
+- After compaction, Verify-Compose.mjs passed against MySQL 8.4.13 on port
+  3307. The fixture marker survived a project MySQL restart and the admin
+  identity and password hash were unchanged. The check also passed service
+  DNS, coordinator readiness, liveness, the frontend API proxy, and SPA
+  routing. The separate MYSQL instance was outside the verification scope.
