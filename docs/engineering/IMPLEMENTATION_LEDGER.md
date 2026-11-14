@@ -409,3 +409,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   identity and password hash were unchanged. The check also passed service
   DNS, coordinator readiness, liveness, the frontend API proxy, and SPA
   routing. The separate MYSQL instance was outside the verification scope.
+
+- After the disk compaction and restart, reran authenticated execution
+  through the packaged broker on Docker Desktop Kubernetes. The C
+  executable and Python program each printed 42. The Java compile Job
+  returned a runnable JAR, and a separate execution Job printed 42.
+  No execution Jobs, Pods, ConfigMaps, or NetworkPolicies remained.
