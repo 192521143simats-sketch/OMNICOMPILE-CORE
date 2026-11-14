@@ -381,3 +381,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   cluster with the rebuilt broker image and without a source mount.
   The executable, bytecode, and JAR were all nonempty. The execution
   namespace had no labeled Jobs, Pods or input ConfigMaps after the run.
+
+- Repeated live Python cancellation from the Edge administrator UI against
+  the packaged broker. The original request returned a non-success status.
+  MySQL recorded CANCELLED with a NULL slot for execution
+  a22caf7f-348d-4dcc-b4b0-249c0049ced7. No labeled Jobs, Pods, ConfigMaps,
+  or NetworkPolicies remained. All eight Docker Compose services were healthy.
