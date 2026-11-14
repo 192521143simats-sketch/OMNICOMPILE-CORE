@@ -415,3 +415,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   executable and Python program each printed 42. The Java compile Job
   returned a runnable JAR, and a separate execution Job printed 42.
   No execution Jobs, Pods, ConfigMaps, or NetworkPolicies remained.
+
+- Reran Verify-Docker-Execution.mjs after the disk move and compaction.
+  All ten checks passed, including real C/Python/Java execution, expected
+  runtime failure, timeout, output limits, cancellation, and the configured
+  filesystem, identity, environment and network restrictions. The verifier
+  reported no database modifications and no remaining runner containers.
