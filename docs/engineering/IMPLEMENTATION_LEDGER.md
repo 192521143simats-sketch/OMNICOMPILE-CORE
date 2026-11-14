@@ -396,3 +396,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   With the relocated MinGW bin directory on PATH, npm run verify passed
   403 Vitest tests, 31 Node tests and the workspace build. Eleven opt-in
   Vitest tests were skipped by this command.
+
+- Compacted the detached Docker WSL data disk with Windows DiskPart. The
+  VHDX fell from 37,623,955,456 to 31,930,187,776 bytes, returning 5.30 GiB
+  to D: before startup. Docker Desktop restarted with all eight Compose
+  services healthy and all six local Kubernetes deployments Available.
+  The same MySQL PVC remained bound and retained the known CANCELLED
+  execution with its slot released. No compiler execution resources remained.
