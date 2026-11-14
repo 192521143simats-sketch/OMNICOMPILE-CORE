@@ -454,3 +454,8 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   including the runner's non-root, filesystem and network checks. No
   execution Jobs, Pods, ConfigMaps or NetworkPolicies remained. This was
   verified on the Desktop runc RuntimeClass. The gVisor gate remains open.
+
+- Recreated only the three Docker Compose language workers after confirming
+  no broker runner was active. Verified their running image IDs match the
+  hardened C, Python and Java build digests. All eight Compose services,
+  including the Java worker, reported healthy after the update.
