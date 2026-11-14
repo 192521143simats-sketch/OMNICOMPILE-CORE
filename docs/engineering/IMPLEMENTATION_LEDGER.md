@@ -459,3 +459,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   no broker runner was active. Verified their running image IDs match the
   hardened C, Python and Java build digests. All eight Compose services,
   including the Java worker, reported healthy after the update.
+
+- The isolated Compose compiler regression passed after the hardened worker
+  rollout (fixture f1d1a2cd33197506). Four valid submissions completed
+  across C, Python and Java with executable, bytecode and JAR artifacts.
+  The invalid inputs and forbidden reads failed as expected. The report
+  confirmed two concurrent jobs, 12 verified results and no developer-data
+  changes. Verified the fixture containers were removed.
