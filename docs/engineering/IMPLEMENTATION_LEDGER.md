@@ -428,3 +428,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   [gVisor PR 15222](https://github.com/google/gvisor/pull/15222).
   The next runtime check is the restricted compiler-wrapper probe on a
   published release that includes guest Landlock enforcement.
+
+- Enabled OMNICOMPILE_SANDBOX_TEST against the packaged broker on Docker
+  Desktop Kubernetes. Eleven of twelve tests passed. The isolation case
+  failed, and an independent repeat returned "network allowed" after
+  passing its non-root and filesystem assertions. The Desktop kindnet
+  cluster did not enforce the runner's expected egress restriction in
+  this test. Treat this overlay as trusted-local-only until egress
+  denial passes on the actual runner. No execution resources remained.
