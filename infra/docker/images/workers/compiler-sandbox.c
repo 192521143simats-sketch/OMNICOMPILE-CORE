@@ -1,7 +1,11 @@
 #define _GNU_SOURCE
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/audit.h>
+#include <linux/filter.h>
 #include <linux/landlock.h>
+#include <linux/seccomp.h>
+#include <stddef.h>
 #include <stdint.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -41,6 +45,37 @@ static void allow_path(int ruleset, const char *path, uint64_t access) {
     close(parent);
 }
 
+static void restrict_network(void) {
+#if defined(__x86_64__) && !defined(__ILP32__)
+    const uint32_t architecture = AUDIT_ARCH_X86_64;
+#elif defined(__aarch64__)
+    const uint32_t architecture = AUDIT_ARCH_AARCH64;
+#else
+#error Unsupported compiler sandbox architecture
+#endif
+    struct sock_filter instructions[] = {
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, arch)),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, architecture, 1, 0),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
+        BPF_STMT(BPF_LD | BPF_W | BPF_ABS, offsetof(struct seccomp_data, nr)),
+#if defined(__x86_64__)
+        BPF_JUMP(BPF_JMP | BPF_JGE | BPF_K, 0x40000000, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_KILL_PROCESS),
+#endif
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_socket, 2, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_connect, 1, 0),
+        BPF_JUMP(BPF_JMP | BPF_JEQ | BPF_K, SYS_io_uring_setup, 0, 1),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ERRNO | EPERM),
+        BPF_STMT(BPF_RET | BPF_K, SECCOMP_RET_ALLOW),
+    };
+    struct sock_fprog program = {
+        .len = sizeof(instructions) / sizeof(instructions[0]),
+        .filter = instructions,
+    };
+    if (prctl(PR_SET_SECCOMP, SECCOMP_MODE_FILTER, &program, 0, 0))
+        fail("Compiler sandbox network restriction");
+}
+
 int main(int argc, char **argv) {
     if (argc < 2) {
         fputs("Compiler sandbox requires an executable.\n", stderr);
@@ -74,6 +109,7 @@ int main(int argc, char **argv) {
     if (prctl(PR_SET_NO_NEW_PRIVS, 1, 0, 0, 0)) fail("Compiler sandbox no-new-privileges");
     if (syscall(SYS_landlock_restrict_self, ruleset, 0)) fail("Compiler sandbox restriction");
     close(ruleset);
+    restrict_network();
     execv(argv[1], &argv[1]);
     fail("Compiler sandbox exec");
 }

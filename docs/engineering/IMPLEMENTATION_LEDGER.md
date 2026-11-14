@@ -436,3 +436,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   cluster did not enforce the runner's expected egress restriction in
   this test. Treat this overlay as trusted-local-only until egress
   denial passes on the actual runner. No execution resources remained.
+
+- Added a fail-closed seccomp filter to the compiler launcher to deny socket
+  creation, connect, and io_uring setup independently of NetworkPolicy.
+  Built all three worker images. The packaged Python launcher returned EPERM
+  and the Docker execution suite passed all ten checks. The Desktop cluster
+  attempt with the new image digests hit its Job deadline before returning
+  a probe result. Restored the known working local digest configuration.
+  Kubernetes verification of the hardened images remains open.
