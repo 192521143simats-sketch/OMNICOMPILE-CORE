@@ -32,7 +32,7 @@ const api=async(method,path,body)=>{
   }
   if(path.includes('/pods?')){
     const id=decodeURIComponent(path.split('=').at(-1)).split('=').at(-1);
-    return {items:[{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]}}]};
+    return {items:[{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{containerStatuses:[{name:'runner',state:{terminated:{startedAt:'2026-01-01T00:00:00Z',finishedAt:'2026-01-01T00:00:03Z'}}}]}}]};
   }
   if(path.includes('/log?'))return JSON.stringify({ok:true,result:{stdout:'fixture'}});
   if(method==='GET'&&name==='jobs?limit=1')return {items:[]};
@@ -66,7 +66,9 @@ try{
   await provider.ready();
   assert.deepEqual(await start(),{stdout:'fixture'});
   await provider.reconcile();
-  assert.equal((await create().list())[0].state,'SUCCEEDED');
+  const [completed]=await create().list();
+  assert.equal(completed.state,'SUCCEEDED');
+  assert.equal(completed.runnerDurationMs,3000);
   complete=false;
   failureReason='DeadlineExceeded';
   await assert.rejects(start(),/execution deadline/i);

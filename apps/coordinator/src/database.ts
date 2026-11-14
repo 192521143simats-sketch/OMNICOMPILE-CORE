@@ -1,3 +1,4 @@
+import {kubernetesRunnerDurationMigration} from './migrations/0018-kubernetes-runner-duration.mjs';
 import {kubernetesCleanupOutcomeMigration} from './migrations/0017-kubernetes-cleanup-outcome.mjs';
 import {kubernetesExecutionsMigration} from './migrations/0016-kubernetes-executions.mjs';
 import mysql, { type Pool, type PoolConnection, type ResultSetHeader, type RowDataPacket } from "mysql2/promise";
@@ -37,7 +38,7 @@ export type StoredArtifact={artifactType:"SOURCE"|"GENERATED_SOURCE"|"EXECUTABLE
 
 type PreparedArtifact=StoredArtifact & {id:string;digest:string;storageKey:string|null};
 
-export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration()];}
+export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration()];}
 
 export class Store {
   private readonly verifyingTasks=new Set<string>();

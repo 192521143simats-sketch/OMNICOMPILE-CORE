@@ -90,7 +90,7 @@ export class KubernetesExecutionProvider {
 
   async list(){
     const [rows]=await this.pool.query<RowDataPacket[]>(`SELECT id,language,kind,state,created_at createdAt,
-      finished_at finishedAt FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
+      finished_at finishedAt,runner_duration_ms runnerDurationMs FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
     return rows;
   }
 
@@ -160,6 +160,9 @@ export class KubernetesExecutionProvider {
       const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
       const pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
       if(!pod?.metadata?.name)throw new Error('Execution Pod is missing.');
+      const terminated=pod.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner')?.state?.terminated;
+      const duration=Date.parse(terminated?.finishedAt)-Date.parse(terminated?.startedAt);
+      const runnerDurationMs=Number.isInteger(duration)&&duration>=0&&duration<=0xffffffff?duration:null;
       const output=await this.api('GET',this.core+'/pods/'+encodeURIComponent(pod.metadata.name)+'/log?container=runner&limitBytes=32000000',undefined,bounded);
       const value=JSON.parse(output);
       if(value.ok!==true||!Object.hasOwn(value,'result')){
@@ -167,7 +170,7 @@ export class KubernetesExecutionProvider {
       }
       bounded.throwIfAborted();
       const [completed]=await this.pool.execute<ResultSetHeader>(`UPDATE kubernetes_executions SET
-        state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3) WHERE id=? AND state='RUNNING'`,[id]);
+        state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3),runner_duration_ms=? WHERE id=? AND state='RUNNING'`,[runnerDurationMs,id]);
       if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
       outcome='SUCCEEDED';
       return value.result;

@@ -488,3 +488,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   queueing, provisioning, and toolchain execution from these timestamps.
   Use explicit stage timestamps and a controlled workload before sizing
   capacity or judging prewarming. This baseline does not close Part 6 or 7.
+
+- Added nullable runner lifetime to Kubernetes execution history and
+  the administrator view. Successful jobs measure the runner container's
+  start-to-termination interval using Kubernetes timestamps. Historical rows
+  and jobs without those timestamps have no duration. Workspace typecheck
+  and the provider integration against isolated MySQL passed. The test
+  verified that a three-second runner interval survives provider recreation.
+  Live rollout and separate provisioning and queue measurements remain open.
