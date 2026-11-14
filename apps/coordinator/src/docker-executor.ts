@@ -135,7 +135,7 @@ export function createDockerExecutor(
     const abort=new AbortController();active.add(abort);
     const timer=setTimeout(()=>abort.abort(),120_000);
     const disconnected=()=>{if(!reply.raw.writableEnded)abort.abort();};reply.raw.once('close',disconnected);
-    try{return {result:await (kubernetes?kubernetes.run(parsed.data,abort.signal):execute(parsed.data,abort.signal))};}
+    try{return {result:await (kubernetes?kubernetes.run(parsed.data,abort.signal,request.headers['x-omnicompile-capacity-retry-wait-ms']):execute(parsed.data,abort.signal))};}
     catch(cause){const error=cause as Error&{diagnostics?:unknown};return reply.code((error as {statusCode?:number}).statusCode===429?429:422).send({error:{code:'ISOLATED_JOB_FAILED',message:error.message,diagnostics:error.diagnostics}});}
     finally{clearTimeout(timer);reply.raw.off('close',disconnected);active.delete(abort);}
   });

@@ -1,3 +1,4 @@
+import {kubernetesCapacityRetryWaitMigration} from './migrations/0020-kubernetes-capacity-retry-wait.mjs';
 import {kubernetesProvisioningDurationMigration} from './migrations/0019-kubernetes-provisioning-duration.mjs';
 import {kubernetesRunnerDurationMigration} from './migrations/0018-kubernetes-runner-duration.mjs';
 import {kubernetesCleanupOutcomeMigration} from './migrations/0017-kubernetes-cleanup-outcome.mjs';
@@ -39,7 +40,7 @@ export type StoredArtifact={artifactType:"SOURCE"|"GENERATED_SOURCE"|"EXECUTABLE
 
 type PreparedArtifact=StoredArtifact & {id:string;digest:string;storageKey:string|null};
 
-export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration()];}
+export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration(),kubernetesCapacityRetryWaitMigration()];}
 
 export class Store {
   private readonly verifyingTasks=new Set<string>();

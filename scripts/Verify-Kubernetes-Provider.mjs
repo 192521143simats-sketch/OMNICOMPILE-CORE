@@ -70,6 +70,12 @@ try{
   assert.equal(completed.state,'SUCCEEDED');
   assert.equal(completed.runnerDurationMs,3000);
   assert.equal(completed.provisioningDurationMs,2000);
+  assert.equal(completed.capacityRetryWaitMs,null);
+  for(const [header,expected] of [['875',875],['0',0],['125000',125000],['125001',null],['-1',null],['1.5',null],['1e3',null],[['20','30'],null]]){
+    await provider.run(job,new AbortController().signal,header);
+    await provider.reconcile();
+    assert.equal((await create().list())[0].capacityRetryWaitMs,expected);
+  }
   complete=false;
   failureReason='DeadlineExceeded';
   await assert.rejects(start(),/execution deadline/i);

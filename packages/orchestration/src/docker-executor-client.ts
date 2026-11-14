@@ -46,9 +46,13 @@ export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSign
   const {url,authorization}=brokerRequest('/jobs');
   const bounded=AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(125_000)]);
   let response:Response;
+  let capacityRetryStarted:number|undefined;
   do{
-    response=await fetch(url,{method:'POST',headers:{authorization,'content-type':'application/json'},body:JSON.stringify(job),signal:bounded,redirect:'error'});
-    if(response.status===429){await response.body?.cancel();await delay(250,undefined,{signal:bounded});}
+    const headers:Record<string,string>={authorization,'content-type':'application/json','x-omnicompile-capacity-retry-wait-ms':'0'};
+    // Caller-observed retry delay, never broker queue or execution time.
+    if(capacityRetryStarted!==undefined)headers['x-omnicompile-capacity-retry-wait-ms']=String(Math.min(125_000,Math.max(0,Math.floor(performance.now()-capacityRetryStarted))));
+    response=await fetch(url,{method:'POST',headers,body:JSON.stringify(job),signal:bounded,redirect:'error'});
+    if(response.status===429){capacityRetryStarted??=performance.now();await response.body?.cancel();await delay(250,undefined,{signal:bounded});}
   }while(response.status===429);
   const body=await readBrokerJson(response,32_000_000);
   if(!response.ok)throw Object.assign(new Error(body.error?.message??'The Docker execution request failed.'),{diagnostics:body.error?.diagnostics});

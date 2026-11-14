@@ -91,7 +91,7 @@ export class KubernetesExecutionProvider {
   async list(){
     const [rows]=await this.pool.query<RowDataPacket[]>(`SELECT id,language,kind,state,created_at createdAt,
       finished_at finishedAt,runner_duration_ms runnerDurationMs,
-      provisioning_duration_ms provisioningDurationMs FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
+      provisioning_duration_ms provisioningDurationMs,capacity_retry_wait_ms capacityRetryWaitMs FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
     return rows;
   }
 
@@ -103,7 +103,9 @@ export class KubernetesExecutionProvider {
     return true;
   }
 
-  async run(job:DockerJob,signal:AbortSignal){
+  async run(job:DockerJob,signal:AbortSignal,capacityRetryHeader?:string|string[]){
+    // Optional authenticated caller telemetry; malformed/missing values remain unknown.
+    const capacityRetryWaitMs=typeof capacityRetryHeader==='string'&&/^(0|[1-9][0-9]{0,5})$/.test(capacityRetryHeader)&&Number(capacityRetryHeader)<=125_000?Number(capacityRetryHeader):null;
     signal.throwIfAborted();
     const input=Buffer.from(JSON.stringify(job));
     if(input.length>maxPayload)throw new Error('Execution input exceeds its limit.');
@@ -113,8 +115,8 @@ export class KubernetesExecutionProvider {
     let admitted=false;
     for(const slot of [1,2]){
       try{
-        await this.pool.execute(`INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at)
-          VALUES(?,?,?,?,'PROVISIONING',TIMESTAMPADD(SECOND,150,UTC_TIMESTAMP(3)))`,[id,slot,job.language,job.kind]);
+        await this.pool.execute(`INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at,capacity_retry_wait_ms)
+          VALUES(?,?,?,?,'PROVISIONING',TIMESTAMPADD(SECOND,150,UTC_TIMESTAMP(3)),?)`,[id,slot,job.language,job.kind,capacityRetryWaitMs]);
         admitted=true;break;
       }catch(error){if((error as {code?:string}).code!=='ER_DUP_ENTRY')throw error;}
     }

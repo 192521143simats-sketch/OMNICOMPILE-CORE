@@ -519,3 +519,38 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   3,000 ms provisioning interval and a 7,000 ms runner lifetime for the same
   execution. Anonymous history access returned 401. The runner resources
   were cleaned up. Capacity retry wait remains open.
+
+### 2026-11-15 capacity retry timing and local regression
+
+- Added nullable `capacityRetryWaitMs` through the authenticated executor client,
+  migration 0020, broker history, coordinator schema and administrator UI. It
+  measures client-observed first-429-to-admitted-request-dispatch time with a
+  monotonic clock. Initial instrumented requests report zero; legacy callers and
+  invalid values remain unknown. Values are bounded to 125,000 ms and do not
+  control admission or represent an authoritative broker queue.
+- Focused client and isolated MySQL provider tests passed, including persistence
+  and invalid header handling (fixture `3e8f34590d089545`). Workspace typechecks,
+  coordinator/web builds and both Docker image builds passed. The first full
+  unit run exposed a profiler test that assumed an unconfigured GCC path. Its
+  fixture now explicitly tests configured C/Python paths. The rerun passed 404
+  tests with 11 opt-in skips across 68 files.
+- Applied migration 0020 through a dedicated local Kubernetes Job and rolled
+  out coordinator, broker and frontend images tagged `desktop-capacity-0020`.
+  Three real Python requests returned 41, 42 and 43. Two recorded zero retry
+  wait; execution `eb4ccdcb-966d-4cac-851c-af0cc6ae00c0` recorded 20,659 ms of
+  retry wait, 2,000 ms provisioning and 7,000 ms runner lifetime. Authenticated
+  API and Edge admin UI agreed. Anonymous history access returned 401. No
+  execution Jobs, Pods or per-job configuration/policies remained.
+- Docker execution regression passed all ten checks, including C/Python/Java,
+  expected runtime failure, timeout, output limits, cancellation and isolation.
+  It reported no database modifications and no remaining runner containers.
+- Rechecked upstream gVisor: release-20261109.0 remains latest and guest
+  Landlock PR 15222 remains open/unmerged. Part 6 stays open at that gate.
+  Docker data remains on D; application binary relocation still needs a safe
+  preservation path. No cloud deployment occurred. Part 7 still needs workload
+  sizing, capacity policy and prewarm/scaling acceptance.
+- Final inspection found the existing Compose containers stopped after the
+  earlier regression. Restarted the same eight containers and verified healthy
+  status, including Java and coordinator. Kubernetes retained six available
+  deployments. Temporary fixture evidence cleanup was blocked by tool policy;
+  the ignored evidence directory is not included in the commit.
