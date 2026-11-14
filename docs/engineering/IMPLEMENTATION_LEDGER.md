@@ -512,3 +512,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   verified 2,000 ms of provisioning independently of 3,000 ms of runner
   lifetime. Workspace typecheck passed. Live rollout and queue instrumentation
   remain open.
+
+- Applied migration 0019 with a dedicated Job and rolled out the rebuilt broker,
+  coordinator and frontend on Docker Desktop Kubernetes. A live Python job
+  printed 42. The broker, authenticated admin API and Edge UI agreed on a
+  3,000 ms provisioning interval and a 7,000 ms runner lifetime for the same
+  execution. Anonymous history access returned 401. The runner resources
+  were cleaned up. Capacity retry wait remains open.
