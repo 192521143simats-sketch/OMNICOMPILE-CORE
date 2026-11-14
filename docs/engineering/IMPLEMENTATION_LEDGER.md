@@ -466,3 +466,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   The invalid inputs and forbidden reads failed as expected. The report
   confirmed two concurrent jobs, 12 verified results and no developer-data
   changes. Verified the fixture containers were removed.
+
+- Tested Kata Containers 4.3.1 with QEMU as an alternative VM-backed
+  runtime in the disposable kind fixture. KVM API 12 created a VM
+  descriptor, but the Kata Pod failed before guest startup because the
+  Docker Desktop WSL kernel exposes neither /dev/vhost-vsock nor its
+  module. Removed the probe, RuntimeClass and temporary runtime files
+  and restored the fixture's containerd configuration. No compiler
+  acceptance is claimed for Kata.
