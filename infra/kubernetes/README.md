@@ -132,6 +132,19 @@ separate migration Job. Enroll the three language workers as documented
 above. Use `kubectl --context docker-desktop -n omnicompile port-forward
 svc/omnicompile-frontend 15173:8080` for browser acceptance.
 
+When refreshing the runner images, tag each rebuilt local image with a fresh
+revision tag. Start a disposable Pod using that tag and the compiler-wrapper
+probe above, then check that the node reports the intended digest in
+`.status.containerStatuses[0].imageID`. Delete the probe Pod after checking
+its exit status. Repeat for C, Python, and Java before updating the
+`execution-images` ConfigMap and restarting the broker. A cached `:local`
+tag can otherwise keep pointing to the prior build inside the kind node.
+
+The compiler launcher now denies socket creation inside the process.
+Run the opt-in isolation suite against the refreshed broker to verify this
+alongside the filesystem and UID restrictions. Kubernetes NetworkPolicy
+also requires verification on the target CNI.
+
 For cloud preparation, use the native overlay with the target cluster's
 sandbox RuntimeClass, registry digests, TLS ingress, persistent database
 storage, and private object storage. Keep the local overlay on the
