@@ -421,3 +421,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   runtime failure, timeout, output limits, cancellation, and the configured
   filesystem, identity, environment and network restrictions. The verifier
   reported no database modifications and no remaining runner containers.
+
+- Checked the upstream runtime before attempting another gVisor rollout.
+  The installed runsc matches the latest upstream release, release-20261109.0.
+  The guest Landlock implementation is still open and unmerged in
+  [gVisor PR 15222](https://github.com/google/gvisor/pull/15222).
+  The next runtime check is the restricted compiler-wrapper probe on a
+  published release that includes guest Landlock enforcement.
