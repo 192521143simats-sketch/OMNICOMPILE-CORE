@@ -17,6 +17,7 @@ let observedJob;
 let jobReads=0;
 let podReads=0;
 const failedDeletes=new Set();
+let deferDeletion=false;
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
   if(method==='POST'&&name==='jobs'){
@@ -51,6 +52,10 @@ const api=async(method,path,body)=>{
     assert.equal(body.preconditions.uid,jobs.get(name)?.metadata.uid);
     assert.equal(body.propagationPolicy,'Foreground');
     if(failedDeletes.has(name))throw new Error('Fixture deletion failure');
+    if(deferDeletion){
+      jobs.get(name).metadata.deletionTimestamp='2026-01-01T00:00:04Z';
+      return {};
+    }
     jobs.delete(name);
     return {};
   }
@@ -61,6 +66,10 @@ const create=()=>new KubernetesExecutionProvider(pool,api,'fixture','sandbox-tes
 const job={kind:'execute',language:'python',payload:{language:'python',sourceName:'main.py',generatedSource:'print(42)',input:''}};
 const provider=create();
 const start=()=>provider.run(job,new AbortController().signal);
+async function countSlots(){
+  const [[row]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_executions WHERE slot IS NOT NULL');
+  return Number(row.total);
+}
 async function waitForJobReads(baseline){
   for(let i=0;i<150&&jobReads<baseline+2;i++)await delay(20);
   assert.ok(jobReads>=baseline+2,'Execution Job polling did not reach two reads');
@@ -76,12 +85,22 @@ async function running(){
 try{
   await provider.ready();
   assert.deepEqual(await start(),{stdout:'fixture'});
+  assert.equal(await countSlots(),0,'A confirmed deletion should release its slot without waiting for reconciliation');
   await provider.reconcile();
   const [completed]=await create().list();
   assert.equal(completed.state,'SUCCEEDED');
   assert.equal(completed.runnerDurationMs,3000);
   assert.equal(completed.provisioningDurationMs,2000);
   assert.equal(completed.capacityRetryWaitMs,null);
+  deferDeletion=true;
+  assert.deepEqual(await start(),{stdout:'fixture'});
+  assert.equal(await countSlots(),1,'A terminating Job should still hold its slot');
+  await provider.reconcile();
+  assert.equal(await countSlots(),1);
+  jobs.delete('omni-'+observedJob);
+  deferDeletion=false;
+  await provider.reconcile();
+  assert.equal(await countSlots(),0);
   for(const [header,expected] of [['875',875],['0',0],['125000',125000],['125001',null],['-1',null],['1.5',null],['1e3',null],[['20','30'],null]]){
     await provider.run(job,new AbortController().signal,header);
     await provider.reconcile();

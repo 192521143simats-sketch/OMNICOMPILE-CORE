@@ -630,3 +630,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   passed. The rebuilt local coordinator admitted four simultaneous
   Python jobs through the two-slot broker and all returned 42. Two
   reported zero capacity wait and two reported 9,318 and 10,026 ms.
+- The broker now confirms Job removal after requesting foreground deletion.
+  MySQL releases the admission slot immediately if the Job is gone and keeps
+  it reserved while Kubernetes is still terminating it. Isolated fixture
+  `728909fca39e6bf1` reproduced an unnecessarily retained slot.
+  Fixture `90188fb3ba7b1a40` passed both deletion paths and the existing
+  deadline, cancellation and recovery checks. Typecheck and image build
+  passed. On local broker image `desktop-slot-release`, a real Python job
+  returned 42, persisted SUCCEEDED with a released slot, and left no
+  per-job resources.

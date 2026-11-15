@@ -208,17 +208,22 @@ export class KubernetesExecutionProvider {
   private async finish(row:ExecutionIdentity,outcome:string,holdIfMissing=false){
     const path=this.jobs+'/omni-'+row.id;
     try{
-      const job=await this.api('GET',path);
+      let job=await this.api('GET',path);
       if(job){
         const uid=job.metadata?.uid;
         if(!uid||job.metadata?.labels?.[label]!==row.id||(row.job_uid&&uid!==row.job_uid))
           throw new Error('Execution Job ownership could not be verified.');
-        if(!job.metadata.deletionTimestamp)await this.api('DELETE',path,{apiVersion:'v1',kind:'DeleteOptions',propagationPolicy:'Foreground',preconditions:{uid}});
-        // Keep the slot reserved until reconciliation observes removal.
-        await this.pool.execute("UPDATE kubernetes_executions SET cleanup_outcome=NULL,state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
-        return;
+        if(!job.metadata.deletionTimestamp){
+          await this.api('DELETE',path,{apiVersion:'v1',kind:'DeleteOptions',propagationPolicy:'Foreground',preconditions:{uid}});
+          job=await this.api('GET',path);
+        }
+        if(job!==null){
+          // Foreground deletion can leave the Job present until its dependents are gone.
+          await this.pool.execute("UPDATE kubernetes_executions SET cleanup_outcome=NULL,state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
+          return;
+        }
       }
-      if(holdIfMissing)throw new Error('Waiting for the ambiguous create request to settle.');
+      else if(holdIfMissing)throw new Error('Waiting for the ambiguous create request to settle.');
       await this.pool.execute("UPDATE kubernetes_executions SET slot=NULL,cleanup_outcome=NULL,state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
     }catch{
       await this.pool.execute("UPDATE kubernetes_executions SET cleanup_outcome=IF(state='CANCEL_REQUESTED','CANCELLED',?),state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
