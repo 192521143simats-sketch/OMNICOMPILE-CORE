@@ -13,6 +13,7 @@ const label='omnicompile.io/execution-id';
 let complete=true;
 let failureReason;
 let runnerState={terminated:{startedAt:"2026-01-01T00:00:00Z",finishedAt:"2026-01-01T00:00:03Z"}};
+let scheduledAt='2025-12-31T23:59:59Z';
 let observedJob;
 let jobReads=0;
 let podReads=0;
@@ -39,7 +40,7 @@ const api=async(method,path,body)=>{
   if(path.includes('/pods?')){
     podReads++;
     const id=decodeURIComponent(path.split('=').at(-1)).split('=').at(-1);
-    return {items:[{metadata:{name:'foreign-pod',ownerReferences:[{kind:'Job',uid:'foreign'}]},status:{containerStatuses:[{name:'runner',state:{running:{startedAt:'2026-01-01T00:00:00Z'}}}]}},{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{containerStatuses:[{name:'runner',state:runnerState}]}}]};
+    return {items:[{metadata:{name:'foreign-pod',ownerReferences:[{kind:'Job',uid:'foreign'}]},status:{containerStatuses:[{name:'runner',state:{running:{startedAt:'2026-01-01T00:00:00Z'}}}]}},{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{conditions:scheduledAt?[{type:'PodScheduled',status:'True',lastTransitionTime:scheduledAt}]:[],containerStatuses:[{name:'runner',state:runnerState}]}}]};
   }
   if(path.includes('/log?'))return JSON.stringify({ok:true,result:{stdout:'fixture'}});
   if(method==='GET'&&name==='jobs?limit=1')return {items:[]};
@@ -91,7 +92,18 @@ try{
   assert.equal(completed.state,'SUCCEEDED');
   assert.equal(completed.runnerDurationMs,3000);
   assert.equal(completed.provisioningDurationMs,2000);
+  assert.equal(completed.schedulingDurationMs,1000);
+  assert.equal(completed.containerStartupDurationMs,1000);
   assert.equal(completed.capacityRetryWaitMs,null);
+  for(const invalidSchedule of [undefined,'2025-12-31T23:59:57Z','2026-01-01T00:00:01Z']){
+    scheduledAt=invalidSchedule;
+    assert.deepEqual(await start(),{stdout:'fixture'});
+    const row=(await create().list()).find(item=>item.id===observedJob);
+    assert.equal(row.provisioningDurationMs,2000);
+    assert.equal(row.schedulingDurationMs,null);
+    assert.equal(row.containerStartupDurationMs,null);
+  }
+  scheduledAt='2025-12-31T23:59:59Z';
   deferDeletion=true;
   assert.deepEqual(await start(),{stdout:'fixture'});
   assert.equal(await countSlots(),1,'A terminating Job should still hold its slot');

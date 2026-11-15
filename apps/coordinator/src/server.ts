@@ -178,7 +178,9 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
       if(result.status!==200)throw new Error("Broker unavailable");
       return z.object({provider:z.enum(["docker","kubernetes"]),items:z.array(z.object({
         id:z.uuid(),language:z.enum(["c","python","java"]),kind:z.string(),state:z.string(),
-        createdAt:z.string(),finishedAt:z.string().nullable(),runnerDurationMs:z.number().int().nonnegative().nullable().optional(),provisioningDurationMs:z.number().int().nonnegative().nullable().optional(),capacityRetryWaitMs:z.number().int().min(0).max(125_000).nullable().optional()
+        createdAt:z.string(),finishedAt:z.string().nullable(),runnerDurationMs:z.number().int().nonnegative().nullable().optional(),provisioningDurationMs:z.number().int().nonnegative().nullable().optional(),
+        schedulingDurationMs:z.number().int().nonnegative().nullable().optional(),containerStartupDurationMs:z.number().int().nonnegative().nullable().optional(),
+        capacityRetryWaitMs:z.number().int().min(0).max(125_000).nullable().optional()
       })).max(50)}).parse(result.body);
     }catch{return reply.code(503).send(apiError("EXECUTIONS_UNAVAILABLE","Execution history is unavailable."));}
   });

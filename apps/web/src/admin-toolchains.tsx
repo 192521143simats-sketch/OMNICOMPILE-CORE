@@ -3,7 +3,11 @@ import {api} from "./api.js";
 
 type ExecutionHistory={
   provider:"docker"|"kubernetes";
-  items:Array<{id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;runnerDurationMs?:number|null;provisioningDurationMs?:number|null;capacityRetryWaitMs?:number|null}>;
+  items:Array<{
+    id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;
+    runnerDurationMs?:number|null;provisioningDurationMs?:number|null;capacityRetryWaitMs?:number|null;
+    schedulingDurationMs?:number|null;containerStartupDurationMs?:number|null;
+  }>;
 };
 type Toolchains = {
   status:"NOT_CONFIGURED"|"REACHABLE";
@@ -55,6 +59,8 @@ export function AdminToolchains(){
       <code>{item.id}</code> · {item.language.toUpperCase()} · {item.kind} · {item.state} · {new Date(item.createdAt).toLocaleString()}
       {item.capacityRetryWaitMs!=null&&<> | Capacity retry wait (client measured) {item.capacityRetryWaitMs.toLocaleString()} ms</>}
       {item.provisioningDurationMs!=null&&<> · Provisioning {item.provisioningDurationMs.toLocaleString()} ms</>}
+      {item.schedulingDurationMs!=null&&<> · Time to schedule {item.schedulingDurationMs.toLocaleString()} ms</>}
+      {item.containerStartupDurationMs!=null&&<> · Post-schedule startup {item.containerStartupDurationMs.toLocaleString()} ms</>}
       {item.runnerDurationMs!=null&&<> · Runner lifetime {item.runnerDurationMs.toLocaleString()} ms</>}
       {["PROVISIONING","RUNNING"].includes(item.state)&&<button type="button" className="secondary" disabled={checkingHistory}
         onClick={()=>void refreshHistory(item.id)}>Cancel execution</button>}

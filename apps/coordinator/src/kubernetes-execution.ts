@@ -91,7 +91,9 @@ export class KubernetesExecutionProvider {
   async list(){
     const [rows]=await this.pool.query<RowDataPacket[]>(`SELECT id,language,kind,state,created_at createdAt,
       finished_at finishedAt,runner_duration_ms runnerDurationMs,
-      provisioning_duration_ms provisioningDurationMs,capacity_retry_wait_ms capacityRetryWaitMs FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
+      provisioning_duration_ms provisioningDurationMs,scheduling_duration_ms schedulingDurationMs,
+      container_startup_duration_ms containerStartupDurationMs,capacity_retry_wait_ms capacityRetryWaitMs
+      FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
     return rows;
   }
 
@@ -180,8 +182,16 @@ export class KubernetesExecutionProvider {
       if(!pod?.metadata?.name)throw new Error('Execution Pod is missing.');
       const terminated=pod.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner')?.state?.terminated;
       const startedAt=Date.parse(terminated?.startedAt);
-      const provisioning=startedAt-Date.parse(created.metadata.creationTimestamp);
+      const createdAt=Date.parse(created.metadata.creationTimestamp);
+      const provisioning=startedAt-createdAt;
       const provisioningDurationMs=Number.isInteger(provisioning)&&provisioning>=0&&provisioning<=0xffffffff?provisioning:null;
+      const scheduled=pod.status?.conditions?.find((condition:{type:string;status:string;lastTransitionTime?:string})=>
+        condition.type==='PodScheduled'&&condition.status==='True');
+      const scheduledAt=Date.parse(scheduled?.lastTransitionTime);
+      // Clock skew or absent condition history can prevent a consistent split.
+      const schedulingDurationMs=provisioningDurationMs!==null&&scheduledAt>=createdAt&&scheduledAt<=startedAt
+        ? scheduledAt-createdAt : null;
+      const containerStartupDurationMs=schedulingDurationMs===null?null:startedAt-scheduledAt;
       const duration=Date.parse(terminated?.finishedAt)-startedAt;
       const runnerDurationMs=Number.isInteger(duration)&&duration>=0&&duration<=0xffffffff?duration:null;
       const output=await this.api('GET',this.core+'/pods/'+encodeURIComponent(pod.metadata.name)+'/log?container=runner&limitBytes=32000000',undefined,bounded);
@@ -191,7 +201,9 @@ export class KubernetesExecutionProvider {
       }
       bounded.throwIfAborted();
       const [completed]=await this.pool.execute<ResultSetHeader>(`UPDATE kubernetes_executions SET
-        state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3),runner_duration_ms=?,provisioning_duration_ms=? WHERE id=? AND state='RUNNING'`,[runnerDurationMs,provisioningDurationMs,id]);
+        state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3),runner_duration_ms=?,provisioning_duration_ms=?,
+        scheduling_duration_ms=?,container_startup_duration_ms=? WHERE id=? AND state='RUNNING'`,
+        [runnerDurationMs,provisioningDurationMs,schedulingDurationMs,containerStartupDurationMs,id]);
       if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
       outcome='SUCCEEDED';
       return value.result;
