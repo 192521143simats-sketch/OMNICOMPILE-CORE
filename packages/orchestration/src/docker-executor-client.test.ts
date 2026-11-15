@@ -3,12 +3,25 @@ import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
 import {setTimeout as delay} from 'node:timers/promises';
-import {requestDockerJob} from './docker-executor-client.js';
+import {acknowledgeExecutionReceipt,requestDockerJob} from './docker-executor-client.js';
 vi.mock('node:timers/promises',{spy:true});
 const dir=mkdtempSync(join(tmpdir(),'omni-client-'));
 const credential=join(dir,'token');writeFileSync(credential,'x'.repeat(64));
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.restoreAllMocks();});
 afterAll(()=>rmSync(dir,{recursive:true,force:true}));
+it('acknowledges an authenticated receipt and preserves pending errors',async()=>{
+ vi.stubEnv('OMNICOMPILE_EXECUTOR_URL','http://executor.test');vi.stubEnv('OMNICOMPILE_EXECUTOR_TOKEN_FILE',credential);
+ const id='d93b378d-66ca-4ce3-83ba-a2869ae27083';
+ const fetchAck=vi.fn()
+   .mockResolvedValueOnce(new Response(null,{status:204}))
+   .mockResolvedValueOnce(Response.json({error:{code:'EXECUTION_REQUEST_PENDING'}},{status:409}));
+ vi.stubGlobal('fetch',fetchAck);
+ await expect(acknowledgeExecutionReceipt(id)).resolves.toBeUndefined();
+ expect(fetchAck).toHaveBeenCalledWith(new URL(`http://executor.test/execution-receipts/${id}/ack`),expect.objectContaining({
+   method:'POST',headers:{authorization:'Bearer '+ 'x'.repeat(64)}
+ }));
+ await expect(acknowledgeExecutionReceipt(id)).rejects.toMatchObject({statusCode:409,code:'EXECUTION_REQUEST_PENDING'});
+});
 it('reports monotonic first-429-to-dispatch wait including an initial zero',async()=>{
  vi.stubEnv('OMNICOMPILE_EXECUTOR_URL','http://executor.test');vi.stubEnv('OMNICOMPILE_EXECUTOR_TOKEN_FILE',credential);
  const now=vi.spyOn(performance,'now');now.mockReturnValueOnce(100).mockReturnValueOnce(350.9).mockReturnValueOnce(800.7);

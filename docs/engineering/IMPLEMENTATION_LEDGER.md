@@ -113,6 +113,16 @@ staging. The local runtime evidence does not authorize public workloads.
 - Production callers have yet to opt in with stable task/attempt IDs and
   acknowledge receipts after committing accepted results or artifacts.
 
+- Added authenticated acknowledgement. It frees the receipt bytes and
+  storage slot atomically and retains the key against duplicate execution.
+  Isolated MySQL fixture `7c6fd15e670319c9` verified concurrent ACKs, expired
+  and pending receipts, authorization, and reconciliation during cleanup.
+  Coordinator typecheck and all 31 orchestration tests passed. Live
+  Docker Desktop Kubernetes accepted two concurrent ACKs for a Python
+  result, then returned 410 for replay without creating a new Job. No
+  execution resources remained. Normal compiler and worker paths still
+  need to invoke acknowledgement after their durable commit.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.

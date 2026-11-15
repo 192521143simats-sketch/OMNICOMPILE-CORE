@@ -3,6 +3,7 @@ import {randomUUID} from 'node:crypto';
 import {setTimeout as delay} from 'node:timers/promises';
 import mysql from 'mysql2/promise';
 import {KubernetesExecutionProvider} from '../apps/coordinator/src/kubernetes-execution.ts';
+import {createDockerExecutor} from '../apps/coordinator/src/docker-executor.ts';
 import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Target.mjs';
 
 const target=assertIsolatedTarget();
@@ -71,6 +72,12 @@ const image='registry.example.invalid/toolchain@sha256:'+'a'.repeat(64);
 const create=()=>new KubernetesExecutionProvider(pool,api,'fixture','sandbox-test',{c:image,python:image,java:image});
 const job={kind:'execute',language:'python',payload:{language:'python',sourceName:'main.py',generatedSource:'print(42)',input:''}};
 const provider=create();
+const fixtureToken=randomUUID();
+const broker=createDockerExecutor(fixtureToken,undefined,{kubernetes:provider});
+const acknowledge=(requestId,authorized=true)=>broker.inject({
+  method:'POST',url:'/execution-receipts/'+requestId+'/ack',
+  headers:authorized?{authorization:'Bearer '+fixtureToken}:{}
+});
 const start=()=>provider.run(job,new AbortController().signal);
 async function countSlots(){
   const [[row]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_executions WHERE slot IS NOT NULL');
@@ -90,6 +97,32 @@ async function running(){
 }
 try{
   await provider.ready();
+  const acknowledgedId=randomUUID();
+  assert.equal((await acknowledge(acknowledgedId,false)).statusCode,401);
+  assert.equal((await acknowledge('invalid')).statusCode,400);
+  assert.equal((await acknowledge(acknowledgedId)).statusCode,404);
+  await provider.run(job,new AbortController().signal,undefined,acknowledgedId);
+  const acknowledgedJob=observedJob;
+  const ackResponses=await Promise.all([acknowledge(acknowledgedId),acknowledge(acknowledgedId)]);
+  assert.deepEqual(ackResponses.map(response=>response.statusCode),[204,204]);
+  const [[acknowledged]]=await pool.execute('SELECT request_id,receipt_slot,receipt_digest FROM kubernetes_executions WHERE id=?',[acknowledgedJob]);
+  assert.equal(acknowledged.request_id,acknowledgedId);
+  assert.equal(acknowledged.receipt_slot,null);
+  assert.equal(acknowledged.receipt_digest,null);
+  const [[acknowledgedChunks]]=await pool.execute('SELECT COUNT(*) AS total FROM kubernetes_result_chunks WHERE execution_id=?',[acknowledgedJob]);
+  assert.equal(Number(acknowledgedChunks.total),0);
+  await assert.rejects(create().run(job,new AbortController().signal,undefined,acknowledgedId),{statusCode:410});
+  assert.equal(observedJob,acknowledgedJob,'An acknowledged request must not create another Job');
+  const cleanupId=randomUUID();
+  failNextJobCleanup=true;
+  await provider.run(job,new AbortController().signal,undefined,cleanupId);
+  failNextJobCleanup=false;
+  const cleanupJob=observedJob;
+  assert.equal((await provider.list()).find(row=>row.id===cleanupJob).state,'CLEANUP_PENDING');
+  assert.equal((await acknowledge(cleanupId)).statusCode,204);
+  failedDeletes.delete('omni-'+cleanupJob);
+  await provider.reconcile();
+  assert.equal((await provider.list()).find(row=>row.id===cleanupJob).state,'SUCCEEDED');
   const requestId=randomUUID();
   const keyed=(service,input=job)=>service.run(input,new AbortController().signal,undefined,requestId);
   assert.deepEqual(await keyed(provider),{stdout:'fixture'});
@@ -104,6 +137,7 @@ try{
   assert.equal(expiredReceipt.receipt_slot,null);
   const [[storedChunks]]=await pool.execute('SELECT COUNT(*) AS total FROM kubernetes_result_chunks WHERE execution_id=?',[keyedJob]);
   assert.equal(Number(storedChunks.total),0);
+  assert.equal((await acknowledge(requestId)).statusCode,204);
   const pendingId=randomUUID();
   complete=false;
   const pendingSignal=new AbortController();
@@ -111,10 +145,12 @@ try{
   const pendingReceipt=provider.run(job,pendingSignal.signal,undefined,pendingId);
   const cancelledPending=assert.rejects(pendingReceipt);
   await waitForJobReads(previousReads);
+  assert.equal((await acknowledge(pendingId)).statusCode,409);
   await assert.rejects(create().run(job,new AbortController().signal,undefined,pendingId),
     {statusCode:409,errorCode:'EXECUTION_REQUEST_PENDING'});
   pendingSignal.abort();
   await cancelledPending;
+  assert.equal((await acknowledge(pendingId)).statusCode,410);
   await provider.reconcile();
   complete=true;
   await new Promise(resolve=>setTimeout(resolve,5));
@@ -250,4 +286,4 @@ try{
   assert.equal((await restarted.list()).find(row=>row.id===expired).state,'TIMED_OUT');
   assert.equal((await restarted.list()).find(row=>row.id===expired).failureReason,'DEADLINE_EXCEEDED');
   console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry and expiry passed with isolated MySQL and a simulated API.');
-}finally{await pool.end();}
+}finally{await broker.close();await pool.end();}

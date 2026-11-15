@@ -124,6 +124,32 @@ export class KubernetesExecutionProvider {
     return true;
   }
 
+  async acknowledgeReceipt(requestId: string): Promise<'acknowledged' | 'missing' | 'pending' | 'unavailable'> {
+    const connection = await this.pool.getConnection();
+    try {
+      await connection.beginTransaction();
+      const [[row]] = await connection.execute<RowDataPacket[]>(`SELECT id, finished_at, receipt_slot, receipt_expires_at
+        FROM kubernetes_executions WHERE request_id=? FOR UPDATE`, [requestId]);
+      if (!row || !row.finished_at || !row.receipt_expires_at) {
+        await connection.rollback();
+        if (!row) return 'missing';
+        return row.finished_at ? 'unavailable' : 'pending';
+      }
+      if (row.receipt_slot !== null) {
+        await connection.execute('DELETE FROM kubernetes_result_chunks WHERE execution_id=?', [row.id]);
+        await connection.execute(`UPDATE kubernetes_executions
+          SET receipt_slot=NULL, receipt_digest=NULL, receipt_bytes=NULL WHERE id=?`, [row.id]);
+      }
+      await connection.commit();
+      return 'acknowledged';
+    } catch (error) {
+      await connection.rollback();
+      throw error;
+    } finally {
+      connection.release();
+    }
+  }
+
   private async replay(requestId:string,requestDigest:string){
     const connection=await this.pool.getConnection();
     try{
@@ -320,20 +346,20 @@ export class KubernetesExecutionProvider {
         if(job!==null){
           // Foreground deletion can leave the Job present until its dependents are gone.
           await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=NULL,
-            failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
-            state=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+            failure_reason=IF(receipt_expires_at IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
+            state=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
             WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
           return;
         }
       }
       else if(holdIfMissing)throw new Error('Waiting for the ambiguous create request to settle.');
       await this.pool.execute(`UPDATE kubernetes_executions SET slot=NULL,cleanup_outcome=NULL,
-        failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
-        state=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+        failure_reason=IF(receipt_expires_at IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
+        state=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
         WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
     }catch{
-      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),
-        failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
+      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),
+        failure_reason=IF(receipt_expires_at IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
         state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
         WHERE id=? AND slot IS NOT NULL`,[outcome,failureReason,row.id]);
     }

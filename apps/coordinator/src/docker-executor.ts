@@ -128,11 +128,32 @@ export function createDockerExecutor(
     if(!kubernetes||!/^[0-9a-f-]{36}$/.test(id)||!await kubernetes.cancel(id))return reply.code(409).send({error:{code:'EXECUTION_NOT_ACTIVE',message:'This execution cannot be cancelled.'}});
     return reply.code(202).send({status:'CANCEL_REQUESTED'});
   });
+  const executionRequestId = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  app.post<{Params: {requestId: string}}>('/execution-receipts/:requestId/ack',
+    {onRequest: authenticate}, async (request, reply) => {
+      reply.header('Cache-Control', 'no-store');
+      const {requestId} = request.params;
+      if (!executionRequestId.test(requestId)) {
+        return reply.code(400).send({error:{code:'INVALID_EXECUTION_REQUEST_ID',message:'Execution request ID must be a UUID.'}});
+      }
+      if (!kubernetes) {
+        return reply.code(422).send({error:{code:'EXECUTION_RECEIPTS_UNSUPPORTED',message:'This provider does not support execution result receipts.'}});
+      }
+      try {
+        const outcome = await kubernetes.acknowledgeReceipt(requestId.toLowerCase());
+        if (outcome === 'acknowledged') return reply.code(204).send();
+        if (outcome === 'pending') return reply.code(409).send({error:{code:'EXECUTION_REQUEST_PENDING',message:'The execution request is still pending.'}});
+        if (outcome === 'missing') return reply.code(404).send({error:{code:'EXECUTION_RECEIPT_NOT_FOUND',message:'The execution request was not found.'}});
+        return reply.code(410).send({error:{code:'EXECUTION_RECEIPT_UNAVAILABLE',message:'The execution result receipt is unavailable.'}});
+      } catch {
+        return reply.code(503).send({error:{code:'EXECUTION_RECEIPT_ACK_FAILED',message:'Could not acknowledge the execution result receipt.'}});
+      }
+    });
   app.post('/jobs',{onRequest:authenticate},async(request,reply)=>{
     const parsed=dockerJobSchema.safeParse(request.body);
     if(!parsed.success)return reply.code(400).send({error:{code:'INVALID_EXECUTOR_JOB',message:'The isolated job request is invalid.'}});
     const requestId=request.headers['x-omnicompile-execution-request-id'];
-    if(requestId!==undefined&&(typeof requestId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))){
+    if(requestId!==undefined&&(typeof requestId!=='string'||!executionRequestId.test(requestId))){
       return reply.code(400).send({error:{code:'INVALID_EXECUTION_REQUEST_ID',message:'Execution request ID must be a UUID.'}});
     }
     if(requestId&&!kubernetes)return reply.code(422).send({error:{code:'EXECUTION_RECEIPTS_UNSUPPORTED',message:'This provider does not support execution result receipts.'}});
