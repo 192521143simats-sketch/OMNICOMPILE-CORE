@@ -584,3 +584,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   returned 401. The account and job records are retained only in local MySQL.
   No per-execution resources remained, the MySQL claim was bound, and all
   eight Compose services were healthy.
+
+### Broker replacement on the runner-status build
+
+- Replaced the local broker Pod after observing the owned Python runner in
+  Kubernetes Running state. The interrupted request failed and MySQL recorded
+  execution `e50b02ce-8202-4afb-89bb-5cc7be79e5b6` as CANCELLED with a released
+  slot. The replacement became Ready and a new Python execution returned 42.
+  No per-execution Jobs, Pods, ConfigMaps or policies remained. All eight
+  Compose services reported healthy.
