@@ -142,7 +142,9 @@ export class KubernetesExecutionProvider {
           immutable:true,binaryData:{payload:input.subarray(i*chunkBytes,(i+1)*chunkBytes).toString('base64')},
         },bounded);
       }
-      await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
+      const selector=encodeURIComponent(label+'='+id);
+      let pod:any;
+      let runnerStarted=false;
       for(;;){
         bounded.throwIfAborted();
         const [rows]=await this.pool.execute<RowDataPacket[]>('SELECT state FROM kubernetes_executions WHERE id=?',[id]);
@@ -156,12 +158,23 @@ export class KubernetesExecutionProvider {
           throw new Error('The Kubernetes Job exceeded its execution deadline.');
         }
         if(failure)throw new Error('Execution Job failed.');
-        if(state.status?.succeeded===1)break;
+        const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
+        pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
+        const runner=pod?.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner');
+        // Pending/image-pulling Pods are still provisioning. A fast runner may
+        // already have terminated by the first poll; its start timestamp is evidence too.
+        const startedAt=runner?.state?.running?.startedAt??runner?.state?.terminated?.startedAt;
+        if(!runnerStarted&&Number.isFinite(Date.parse(startedAt))){
+          bounded.throwIfAborted();
+          await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
+          runnerStarted=true;
+        }
+        if(state.status?.succeeded===1){
+          if(!runnerStarted)throw new Error('Execution runner start evidence is missing.');
+          break;
+        }
         await delay(750,undefined,{signal:bounded});
       }
-      const selector=encodeURIComponent(label+'='+id);
-      const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
-      const pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
       if(!pod?.metadata?.name)throw new Error('Execution Pod is missing.');
       const terminated=pod.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner')?.state?.terminated;
       const startedAt=Date.parse(terminated?.startedAt);

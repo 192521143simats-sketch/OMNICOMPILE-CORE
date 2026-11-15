@@ -12,6 +12,9 @@ const jobs=new Map();
 const label='omnicompile.io/execution-id';
 let complete=true;
 let failureReason;
+let runnerState={terminated:{startedAt:"2026-01-01T00:00:00Z",finishedAt:"2026-01-01T00:00:03Z"}};
+let observedJob;
+let jobReads=0;
 const failedDeletes=new Set();
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
@@ -21,6 +24,7 @@ const api=async(method,path,body)=>{
     assert.equal(body.spec.activeDeadlineSeconds,105);
     const record={metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:'2025-12-31T23:59:58Z'}};
     jobs.set(record.metadata.name,record);
+    observedJob=record.metadata.labels[label];
     return record;
   }
   if(method==='POST'&&name==='configmaps'){
@@ -32,11 +36,12 @@ const api=async(method,path,body)=>{
   }
   if(path.includes('/pods?')){
     const id=decodeURIComponent(path.split('=').at(-1)).split('=').at(-1);
-    return {items:[{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{containerStatuses:[{name:'runner',state:{terminated:{startedAt:'2026-01-01T00:00:00Z',finishedAt:'2026-01-01T00:00:03Z'}}}]}}]};
+    return {items:[{metadata:{name:'foreign-pod',ownerReferences:[{kind:'Job',uid:'foreign'}]},status:{containerStatuses:[{name:'runner',state:{running:{startedAt:'2026-01-01T00:00:00Z'}}}]}},{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{containerStatuses:[{name:'runner',state:runnerState}]}}]};
   }
   if(path.includes('/log?'))return JSON.stringify({ok:true,result:{stdout:'fixture'}});
   if(method==='GET'&&name==='jobs?limit=1')return {items:[]};
   if(method==='GET'){
+    jobReads++;
     const record=jobs.get(name);
     return record?{...record,status:{succeeded:complete?1:0,conditions:failureReason?[{type:'Failed',status:'True',reason:failureReason}]:[]}}:null;
   }
@@ -54,6 +59,10 @@ const create=()=>new KubernetesExecutionProvider(pool,api,'fixture','sandbox-tes
 const job={kind:'execute',language:'python',payload:{language:'python',sourceName:'main.py',generatedSource:'print(42)',input:''}};
 const provider=create();
 const start=()=>provider.run(job,new AbortController().signal);
+async function waitForJobReads(baseline){
+  for(let i=0;i<150&&jobReads<baseline+2;i++)await delay(20);
+  assert.ok(jobReads>=baseline+2,'Execution Job polling did not reach two reads');
+}
 async function running(){
   for(let i=0;i<100;i++){
     const rows=(await provider.list()).filter(row=>row.state==='RUNNING');
@@ -77,6 +86,7 @@ try{
     assert.equal((await create().list())[0].capacityRetryWaitMs,expected);
   }
   complete=false;
+  runnerState={waiting:{reason:'ContainerCreating'}};
   failureReason='DeadlineExceeded';
   await assert.rejects(start(),/execution deadline/i);
   await provider.reconcile();
@@ -84,6 +94,31 @@ try{
   assert.equal(deadline.state,'TIMED_OUT');
   assert.equal(jobs.size,0);
   failureReason=undefined;
+  // An unscheduled/image-pulling runner stays PROVISIONING, even with a foreign running Pod.
+  runnerState={waiting:{reason:'ContainerCreating'}};
+  let pending=start();
+  let pendingSettled=Promise.allSettled([pending]);
+  const baseline=jobReads;
+  await waitForJobReads(baseline);
+  assert.equal((await provider.list()).find(row=>row.id===observedJob).state,'PROVISIONING');
+  runnerState={running:{startedAt:'2026-01-01T00:00:00Z'}};
+  for(let i=0;i<100&&(await provider.list()).find(row=>row.id===observedJob).state!=='RUNNING';i++)await delay(20);
+  assert.equal((await provider.list()).find(row=>row.id===observedJob).state,'RUNNING');
+  assert.equal(await provider.cancel(observedJob),true);
+  assert.equal((await pendingSettled)[0].status,'rejected');
+  await provider.reconcile();
+  runnerState={waiting:{reason:'ImagePullBackOff'}};
+  pending=start();
+  pendingSettled=Promise.allSettled([pending]);
+  const nextBaseline=jobReads;
+  await waitForJobReads(nextBaseline);
+  assert.equal((await provider.list()).find(row=>row.id===observedJob).state,'PROVISIONING');
+  const cancelledId=observedJob;
+  assert.equal(await provider.cancel(cancelledId),true);
+  assert.equal((await pendingSettled)[0].status,'rejected');
+  await provider.reconcile();
+  assert.equal((await provider.list()).find(row=>row.id===cancelledId).state,'CANCELLED');
+  runnerState={running:{startedAt:'2026-01-01T00:00:00Z'}};
   const first=start(),second=start();
   const settled=Promise.allSettled([first,second]);
   const rows=await running();

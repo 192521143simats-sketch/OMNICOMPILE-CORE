@@ -554,3 +554,19 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   status, including Java and coordinator. Kubernetes retained six available
   deployments. Temporary fixture evidence cleanup was blocked by tool policy;
   the ignored evidence directory is not included in the commit.
+
+### Kubernetes runner status verification
+
+- The broker keeps an execution in PROVISIONING until the Kubernetes Pod
+  owned by its Job reports a runner start timestamp. An unrelated Pod
+  cannot advance the state. Cancellation still works while provisioning.
+- Isolated MySQL fixture `c4b32fdf305a4a02` reproduced the premature RUNNING
+  state. Fixture `cb6bc817d0b6ad3d` passed after the fix, including
+  cancellation and deadline handling while waiting. Coordinator typecheck
+  and both transport tests passed, including cancellation during a capacity
+  retry without another submission.
+- Restarted Docker Desktop and rolled out the rebuilt broker on the existing
+  local cluster. The MySQL claim remained bound. Real C and Python executions
+  and compilation and execution of a Java JAR each returned 42. No execution
+  Jobs or Pods remained, and all eight Compose services reported healthy.
+  The gVisor and Docker application relocation gates remain open.
