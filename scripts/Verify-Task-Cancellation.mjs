@@ -85,6 +85,17 @@ try{
   await poll(()=>logicalNode,Boolean);
   const portable=await request('/api/admin/tasks/test',{networkId:logicalNetwork.id,payload:{operation:'sha256_chain',input:'hold',iterations:10_000_000}},admin);assert.equal(portable.status,201);
   await poll(()=>store.getTask(portable.body.id),task=>task?.status==='RUNNING');
+  const details=await request(`/api/admin/tasks/${portable.body.id}`,null,admin,'GET');
+  assert.equal(details.status,200);
+  const expectedWait=Date.parse(details.body.attempts[0].assignedAt)-Date.parse(details.body.createdAt);
+  assert.ok(expectedWait>=0);
+  assert.equal(details.body.firstAssignmentWaitMs,expectedWait);
+  const queuedTask=await request('/api/admin/tasks/test',{networkId:logicalNetwork.id,payload:{operation:'prime_count',limit:10}},admin);
+  assert.equal(queuedTask.status,201);
+  const queuedDetails=await request(`/api/admin/tasks/${queuedTask.body.id}`,null,admin,'GET');
+  assert.equal(queuedDetails.body.status,'QUEUED');
+  assert.equal(queuedDetails.body.firstAssignmentWaitMs,null);
+  assert.equal((await request(`/api/admin/tasks/${queuedTask.body.id}/cancel`,null,admin,'POST')).status,200);
   assert.equal((await request(`/api/admin/tasks/${portable.body.id}/cancel`,null,admin,'POST')).status,200);
   await poll(()=>cancelMessage,Boolean);await poll(()=>closed,Boolean);assert.equal(closed,1012);assert.equal(cancelMessage.taskId,assignment.taskId);assert.equal(cancelMessage.attempt,assignment.attempt);
   assert.equal((await store.getTask(portable.body.id)).status,'CANCELLED');

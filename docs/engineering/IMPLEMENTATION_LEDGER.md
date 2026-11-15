@@ -630,6 +630,14 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   passed. The rebuilt local coordinator admitted four simultaneous
   Python jobs through the two-slot broker and all returned 42. Two
   reported zero capacity wait and two reported 9,318 and 10,026 ms.
+- The admin task inspector now shows elapsed time from task creation to
+  the first worker assignment. It uses persisted task and attempt timestamps,
+  stays unavailable before assignment, and is separate from broker retry wait.
+  Isolated fixture `4c5fcb21e4da57c8` reproduced the missing API field.
+  Fixture `d19be1348b83a4e4` passed for assigned and queued tasks, plus
+  cancellation. Coordinator typecheck and the frontend build passed.
+  In Edge on Docker Desktop, the admin API and task inspector agreed on
+  21 ms for a previously assigned task, and anonymous access returned 401.
 - The broker now confirms Job removal after requesting foreground deletion.
   MySQL releases the admission slot immediately if the Job is gone and keeps
   it reserved while Kubernetes is still terminating it. Isolated fixture
