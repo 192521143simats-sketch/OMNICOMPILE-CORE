@@ -1,12 +1,21 @@
 import React,{useState} from "react";
 import {api} from "./api.js";
 
+const failureLabels = {
+  PROVISIONING_FAILED: "Provisioning failed",
+  EXECUTION_FAILED: "Execution failed",
+  RESULT_COLLECTION_FAILED: "Result collection failed",
+  DEADLINE_EXCEEDED: "Execution deadline exceeded",
+  CANCELLED: "Execution cancelled"
+};
+
 type ExecutionHistory={
   provider:"docker"|"kubernetes";
   items:Array<{
     id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;
     runnerDurationMs?:number|null;provisioningDurationMs?:number|null;capacityRetryWaitMs?:number|null;
     schedulingDurationMs?:number|null;containerStartupDurationMs?:number|null;
+    failureReason?:keyof typeof failureLabels|null;
   }>;
 };
 type Toolchains = {
@@ -56,12 +65,13 @@ export function AdminToolchains(){
     {history?.provider==="docker"&&<p role="status">The Docker provider does not persist execution history.</p>}
     {history?.provider==="kubernetes"&&history.items.length===0&&<p role="status">No executions recorded.</p>}
     {history?.items.length?<ul aria-label="Recent executions">{history.items.map(item=><li key={item.id}>
-      <code>{item.id}</code> · {item.language.toUpperCase()} · {item.kind} · {item.state} · {new Date(item.createdAt).toLocaleString()}
+      <code>{item.id}</code> · {item.language.toUpperCase()} · {item.kind} · {item.state==="CLEANUP_PENDING"?"Cleanup pending":item.state} · {new Date(item.createdAt).toLocaleString()}
       {item.capacityRetryWaitMs!=null&&<> | Capacity retry wait (client measured) {item.capacityRetryWaitMs.toLocaleString()} ms</>}
       {item.provisioningDurationMs!=null&&<> · Provisioning {item.provisioningDurationMs.toLocaleString()} ms</>}
       {item.schedulingDurationMs!=null&&<> · Time to schedule {item.schedulingDurationMs.toLocaleString()} ms</>}
       {item.containerStartupDurationMs!=null&&<> · Post-schedule startup {item.containerStartupDurationMs.toLocaleString()} ms</>}
       {item.runnerDurationMs!=null&&<> · Runner lifetime {item.runnerDurationMs.toLocaleString()} ms</>}
+      {item.failureReason&&<> · {failureLabels[item.failureReason]}</>}
       {["PROVISIONING","RUNNING"].includes(item.state)&&<button type="button" className="secondary" disabled={checkingHistory}
         onClick={()=>void refreshHistory(item.id)}>Cancel execution</button>}
     </li>)}</ul>:null}

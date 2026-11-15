@@ -65,6 +65,37 @@ staging. The local runtime evidence does not authorize public workloads.
   schedule and 1,000 ms startup at Kubernetes timestamp resolution.
   Anonymous history access returned 401.
 
+### Part 6 execution security and artifact transport
+
+- Live authorization checks confirmed that the broker service account can
+  manage execution Jobs, list runner Pods, read their logs and create input
+  ConfigMaps in the execution namespace. It cannot exec into Pods, read
+  Secrets, create application-namespace Jobs or patch deployments. A
+  server-side dry run rejected a root Pod under restricted Pod Security.
+- The local Kubernetes broker transferred and validated C ELF outputs
+  of 4,013,576 and 7,966,216 bytes. An oversized source produced no
+  executable and returned UNAVAILABLE. No per-execution resources remained.
+- A broker restart after marking an execution successful can still lose
+  the result before delivery to a caller. The result needs a bounded,
+  durable receipt keyed to an execution request and its payload. Retain
+  the receipt until a trusted caller has committed the verified result.
+
+### Part 6 broker failure reporting
+
+- Migration 0022 adds a nullable failure reason without changing existing
+  execution states. The broker distinguishes provisioning, execution,
+  result collection, deadline and cancellation failures. Cleanup pending
+  is shown separately and preserves the original reason. Capacity rejection
+  before admission remains a retry response.
+- Isolated MySQL fixture `efc39371100d3b51`, coordinator typecheck, frontend
+  build and both Docker builds passed. The initial fixture attempt timed out
+  on the Docker engine check and did not reach the assertions.
+- Applied migration 0022 in Docker Desktop Kubernetes and rolled out the
+  broker, coordinator and frontend. A real C compile failure recorded
+  EXECUTION_FAILED. A Python program returned its ZeroDivisionError
+  diagnostic successfully, so the broker history had no transport failure.
+  Edge and the admin API agreed. Anonymous history access returned 401.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.

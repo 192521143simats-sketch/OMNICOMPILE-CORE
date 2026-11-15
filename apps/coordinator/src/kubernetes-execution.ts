@@ -67,6 +67,10 @@ export function executionManifest(id:string,image:string,runtimeClassName:string
 
 type ExecutionIdentity={id:string;job_uid:string|null};
 type ExecutionRow=RowDataPacket&ExecutionIdentity;
+export const kubernetesFailureReasons=[
+  'PROVISIONING_FAILED','EXECUTION_FAILED','RESULT_COLLECTION_FAILED','DEADLINE_EXCEEDED','CANCELLED'
+] as const;
+type FailureReason=(typeof kubernetesFailureReasons)[number];
 export class KubernetesExecutionProvider {
   private readonly jobs:string;
   private readonly core:string;
@@ -92,7 +96,8 @@ export class KubernetesExecutionProvider {
     const [rows]=await this.pool.query<RowDataPacket[]>(`SELECT id,language,kind,state,created_at createdAt,
       finished_at finishedAt,runner_duration_ms runnerDurationMs,
       provisioning_duration_ms provisioningDurationMs,scheduling_duration_ms schedulingDurationMs,
-      container_startup_duration_ms containerStartupDurationMs,capacity_retry_wait_ms capacityRetryWaitMs
+      container_startup_duration_ms containerStartupDurationMs,capacity_retry_wait_ms capacityRetryWaitMs,
+      failure_reason failureReason
       FROM kubernetes_executions ORDER BY created_at DESC,id DESC LIMIT 50`);
     return rows;
   }
@@ -130,6 +135,7 @@ export class KubernetesExecutionProvider {
     let uid:string|undefined;
     let createAttempted=false;
     let outcome='FAILED';
+    let failureReason:FailureReason|null='PROVISIONING_FAILED';
     try{
       bounded.throwIfAborted();
       createAttempted=true;
@@ -157,10 +163,11 @@ export class KubernetesExecutionProvider {
           condition.type==='Failed'&&condition.status==='True');
         if(failure?.reason==='DeadlineExceeded'){
           outcome='TIMED_OUT';
+          failureReason='DEADLINE_EXCEEDED';
           throw new Error('The Kubernetes Job exceeded its execution deadline.');
         }
-        if(failure)throw new Error('Execution Job failed.');
         const succeeded=state.status?.succeeded===1;
+        if(succeeded)failureReason='RESULT_COLLECTION_FAILED';
         // Once the runner starts, follow the Job until fresh Pod data is needed for results.
         if(!runnerStarted||succeeded){
           const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
@@ -171,8 +178,10 @@ export class KubernetesExecutionProvider {
             bounded.throwIfAborted();
             await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
             runnerStarted=true;
+            if(!succeeded)failureReason='EXECUTION_FAILED';
           }
         }
+        if(failure)throw new Error('Execution Job failed.');
         if(succeeded){
           if(!runnerStarted)throw new Error('Execution runner start evidence is missing.');
           break;
@@ -195,10 +204,13 @@ export class KubernetesExecutionProvider {
       const duration=Date.parse(terminated?.finishedAt)-startedAt;
       const runnerDurationMs=Number.isInteger(duration)&&duration>=0&&duration<=0xffffffff?duration:null;
       const output=await this.api('GET',this.core+'/pods/'+encodeURIComponent(pod.metadata.name)+'/log?container=runner&limitBytes=32000000',undefined,bounded);
-      const value=JSON.parse(output);
-      if(value.ok!==true||!Object.hasOwn(value,'result')){
+      let value;
+      try{value=JSON.parse(output);}catch{throw new Error('The execution result could not be read.');}
+      if(value?.ok===false){
+        failureReason='EXECUTION_FAILED';
         throw Object.assign(new Error(typeof value.error?.message==='string'?value.error.message:'The isolated compiler job failed.'),{diagnostics:value.error?.diagnostics});
       }
+      if(value?.ok!==true||!Object.hasOwn(value,'result'))throw new Error('The execution result is invalid.');
       bounded.throwIfAborted();
       const [completed]=await this.pool.execute<ResultSetHeader>(`UPDATE kubernetes_executions SET
         state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3),runner_duration_ms=?,provisioning_duration_ms=?,
@@ -206,18 +218,24 @@ export class KubernetesExecutionProvider {
         [runnerDurationMs,provisioningDurationMs,schedulingDurationMs,containerStartupDurationMs,id]);
       if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
       outcome='SUCCEEDED';
+      failureReason=null;
       return value.result;
     }catch(error){
-      if(abort.signal.aborted||signal.aborted)outcome='CANCELLED';
-      else if(bounded.aborted)outcome='TIMED_OUT';
+      if(abort.signal.aborted||signal.aborted){
+        outcome='CANCELLED';
+        failureReason='CANCELLED';
+      }else if(bounded.aborted){
+        outcome='TIMED_OUT';
+        failureReason='DEADLINE_EXCEEDED';
+      }
       throw error;
     }finally{
-      try{await this.finish({id,job_uid:uid??null},outcome,createAttempted&&!uid);}
+      try{await this.finish({id,job_uid:uid??null},outcome,failureReason,createAttempted&&!uid);}
       finally{this.pending.delete(id);}
     }
   }
 
-  private async finish(row:ExecutionIdentity,outcome:string,holdIfMissing=false){
+  private async finish(row:ExecutionIdentity,outcome:string,failureReason:FailureReason|null,holdIfMissing=false){
     const path=this.jobs+'/omni-'+row.id;
     try{
       let job=await this.api('GET',path);
@@ -231,14 +249,23 @@ export class KubernetesExecutionProvider {
         }
         if(job!==null){
           // Foreground deletion can leave the Job present until its dependents are gone.
-          await this.pool.execute("UPDATE kubernetes_executions SET cleanup_outcome=NULL,state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
+          await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=NULL,
+            failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
+            state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+            WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
           return;
         }
       }
       else if(holdIfMissing)throw new Error('Waiting for the ambiguous create request to settle.');
-      await this.pool.execute("UPDATE kubernetes_executions SET slot=NULL,cleanup_outcome=NULL,state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
+      await this.pool.execute(`UPDATE kubernetes_executions SET slot=NULL,cleanup_outcome=NULL,
+        failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
+        state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+        WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
     }catch{
-      await this.pool.execute("UPDATE kubernetes_executions SET cleanup_outcome=IF(state='CANCEL_REQUESTED','CANCELLED',?),state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3)) WHERE id=? AND slot IS NOT NULL",[outcome,row.id]);
+      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(state='CANCEL_REQUESTED','CANCELLED',?),
+        failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
+        state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+        WHERE id=? AND slot IS NOT NULL`,[outcome,failureReason,row.id]);
     }
   }
 
@@ -251,8 +278,12 @@ export class KubernetesExecutionProvider {
     const [rows]=await this.pool.execute<(ExecutionRow&{state:string;finished_at:Date|null;cleanup_outcome:string|null})[]>(`SELECT id,job_uid,state,finished_at,cleanup_outcome
       FROM kubernetes_executions WHERE slot IS NOT NULL AND (expires_at<=UTC_TIMESTAMP(3) OR (finished_at IS NOT NULL AND (job_uid IS NOT NULL OR state<>'CLEANUP_PENDING')))`);
     for(const row of rows){
-      if(!this.pending.has(row.id))await this.finish(row,row.state==='CANCEL_REQUESTED'?'CANCELLED':
-        row.state==='CLEANUP_PENDING'?(row.cleanup_outcome??'FAILED'):row.finished_at?row.state:'TIMED_OUT');
+      if(this.pending.has(row.id))continue;
+      const outcome=row.state==='CANCEL_REQUESTED'?'CANCELLED':
+        row.state==='CLEANUP_PENDING'?(row.cleanup_outcome??'FAILED'):row.finished_at?row.state:'TIMED_OUT';
+      // Existing stage failures survive reconciliation through the COALESCE update.
+      const failureReason=outcome==='CANCELLED'?'CANCELLED':outcome==='TIMED_OUT'?'DEADLINE_EXCEEDED':null;
+      await this.finish(row,outcome,failureReason);
     }
   }
 }

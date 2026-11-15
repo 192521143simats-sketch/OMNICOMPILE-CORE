@@ -12,6 +12,8 @@ const jobs=new Map();
 const label='omnicompile.io/execution-id';
 let complete=true;
 let failureReason;
+let inputProvisioningError=false;
+let logResult={ok:true,result:{stdout:'fixture'}};
 let runnerState={terminated:{startedAt:"2026-01-01T00:00:00Z",finishedAt:"2026-01-01T00:00:03Z"}};
 let scheduledAt='2025-12-31T23:59:59Z';
 let observedJob;
@@ -19,6 +21,7 @@ let jobReads=0;
 let podReads=0;
 const failedDeletes=new Set();
 let deferDeletion=false;
+let failNextJobCleanup=false;
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
   if(method==='POST'&&name==='jobs'){
@@ -27,10 +30,12 @@ const api=async(method,path,body)=>{
     assert.equal(body.spec.activeDeadlineSeconds,105);
     const record={metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:'2025-12-31T23:59:58Z'}};
     jobs.set(record.metadata.name,record);
+    if(failNextJobCleanup)failedDeletes.add(record.metadata.name);
     observedJob=record.metadata.labels[label];
     return record;
   }
   if(method==='POST'&&name==='configmaps'){
+    if(inputProvisioningError)throw new Error('Fixture provisioning failure');
     assert.equal(body.immutable,true);
     const owner=body.metadata.ownerReferences[0];
     assert.equal(jobs.get(owner.name)?.metadata.uid,owner.uid);
@@ -42,7 +47,7 @@ const api=async(method,path,body)=>{
     const id=decodeURIComponent(path.split('=').at(-1)).split('=').at(-1);
     return {items:[{metadata:{name:'foreign-pod',ownerReferences:[{kind:'Job',uid:'foreign'}]},status:{containerStatuses:[{name:'runner',state:{running:{startedAt:'2026-01-01T00:00:00Z'}}}]}},{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{conditions:scheduledAt?[{type:'PodScheduled',status:'True',lastTransitionTime:scheduledAt}]:[],containerStatuses:[{name:'runner',state:runnerState}]}}]};
   }
-  if(path.includes('/log?'))return JSON.stringify({ok:true,result:{stdout:'fixture'}});
+  if(path.includes('/log?'))return logResult===null?'incomplete output':JSON.stringify(logResult);
   if(method==='GET'&&name==='jobs?limit=1')return {items:[]};
   if(method==='GET'){
     jobReads++;
@@ -95,6 +100,33 @@ try{
   assert.equal(completed.schedulingDurationMs,1000);
   assert.equal(completed.containerStartupDurationMs,1000);
   assert.equal(completed.capacityRetryWaitMs,null);
+  assert.equal(completed.failureReason,null);
+  inputProvisioningError=true;
+  await assert.rejects(start(),/fixture provisioning failure/i);
+  assert.equal((await create().list()).find(row=>row.id===observedJob).failureReason,'PROVISIONING_FAILED');
+  inputProvisioningError=false;
+  logResult=null;
+  await assert.rejects(start());
+  assert.equal((await create().list()).find(row=>row.id===observedJob).failureReason,'RESULT_COLLECTION_FAILED');
+  logResult={ok:false,error:{message:'Fixture compiler failure'}};
+  failNextJobCleanup=true;
+  await assert.rejects(start(),/fixture compiler failure/i);
+  const failedId=observedJob;
+  const pendingCleanup=(await create().list()).find(row=>row.id===failedId);
+  assert.equal(pendingCleanup.state,'CLEANUP_PENDING');
+  assert.equal(pendingCleanup.failureReason,'EXECUTION_FAILED');
+  failedDeletes.clear();
+  failNextJobCleanup=false;
+  await create().reconcile();
+  const cleanedFailure=(await provider.list()).find(row=>row.id===failedId);
+  assert.equal(cleanedFailure.state,'FAILED');
+  assert.equal(cleanedFailure.failureReason,'EXECUTION_FAILED');
+  logResult={ok:true,result:{execution:{status:'FAILED',exitCode:1}}};
+  assert.deepEqual(await start(),logResult.result);
+  const nonzeroExit=(await create().list()).find(row=>row.id===observedJob);
+  assert.equal(nonzeroExit.state,'SUCCEEDED');
+  assert.equal(nonzeroExit.failureReason,null);
+  logResult={ok:true,result:{stdout:'fixture'}};
   for(const invalidSchedule of [undefined,'2025-12-31T23:59:57Z','2026-01-01T00:00:01Z']){
     scheduledAt=invalidSchedule;
     assert.deepEqual(await start(),{stdout:'fixture'});
@@ -125,6 +157,7 @@ try{
   await provider.reconcile();
   const [deadline]=await provider.list();
   assert.equal(deadline.state,'TIMED_OUT');
+  assert.equal(deadline.failureReason,'DEADLINE_EXCEEDED');
   assert.equal(jobs.size,0);
   failureReason=undefined;
   // An unscheduled/image-pulling runner stays PROVISIONING, even with a foreign running Pod.
@@ -157,11 +190,14 @@ try{
   assert.equal((await pendingSettled)[0].status,'rejected');
   await provider.reconcile();
   assert.equal((await provider.list()).find(row=>row.id===cancelledId).state,'CANCELLED');
+  assert.equal((await create().list()).find(row=>row.id===cancelledId).failureReason,'CANCELLED');
   runnerState={running:{startedAt:'2026-01-01T00:00:00Z'}};
   const first=start(),second=start();
   const settled=Promise.allSettled([first,second]);
   const rows=await running();
+  const rowsBeforeCapacityRejection=(await provider.list()).length;
   await assert.rejects(start(),{statusCode:429});
+  assert.equal((await provider.list()).length,rowsBeforeCapacityRejection);
   assert.equal(await provider.cancel(rows[0].id),true);
   failedDeletes.add('omni-'+rows[0].id);
   failedDeletes.add('omni-'+rows[1].id);
@@ -173,12 +209,17 @@ try{
   await restarted.reconcile();
   await restarted.reconcile();
   assert.equal(jobs.size,0);
-  for(const row of rows)assert.equal((await restarted.list()).find(item=>item.id===row.id).state,'CANCELLED');
+  for(const row of rows){
+    const recovered=(await restarted.list()).find(item=>item.id===row.id);
+    assert.equal(recovered.state,'CANCELLED');
+    assert.equal(recovered.failureReason,'CANCELLED');
+  }
   const [[{total}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_executions WHERE slot IS NOT NULL');
   assert.equal(total,0);
   const expired=randomUUID();
   await pool.execute("INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at) VALUES(?,1,'python','execute','PROVISIONING',UTC_TIMESTAMP(3))",[expired]);
   await restarted.reconcile();
   assert.equal((await restarted.list()).find(row=>row.id===expired).state,'TIMED_OUT');
+  assert.equal((await restarted.list()).find(row=>row.id===expired).failureReason,'DEADLINE_EXCEEDED');
   console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry and expiry passed with isolated MySQL and a simulated API.');
 }finally{await pool.end();}
