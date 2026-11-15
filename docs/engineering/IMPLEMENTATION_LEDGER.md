@@ -607,3 +607,19 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   jobs returned 42 and persisted runner lifetimes of 3,000, 5,000 and
   1,000 ms respectively. Per-job resources were removed. All eight Compose
   services were healthy.
+
+### Controlled two-slot capacity baseline
+
+- On `desktop-job-poll`, ran four sequential and four simultaneously
+  submitted Python jobs with identical two-second sleeps. All printed 42.
+  The sequential batch took 26,736 ms and the concurrent batch took
+  20,365 ms. Individual client latencies were 6,214–7,117 ms sequentially
+  and 8,266–20,363 ms concurrently.
+- All sequential jobs reported zero capacity retry wait. The concurrent
+  batch reported 0, 2,316, 12,311 and 12,261 ms in admission order.
+  Provisioning measured 0–2,000 ms and runner lifetime 2,000–3,000 ms
+  across the eight jobs, using whole-second Kubernetes timestamps.
+  This single-node run shows a batch throughput versus per-job latency
+  tradeoff for this workload. It does not establish a scaling policy.
+- The first attempt lost its interactive Kubernetes exec stream and did
+  not produce samples. The successful rerun used noninteractive exec.
