@@ -1,4 +1,4 @@
-import {randomUUID} from 'node:crypto';
+import {createHash,randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {request} from 'node:https';
 import {setTimeout as delay} from 'node:timers/promises';
@@ -10,6 +10,20 @@ const account='/var/run/secrets/kubernetes.io/serviceaccount';
 const label='omnicompile.io/execution-id';
 const chunkBytes=600_000;
 const maxPayload=24_000_000;
+const maxReceiptBytes=32_000_000;
+const receiptSlots=Array.from({length:8},(_,index)=>index+1);
+const digest=(data:Buffer)=>createHash('sha256').update(data).digest('hex');
+const requestError=(statusCode:number,errorCode:string,message:string)=>Object.assign(new Error(message),{statusCode,errorCode});
+
+function canonicalJson(value:unknown):string{
+  if(Array.isArray(value))return '['+value.map(canonicalJson).join(',')+']';
+  if(value!==null&&typeof value==='object'){
+    const record=value as Record<string,unknown>;
+    return '{'+Object.keys(record).sort().filter(key=>record[key]!==undefined)
+      .map(key=>JSON.stringify(key)+':'+canonicalJson(record[key])).join(',')+'}';
+  }
+  return JSON.stringify(value);
+}
 
 export function inClusterApi():ClusterApi {
   const hostname=process.env.KUBERNETES_SERVICE_HOST;
@@ -110,22 +124,55 @@ export class KubernetesExecutionProvider {
     return true;
   }
 
-  async run(job:DockerJob,signal:AbortSignal,capacityRetryHeader?:string|string[]){
+  private async replay(requestId:string,requestDigest:string){
+    const connection=await this.pool.getConnection();
+    try{
+      await connection.query('SET TRANSACTION ISOLATION LEVEL REPEATABLE READ');
+      await connection.beginTransaction();
+      const [[row]]=await connection.execute<RowDataPacket[]>(`SELECT id,request_digest,receipt_digest,receipt_bytes,
+        receipt_expires_at>UTC_TIMESTAMP(3) AS receipt_live,state,finished_at
+        FROM kubernetes_executions WHERE request_id=?`,[requestId]);
+      if(!row)return undefined;
+      if(row.request_digest!==requestDigest)throw requestError(409,'EXECUTION_REQUEST_CONFLICT','The execution request key was used with different input.');
+      if(!row.finished_at)throw requestError(409,'EXECUTION_REQUEST_PENDING','The execution request is still pending.');
+      if(!row.receipt_live||!row.receipt_digest)throw requestError(410,'EXECUTION_RECEIPT_UNAVAILABLE','The execution result receipt is unavailable.');
+      const [chunks]=await connection.execute<RowDataPacket[]>(
+        'SELECT content FROM kubernetes_result_chunks WHERE execution_id=? ORDER BY chunk_number',[row.id]);
+      const bytes=Buffer.concat(chunks.map(chunk=>chunk.content));
+      if(bytes.length!==row.receipt_bytes||digest(bytes)!==row.receipt_digest)throw new Error('Execution receipt integrity check failed.');
+      return {result:JSON.parse(bytes.toString('utf8'))};
+    }finally{
+      try{await connection.rollback();}finally{connection.release();}
+    }
+  }
+
+  async run(job:DockerJob,signal:AbortSignal,capacityRetryHeader?:string|string[],requestId?:string){
     // Optional authenticated caller telemetry; malformed/missing values remain unknown.
     const capacityRetryWaitMs=typeof capacityRetryHeader==='string'&&/^(0|[1-9][0-9]{0,5})$/.test(capacityRetryHeader)&&Number(capacityRetryHeader)<=125_000?Number(capacityRetryHeader):null;
     signal.throwIfAborted();
     const input=Buffer.from(JSON.stringify(job));
     if(input.length>maxPayload)throw new Error('Execution input exceeds its limit.');
+    const requestDigest=requestId?digest(Buffer.from(canonicalJson(job))):null;
+    if(requestId&&requestDigest){
+      const cached=await this.replay(requestId,requestDigest);
+      if(cached)return cached.result;
+    }
     const id=randomUUID();
     const count=Math.ceil(input.length/chunkBytes);
     const manifest=executionManifest(id,this.images[job.language],this.runtime,count);
     let admitted=false;
-    for(const slot of [1,2]){
+    admission: for(const slot of [1,2])for(const receiptSlot of requestId?receiptSlots:[null]){
       try{
-        await this.pool.execute(`INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at,capacity_retry_wait_ms)
-          VALUES(?,?,?,?,'PROVISIONING',TIMESTAMPADD(SECOND,150,UTC_TIMESTAMP(3)),?)`,[id,slot,job.language,job.kind,capacityRetryWaitMs]);
-        admitted=true;break;
+        await this.pool.execute(`INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at,capacity_retry_wait_ms,
+          request_id,request_digest,receipt_slot)
+          VALUES(?,?,?,?,'PROVISIONING',TIMESTAMPADD(SECOND,150,UTC_TIMESTAMP(3)),?,?,?,?)`,
+          [id,slot,job.language,job.kind,capacityRetryWaitMs,requestId??null,requestDigest,receiptSlot]);
+        admitted=true;break admission;
       }catch(error){if((error as {code?:string}).code!=='ER_DUP_ENTRY')throw error;}
+    }
+    if(!admitted&&requestId&&requestDigest){
+      const cached=await this.replay(requestId,requestDigest);
+      if(cached)return cached.result;
     }
     if(!admitted)throw Object.assign(new Error('Execution service is at capacity.'),{statusCode:429});
     const abort=new AbortController();
@@ -212,11 +259,34 @@ export class KubernetesExecutionProvider {
       }
       if(value?.ok!==true||!Object.hasOwn(value,'result'))throw new Error('The execution result is invalid.');
       bounded.throwIfAborted();
-      const [completed]=await this.pool.execute<ResultSetHeader>(`UPDATE kubernetes_executions SET
+      const completeSql=`UPDATE kubernetes_executions SET
         state='SUCCEEDED',finished_at=UTC_TIMESTAMP(3),runner_duration_ms=?,provisioning_duration_ms=?,
-        scheduling_duration_ms=?,container_startup_duration_ms=? WHERE id=? AND state='RUNNING'`,
-        [runnerDurationMs,provisioningDurationMs,schedulingDurationMs,containerStartupDurationMs,id]);
-      if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
+        scheduling_duration_ms=?,container_startup_duration_ms=?`;
+      const timing=[runnerDurationMs,provisioningDurationMs,schedulingDurationMs,containerStartupDurationMs];
+      if(requestId){
+        const bytes=Buffer.from(JSON.stringify(value.result));
+        if(bytes.length>maxReceiptBytes)throw new Error('Execution receipt exceeds its size limit.');
+        const connection=await this.pool.getConnection();
+        try{
+          await connection.beginTransaction();
+          const [completed]=await connection.execute<ResultSetHeader>(completeSql+`,
+            receipt_digest=?,receipt_bytes=?,receipt_expires_at=TIMESTAMPADD(MINUTE,5,UTC_TIMESTAMP(3))
+            WHERE id=? AND state='RUNNING'`,[...timing,digest(bytes),bytes.length,id]);
+          if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
+          for(let offset=0;offset<bytes.length;offset+=chunkBytes){
+            await connection.execute('INSERT INTO kubernetes_result_chunks(execution_id,chunk_number,content) VALUES(?,?,?)',
+              [id,offset/chunkBytes,bytes.subarray(offset,offset+chunkBytes)]);
+          }
+          bounded.throwIfAborted();
+          await connection.commit();
+        }catch(error){
+          await connection.rollback();
+          throw error;
+        }finally{connection.release();}
+      }else{
+        const [completed]=await this.pool.execute<ResultSetHeader>(completeSql+' WHERE id=? AND state=\'RUNNING\'',[...timing,id]);
+        if(completed.affectedRows!==1){abort.abort();throw new Error('Execution was cancelled.');}
+      }
       outcome='SUCCEEDED';
       failureReason=null;
       return value.result;
@@ -250,20 +320,20 @@ export class KubernetesExecutionProvider {
         if(job!==null){
           // Foreground deletion can leave the Job present until its dependents are gone.
           await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=NULL,
-            failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
-            state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+            failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
+            state=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
             WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
           return;
         }
       }
       else if(holdIfMissing)throw new Error('Waiting for the ambiguous create request to settle.');
       await this.pool.execute(`UPDATE kubernetes_executions SET slot=NULL,cleanup_outcome=NULL,
-        failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
-        state=IF(state='CANCEL_REQUESTED','CANCELLED',?),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
+        failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
+        state=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
         WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
     }catch{
-      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(state='CANCEL_REQUESTED','CANCELLED',?),
-        failure_reason=IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?)),
+      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(receipt_digest IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),
+        failure_reason=IF(receipt_digest IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
         state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
         WHERE id=? AND slot IS NOT NULL`,[outcome,failureReason,row.id]);
     }
@@ -285,5 +355,20 @@ export class KubernetesExecutionProvider {
       const failureReason=outcome==='CANCELLED'?'CANCELLED':outcome==='TIMED_OUT'?'DEADLINE_EXCEEDED':null;
       await this.finish(row,outcome,failureReason);
     }
+    const connection=await this.pool.getConnection();
+    try{
+      await connection.beginTransaction();
+      const [expired]=await connection.query<RowDataPacket[]>(`SELECT id FROM kubernetes_executions
+        WHERE receipt_slot IS NOT NULL AND finished_at IS NOT NULL
+          AND (receipt_expires_at IS NULL OR receipt_expires_at<=UTC_TIMESTAMP(3)) FOR UPDATE`);
+      for(const {id} of expired){
+        await connection.execute('DELETE FROM kubernetes_result_chunks WHERE execution_id=?',[id]);
+        await connection.execute('UPDATE kubernetes_executions SET receipt_slot=NULL,receipt_digest=NULL,receipt_bytes=NULL WHERE id=?',[id]);
+      }
+      await connection.commit();
+    }catch(error){
+      await connection.rollback();
+      throw error;
+    }finally{connection.release();}
   }
 }

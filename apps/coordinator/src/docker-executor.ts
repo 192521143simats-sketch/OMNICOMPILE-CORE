@@ -131,12 +131,21 @@ export function createDockerExecutor(
   app.post('/jobs',{onRequest:authenticate},async(request,reply)=>{
     const parsed=dockerJobSchema.safeParse(request.body);
     if(!parsed.success)return reply.code(400).send({error:{code:'INVALID_EXECUTOR_JOB',message:'The isolated job request is invalid.'}});
+    const requestId=request.headers['x-omnicompile-execution-request-id'];
+    if(requestId!==undefined&&(typeof requestId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))){
+      return reply.code(400).send({error:{code:'INVALID_EXECUTION_REQUEST_ID',message:'Execution request ID must be a UUID.'}});
+    }
+    if(requestId&&!kubernetes)return reply.code(422).send({error:{code:'EXECUTION_RECEIPTS_UNSUPPORTED',message:'This provider does not support execution result receipts.'}});
     if(active.size>=2)return reply.code(429).send({error:{code:'EXECUTOR_BUSY',message:'The execution service is at capacity.'}});
     const abort=new AbortController();active.add(abort);
     const timer=setTimeout(()=>abort.abort(),120_000);
     const disconnected=()=>{if(!reply.raw.writableEnded)abort.abort();};reply.raw.once('close',disconnected);
-    try{return {result:await (kubernetes?kubernetes.run(parsed.data,abort.signal,request.headers['x-omnicompile-capacity-retry-wait-ms']):execute(parsed.data,abort.signal))};}
-    catch(cause){const error=cause as Error&{diagnostics?:unknown};return reply.code((error as {statusCode?:number}).statusCode===429?429:422).send({error:{code:'ISOLATED_JOB_FAILED',message:error.message,diagnostics:error.diagnostics}});}
+    try{return {result:await (kubernetes?kubernetes.run(parsed.data,abort.signal,request.headers['x-omnicompile-capacity-retry-wait-ms'],requestId?.toLowerCase()):execute(parsed.data,abort.signal))};}
+    catch(cause){
+      const error=cause as Error&{diagnostics?:unknown;statusCode?:number;errorCode?:string};
+      const status=error.statusCode&&[409,410,429].includes(error.statusCode)?error.statusCode:422;
+      return reply.code(status).send({error:{code:error.errorCode??'ISOLATED_JOB_FAILED',message:error.message,diagnostics:error.diagnostics}});
+    }
     finally{clearTimeout(timer);reply.raw.off('close',disconnected);active.delete(abort);}
   });
   app.addHook('preClose',async()=>{for(const controller of active)controller.abort();});

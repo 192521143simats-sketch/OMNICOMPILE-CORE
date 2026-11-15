@@ -90,6 +90,34 @@ async function running(){
 }
 try{
   await provider.ready();
+  const requestId=randomUUID();
+  const keyed=(service,input=job)=>service.run(input,new AbortController().signal,undefined,requestId);
+  assert.deepEqual(await keyed(provider),{stdout:'fixture'});
+  const keyedJob=observedJob;
+  assert.deepEqual(await keyed(create(),{payload:job.payload,kind:job.kind,language:job.language}),{stdout:'fixture'});
+  assert.equal(observedJob,keyedJob,'Replay must not create a second Job');
+  await assert.rejects(keyed(create(),{...job,payload:{...job.payload,generatedSource:'print(43)'}}),{statusCode:409,errorCode:'EXECUTION_REQUEST_CONFLICT'});
+  await pool.execute('UPDATE kubernetes_executions SET receipt_expires_at=UTC_TIMESTAMP(3) WHERE id=?',[keyedJob]);
+  await provider.reconcile();
+  await assert.rejects(keyed(create()),{statusCode:410,errorCode:'EXECUTION_RECEIPT_UNAVAILABLE'});
+  const [[expiredReceipt]]=await pool.execute('SELECT receipt_slot FROM kubernetes_executions WHERE id=?',[keyedJob]);
+  assert.equal(expiredReceipt.receipt_slot,null);
+  const [[storedChunks]]=await pool.execute('SELECT COUNT(*) AS total FROM kubernetes_result_chunks WHERE execution_id=?',[keyedJob]);
+  assert.equal(Number(storedChunks.total),0);
+  const pendingId=randomUUID();
+  complete=false;
+  const pendingSignal=new AbortController();
+  const previousReads=jobReads;
+  const pendingReceipt=provider.run(job,pendingSignal.signal,undefined,pendingId);
+  const cancelledPending=assert.rejects(pendingReceipt);
+  await waitForJobReads(previousReads);
+  await assert.rejects(create().run(job,new AbortController().signal,undefined,pendingId),
+    {statusCode:409,errorCode:'EXECUTION_REQUEST_PENDING'});
+  pendingSignal.abort();
+  await cancelledPending;
+  await provider.reconcile();
+  complete=true;
+  await new Promise(resolve=>setTimeout(resolve,5));
   assert.deepEqual(await start(),{stdout:'fixture'});
   assert.equal(await countSlots(),0,'A confirmed deletion should release its slot without waiting for reconciliation');
   await provider.reconcile();

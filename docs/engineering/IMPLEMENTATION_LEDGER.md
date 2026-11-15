@@ -96,6 +96,23 @@ staging. The local runtime evidence does not authorize public workloads.
   diagnostic successfully, so the broker history had no transport failure.
   Edge and the admin API agreed. Anonymous history access returned 401.
 
+### Part 6 durable broker receipts
+
+- Migration 0023 adds opt-in request IDs and stores bounded, checksummed
+  result chunks atomically with execution success. A repeated request
+  with matching input can replay the receipt for five minutes. Reusing a
+  key with different input is rejected. Delivery is capped at eight stored
+  receipts, and reconciliation removes expired chunks.
+- Isolated MySQL fixture `d46694e451dd3903` passed replay, pending and
+  conflicting keys, expiry and cleanup. Coordinator typecheck, image build
+  and 30 orchestration tests passed. Applied migration 0023 locally.
+- A real keyed Python execution returned 42. Replaced the broker Pod and
+  repeated the request. The output digest and execution history were
+  identical, and no new Job or per-job resources remained. All eight
+  Compose services were healthy.
+- Production callers have yet to opt in with stable task/attempt IDs and
+  acknowledge receipts after committing accepted results or artifacts.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.

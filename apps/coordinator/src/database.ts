@@ -1,3 +1,4 @@
+import {kubernetesResultReceiptsMigration} from './migrations/0023-kubernetes-result-receipts.mjs';
 import {kubernetesFailureReasonMigration} from './migrations/0022-kubernetes-failure-reason.mjs';
 import {kubernetesProvisioningStagesMigration} from './migrations/0021-kubernetes-provisioning-stages.mjs';
 import {kubernetesCapacityRetryWaitMigration} from './migrations/0020-kubernetes-capacity-retry-wait.mjs';
@@ -42,7 +43,7 @@ export type StoredArtifact={artifactType:"SOURCE"|"GENERATED_SOURCE"|"EXECUTABLE
 
 type PreparedArtifact=StoredArtifact & {id:string;digest:string;storageKey:string|null};
 
-export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration(),kubernetesCapacityRetryWaitMigration(),kubernetesProvisioningStagesMigration(),kubernetesFailureReasonMigration()];}
+export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration(),kubernetesCapacityRetryWaitMigration(),kubernetesProvisioningStagesMigration(),kubernetesFailureReasonMigration(),kubernetesResultReceiptsMigration()];}
 
 export class Store {
   private readonly verifyingTasks=new Set<string>();

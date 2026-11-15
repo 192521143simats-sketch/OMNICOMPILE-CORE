@@ -42,7 +42,8 @@ export async function requestExecutionStatus(id?:string):Promise<{status:number;
 }
 
 /** Internal authenticated transport. Never falls back to host execution. */
-export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSignal):Promise<T>{
+export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSignal,requestId?:string):Promise<T>{
+  if(requestId!==undefined&&!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(requestId))throw new Error('Invalid execution request ID.');
   const {url,authorization}=brokerRequest('/jobs');
   const bounded=AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(125_000)]);
   let response:Response;
@@ -51,6 +52,7 @@ export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSign
   const bodyText=JSON.stringify(job);
   do{
     const headers:Record<string,string>={authorization,'content-type':'application/json','x-omnicompile-capacity-retry-wait-ms':'0'};
+    if(requestId!==undefined)headers['x-omnicompile-execution-request-id']=requestId;
     // Caller-observed retry delay, never broker queue or execution time.
     if(capacityRetryStarted!==undefined)headers['x-omnicompile-capacity-retry-wait-ms']=String(Math.min(125_000,Math.max(0,Math.floor(performance.now()-capacityRetryStarted))));
     response=await fetch(url,{method:'POST',headers,body:bodyText,signal:bounded,redirect:'error'});
@@ -64,7 +66,11 @@ export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSign
     }
   }while(response.status===429);
   const body=await readBrokerJson(response,32_000_000);
-  if(!response.ok)throw Object.assign(new Error(body.error?.message??'The Docker execution request failed.'),{diagnostics:body.error?.diagnostics});
+  if(!response.ok)throw Object.assign(new Error(body.error?.message??'The Docker execution request failed.'),{
+    statusCode:response.status,
+    code:body.error?.code,
+    diagnostics:body.error?.diagnostics
+  });
   if(!Object.hasOwn(body,'result'))throw new Error('The Docker execution response is incomplete.');
   return body.result as T;
 }
