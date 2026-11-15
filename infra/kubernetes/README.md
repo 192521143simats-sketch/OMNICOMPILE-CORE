@@ -96,6 +96,20 @@ broker and node interruption. The overlay has no live-cluster acceptance yet.
 
 ### Local sandbox compatibility check
 
+On an idle Docker Desktop cluster with the `execution-images` ConfigMap
+in place, run the probe against the configured local RuntimeClass:
+
+```sh
+node --import tsx infra/kubernetes/Verify-Local-Runtime.mjs docker-desktop omnicompile-desktop-runc
+```
+
+For a local kind fixture, pass its `kind-*` context and the RuntimeClass
+installed there. The script requires a loopback API endpoint, uses the
+existing digest-pinned C, Python and Java images, and deletes each probe
+Job before starting the next one. It checks whether the launcher can
+apply its policy and start a process. Run the compiler and isolation
+acceptance suites separately.
+
 Before running the language suite, exercise the compiler image's Landlock
 wrapper in the target RuntimeClass. The following command is suitable as the
 container command in a disposable restricted Pod using the pinned C image.

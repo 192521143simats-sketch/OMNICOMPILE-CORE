@@ -662,3 +662,12 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   cancellation, network and filesystem isolation, and output integrity.
   The verifier reported zero remaining runner containers and no database
   modifications.
+
+### Repeatable local RuntimeClass preflight
+
+- Added a loopback-only preflight that runs the compiler wrapper in a
+  restricted Job with each digest-pinned toolchain image. All three passed
+  on Docker Desktop's runc RuntimeClass. An absent gVisor RuntimeClass
+  failed before creating a probe. No probe Jobs or Pods remained, and
+  all eight Compose services stayed healthy. Production gVisor acceptance
+  still requires compatible guest Landlock support and the full suite.
