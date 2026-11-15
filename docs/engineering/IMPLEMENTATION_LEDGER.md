@@ -639,3 +639,18 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   passed. On local broker image `desktop-slot-release`, a real Python job
   returned 42, persisted SUCCEEDED with a released slot, and left no
   per-job resources.
+
+### Local execution regression after slot reclamation
+
+- The current Kubernetes broker passed real C, Python and Java execution from
+  the coordinator Pod. It also returned the expected timeout, bounded
+  output, and ZeroDivisionError diagnostic. The runner used UID 1000 and
+  the submitted program did not receive the database password variable.
+  These in-cluster checks covered a subset of the opt-in suite. The host-side
+  command to copy a broker credential to a temporary file was blocked before
+  it ran. The in-cluster checks used the existing credential mount.
+- The Compose broker passed all ten checks in
+  `infra/docker/verification/Verify-Docker-Execution.mjs`, including
+  cancellation, network and filesystem isolation, and output integrity.
+  The verifier reported zero remaining runner containers and no database
+  modifications.
