@@ -47,12 +47,21 @@ export async function requestDockerJob<T>(job:DockerJobRequest,signal?:AbortSign
   const bounded=AbortSignal.any([...(signal?[signal]:[]),AbortSignal.timeout(125_000)]);
   let response:Response;
   let capacityRetryStarted:number|undefined;
+  let retryCeilingMs=500;
+  const bodyText=JSON.stringify(job);
   do{
     const headers:Record<string,string>={authorization,'content-type':'application/json','x-omnicompile-capacity-retry-wait-ms':'0'};
     // Caller-observed retry delay, never broker queue or execution time.
     if(capacityRetryStarted!==undefined)headers['x-omnicompile-capacity-retry-wait-ms']=String(Math.min(125_000,Math.max(0,Math.floor(performance.now()-capacityRetryStarted))));
-    response=await fetch(url,{method:'POST',headers,body:JSON.stringify(job),signal:bounded,redirect:'error'});
-    if(response.status===429){capacityRetryStarted??=performance.now();await response.body?.cancel();await delay(250,undefined,{signal:bounded});}
+    response=await fetch(url,{method:'POST',headers,body:bodyText,signal:bounded,redirect:'error'});
+    if(response.status===429){
+      capacityRetryStarted??=performance.now();
+      await response.body?.cancel();
+      // Spread retries from clients that reached capacity at the same time.
+      const retryDelayMs=Math.floor(retryCeilingMs*(0.5+Math.random()*0.5));
+      await delay(retryDelayMs,undefined,{signal:bounded});
+      retryCeilingMs=Math.min(2000,retryCeilingMs*2);
+    }
   }while(response.status===429);
   const body=await readBrokerJson(response,32_000_000);
   if(!response.ok)throw Object.assign(new Error(body.error?.message??'The Docker execution request failed.'),{diagnostics:body.error?.diagnostics});

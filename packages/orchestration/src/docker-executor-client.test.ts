@@ -2,7 +2,9 @@ import {afterAll,afterEach,expect,it,vi} from 'vitest';
 import {mkdtempSync,writeFileSync,rmSync} from 'node:fs';
 import {tmpdir} from 'node:os';
 import {join} from 'node:path';
+import {setTimeout as delay} from 'node:timers/promises';
 import {requestDockerJob} from './docker-executor-client.js';
+vi.mock('node:timers/promises',{spy:true});
 const dir=mkdtempSync(join(tmpdir(),'omni-client-'));
 const credential=join(dir,'token');writeFileSync(credential,'x'.repeat(64));
 afterEach(()=>{vi.unstubAllGlobals();vi.unstubAllEnvs();vi.restoreAllMocks();});
@@ -23,4 +25,17 @@ it('cancels a capacity wait without submitting another execution',async()=>{
  vi.stubGlobal('fetch',fetchJob);
  await expect(requestDockerJob({kind:'execute',language:'python',payload:{}},controller.signal)).rejects.toMatchObject({name:'AbortError'});
  expect(fetchJob).toHaveBeenCalledTimes(1);
+});
+
+it('spreads repeated capacity retries and caps the delay at two seconds',async()=>{
+ vi.stubEnv('OMNICOMPILE_EXECUTOR_URL','http://executor.test');vi.stubEnv('OMNICOMPILE_EXECUTOR_TOKEN_FILE',credential);
+ const delays=vi.mocked(delay);
+ delays.mockClear();
+ for(let i=0;i<5;i++)delays.mockResolvedValueOnce(undefined);
+ const random=vi.spyOn(Math,'random').mockReturnValue(0.5);
+ random.mockReturnValueOnce(0).mockReturnValueOnce(0.999);
+ let attempts=0;
+ vi.stubGlobal('fetch',vi.fn(async()=>++attempts<=5?new Response(null,{status:429}):Response.json({result:'ok'})));
+ expect(await requestDockerJob({kind:'execute',language:'python',payload:{}})).toBe('ok');
+ expect(delays.mock.calls.map(([ms])=>ms)).toEqual([250,999,1500,1500,1500]);
 });

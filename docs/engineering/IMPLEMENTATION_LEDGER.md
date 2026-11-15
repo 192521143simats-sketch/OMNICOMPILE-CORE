@@ -623,3 +623,10 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   tradeoff for this workload. It does not establish a scaling policy.
 - The first attempt lost its interactive Kubernetes exec stream and did
   not produce samples. The successful rerun used noninteractive exec.
+- Replaced fixed 250 ms retries with jittered delays of 250–499 ms,
+  500–999 ms and then 1,000–1,999 ms while keeping the 125-second deadline
+  and cancellation. The regression reproduced fixed retries before the
+  change. All 30 orchestration tests and the workspace package typecheck
+  passed. The rebuilt local coordinator admitted four simultaneous
+  Python jobs through the two-slot broker and all returned 42. Two
+  reported zero capacity wait and two reported 9,318 and 10,026 ms.
