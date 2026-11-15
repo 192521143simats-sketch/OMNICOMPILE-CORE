@@ -123,6 +123,21 @@ staging. The local runtime evidence does not authorize public workloads.
   execution resources remained. Normal compiler and worker paths still
   need to invoke acknowledgement after their durable commit.
 
+- Kubernetes compilation finalization now keys program execution by its
+  persisted compilation job ID. Pending receipts defer publication to
+  periodic recovery. The coordinator acknowledges validated results after
+  committing the artifacts and report. A failed commit leaves the receipt
+  readable until expiry. Docker Compose leaves receipt mode disabled.
+- JAR packaging uses a fixed timestamp so a repeat compilation can produce
+  identical request bytes. All 21 Java tests passed, including the new
+  byte-for-byte regression. Nine targeted coordinator tests, typecheck and
+  build passed. Eleven opt-in cases were skipped by that targeted run.
+- On Docker Desktop Kubernetes, normal Python submission JOB-7Q2A2
+  completed, printed 42 and delivered authenticated bytecode. MySQL showed
+  the stable request ID, committed receipt marker, released receipt slot,
+  and zero retained chunks. Worker compilation receipts and an end-to-end
+  forced restart during normal finalization remain open.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.

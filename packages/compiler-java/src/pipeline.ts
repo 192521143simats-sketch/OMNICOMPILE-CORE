@@ -54,7 +54,8 @@ export async function compileJava(source:string, sourceName?:string):Promise<Jav
    const parent=block.match(/\bclass [^\n]+? extends ([^\s<{]+)/)?.[1];return parent?hasMain(parent,seen):false;
   };
   const mainClass=[primaryClass,...names.filter(name=>name!==primaryClass)].find(name=>hasMain(name));
-  const packed=await run(jdk.jar,["--create","--file",jarPath,...(mainClass?["--main-class",mainClass]:[]),"-C",classesDir,"."]);
+  // Receipt replay compares the actual input bytes, including the runnable JAR.
+  const packed=await run(jdk.jar,["--create","--date=2000-01-01T00:00:00Z","--file",jarPath,...(mainClass?["--main-class",mainClass]:[]),"-C",classesDir,"."]);
   if(packed.code!==0)fail("Java JAR packaging failed");
   const jarBytes=await readFile(jarPath);if(jarBytes.length>8_000_000)fail("Java JAR output exceeds 8 MB");
   const version=await run(jdk.javac,["-version"]);

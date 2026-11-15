@@ -11,6 +11,9 @@ patches:
     - op: replace
       path: /data/OMNICOMPILE_EXECUTOR_URL
       value: http://omnicompile-executor:4102
+    - op: add
+      path: /data/OMNICOMPILE_EXECUTION_RECEIPTS
+      value: "1"
 - target:
     kind: NetworkPolicy
     name: omnicompile-compiler-ingress
