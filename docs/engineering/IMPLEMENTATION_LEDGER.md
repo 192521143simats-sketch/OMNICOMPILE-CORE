@@ -576,3 +576,11 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   execution no longer held an admission slot. A fresh Python job returned 42.
   The execution namespace held only its baseline ConfigMap and NetworkPolicy
   after cleanup, and all six Kubernetes deployments were ready.
+- Repeated the three-language compilation and download flow via the local
+  frontend with a dedicated acceptance account on the rebuilt broker.
+  All three programs printed 42. Authenticated downloads returned a
+  15,960-byte C ELF executable (JOB-IMEJV), 139-byte Python bytecode
+  (JOB-0BPAW), and 669-byte Java JAR (JOB-VTL5L). Anonymous download attempts
+  returned 401. The account and job records are retained only in local MySQL.
+  No per-execution resources remained, the MySQL claim was bound, and all
+  eight Compose services were healthy.
