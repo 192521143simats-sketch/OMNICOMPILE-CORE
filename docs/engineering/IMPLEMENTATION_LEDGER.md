@@ -570,3 +570,9 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   and compilation and execution of a Java JAR each returned 42. No execution
   Jobs or Pods remained, and all eight Compose services reported healthy.
   The gVisor and Docker application relocation gates remain open.
+- On the rebuilt broker, signed in through Edge and cancelled a real Python
+  execution while the admin history showed PROVISIONING. The cancel endpoint
+  returned 202, Edge displayed CANCELLED, and MySQL confirmed the cancelled
+  execution no longer held an admission slot. A fresh Python job returned 42.
+  The execution namespace held only its baseline ConfigMap and NetworkPolicy
+  after cleanup, and all six Kubernetes deployments were ready.
