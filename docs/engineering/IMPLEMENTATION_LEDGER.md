@@ -593,3 +593,17 @@ The Docker broker runs disposable language jobs on a trusted execution host.
   slot. The replacement became Ready and a new Python execution returned 42.
   No per-execution Jobs, Pods, ConfigMaps or policies remained. All eight
   Compose services reported healthy.
+
+### Job status polling
+
+- After observing the owned runner start, the broker follows Job status and
+  reads the Pod again on success to collect final timings and output. The
+  regression test reproduced two unnecessary Pod lists before the change
+  (fixture `d77fd44c16a8abd0`). After the change, isolated MySQL fixture
+  `ca027b21a10ca0cc` passed with zero Pod lists during those same active
+  polls. It also verified final runner timing, cancellation and cleanup.
+- Coordinator typecheck and image build passed. Rolled out the broker image
+  `desktop-job-poll` to Docker Desktop Kubernetes. Real C, Python and Java
+  jobs returned 42 and persisted runner lifetimes of 3,000, 5,000 and
+  1,000 ms respectively. Per-job resources were removed. All eight Compose
+  services were healthy.

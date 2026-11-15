@@ -158,18 +158,20 @@ export class KubernetesExecutionProvider {
           throw new Error('The Kubernetes Job exceeded its execution deadline.');
         }
         if(failure)throw new Error('Execution Job failed.');
-        const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
-        pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
-        const runner=pod?.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner');
-        // Pending/image-pulling Pods are still provisioning. A fast runner may
-        // already have terminated by the first poll; its start timestamp is evidence too.
-        const startedAt=runner?.state?.running?.startedAt??runner?.state?.terminated?.startedAt;
-        if(!runnerStarted&&Number.isFinite(Date.parse(startedAt))){
-          bounded.throwIfAborted();
-          await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
-          runnerStarted=true;
+        const succeeded=state.status?.succeeded===1;
+        // Once the runner starts, follow the Job until fresh Pod data is needed for results.
+        if(!runnerStarted||succeeded){
+          const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
+          pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
+          const runner=pod?.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner');
+          const startedAt=runner?.state?.running?.startedAt??runner?.state?.terminated?.startedAt;
+          if(!runnerStarted&&Number.isFinite(Date.parse(startedAt))){
+            bounded.throwIfAborted();
+            await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
+            runnerStarted=true;
+          }
         }
-        if(state.status?.succeeded===1){
+        if(succeeded){
           if(!runnerStarted)throw new Error('Execution runner start evidence is missing.');
           break;
         }

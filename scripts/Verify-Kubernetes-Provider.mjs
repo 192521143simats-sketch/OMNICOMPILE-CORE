@@ -15,6 +15,7 @@ let failureReason;
 let runnerState={terminated:{startedAt:"2026-01-01T00:00:00Z",finishedAt:"2026-01-01T00:00:03Z"}};
 let observedJob;
 let jobReads=0;
+let podReads=0;
 const failedDeletes=new Set();
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
@@ -35,6 +36,7 @@ const api=async(method,path,body)=>{
     return {};
   }
   if(path.includes('/pods?')){
+    podReads++;
     const id=decodeURIComponent(path.split('=').at(-1)).split('=').at(-1);
     return {items:[{metadata:{name:'foreign-pod',ownerReferences:[{kind:'Job',uid:'foreign'}]},status:{containerStatuses:[{name:'runner',state:{running:{startedAt:'2026-01-01T00:00:00Z'}}}]}},{metadata:{name:'test-pod',ownerReferences:[{kind:'Job',uid:jobs.get('omni-'+id)?.metadata.uid}]},status:{containerStatuses:[{name:'runner',state:runnerState}]}}]};
   }
@@ -104,9 +106,15 @@ try{
   runnerState={running:{startedAt:'2026-01-01T00:00:00Z'}};
   for(let i=0;i<100&&(await provider.list()).find(row=>row.id===observedJob).state!=='RUNNING';i++)await delay(20);
   assert.equal((await provider.list()).find(row=>row.id===observedJob).state,'RUNNING');
-  assert.equal(await provider.cancel(observedJob),true);
-  assert.equal((await pendingSettled)[0].status,'rejected');
+  const activePodReads=podReads;
+  await waitForJobReads(jobReads);
+  assert.equal(podReads,activePodReads,'An active runner should be tracked through its Job status');
+  runnerState={terminated:{startedAt:'2026-01-01T00:00:00Z',finishedAt:'2026-01-01T00:00:03Z'}};
+  complete=true;
+  assert.deepEqual((await pendingSettled)[0],{status:'fulfilled',value:{stdout:'fixture'}});
+  assert.equal((await provider.list()).find(row=>row.id===observedJob).runnerDurationMs,3000);
   await provider.reconcile();
+  complete=false;
   runnerState={waiting:{reason:'ImagePullBackOff'}};
   pending=start();
   pendingSettled=Promise.allSettled([pending]);
