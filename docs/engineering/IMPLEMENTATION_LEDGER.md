@@ -150,6 +150,13 @@ staging. The local runtime evidence does not authorize public workloads.
   its stored chunks removed. C and Java worker rollouts and the forced
   restart during normal finalization still require live coverage.
 
+- On 2026-11-16, the two receipt and finalization unit suites passed all
+  four tests. The Docker Desktop data VHDX was detached and DiskPart
+  compaction exited successfully. The VHDX remained 41,406,169,088 bytes,
+  and D: remained at 10,317,824 bytes free. Docker remained stopped after
+  earlier startup attempts stalled under disk pressure. The live C and
+  Java worker receipt checks and the forced restart test remain pending.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.
