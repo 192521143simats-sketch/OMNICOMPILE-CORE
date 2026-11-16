@@ -7,7 +7,7 @@ import websocket from "@fastify/websocket";
 import type {WebSocket} from "ws";
 import {z} from "zod";
 import {encodeProtocolMessage,parseWorkerMessage,PROTOCOL_VERSION,ProtocolCompatibilityError,testTaskSchema,networkPolicySchema,portableWorkloadCatalogue,type CoordinatorMessage} from "@omnicompile/contracts";
-import {requestExecutionStatus,requestDockerCapabilities,selectNode,type ExecutionMode} from "@omnicompile/orchestration";
+import {acknowledgeExecutionReceipt,requestExecutionStatus,requestDockerCapabilities,selectNode,workerExecutionReceiptId,type ExecutionMode} from "@omnicompile/orchestration";
 import {selectExecutionNetwork} from './network-placement.js';
 import {metricPlatforms} from './compiler-metrics.js';
 import {aggregateCOptimization,compileCExecutable,compileCSource,lowerCToIR,type COptimizationCandidate} from "@omnicompile/compiler-c";
@@ -325,8 +325,30 @@ app.get("/ws/worker",{websocket:true},(socket,request)=>{const authorization=req
     try{
       if(pendingJob&&terminalJobStatuses.includes((await store.getCompilationJob(pendingJob.id))?.status??"")){controller.abort();return;}
       if(batch)await aggregateCompletedBatch(taskId);
-      else if(job){const [rows]=await store.pool.execute<any[]>("SELECT r.result_json result,r.execution_time_ms executionTimeMs FROM results r JOIN tasks t ON t.id=r.task_id AND t.attempt=r.attempt WHERE t.id=? AND t.status='COMPLETED'",[taskId]);
-        if(rows[0])try{await finalizeNativeJob(job.id,typeof rows[0].result==="string"?JSON.parse(rows[0].result):rows[0].result,Number(rows[0].executionTimeMs));}catch(cause){if(isPendingExecutionReceipt(cause))return;if(transientDatabaseFailure(cause))throw cause;await failJob(job.id,cause);}
+      else if(job){
+        const [[accepted]]=await store.pool.execute<any[]>(`SELECT r.result_json result,r.execution_time_ms executionTimeMs,
+          r.attempt,t.kind,e.execution_location executionLocation FROM results r
+          JOIN tasks t ON t.id=r.task_id AND t.attempt=r.attempt
+          LEFT JOIN nodes n ON n.id=r.node_id LEFT JOIN network_enrollments e ON e.id=n.enrollment_id
+          WHERE t.id=? AND t.status='COMPLETED'`,[taskId]);
+        if(accepted){
+          try{
+            const result=typeof accepted.result==="string"?JSON.parse(accepted.result):accepted.result;
+            await finalizeNativeJob(job.id,result,Number(accepted.executionTimeMs));
+          }catch(cause){
+            if(isPendingExecutionReceipt(cause))return;
+            if(transientDatabaseFailure(cause))throw cause;
+            await failJob(job.id,cause);
+            return;
+          }
+          if(process.env.OMNICOMPILE_EXECUTION_RECEIPTS==="1"&&accepted.executionLocation==="CLOUD"&&
+             ["C_COMPILE","PYTHON_COMPILE","JAVA_COMPILE"].includes(accepted.kind)){
+            const key=workerExecutionReceiptId(taskId,Number(accepted.attempt),accepted.kind.toLowerCase());
+            await acknowledgeExecutionReceipt(key).catch(cause=>{
+              if(cause?.statusCode!==404)logBackgroundFailure(cause);
+            });
+          }
+        }
       }
     }finally{finalizingJobs.delete(key);if(pendingJob&&jobAbortControllers.get(pendingJob.id)===controller)jobAbortControllers.delete(pendingJob.id);}
   }

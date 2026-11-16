@@ -138,6 +138,18 @@ staging. The local runtime evidence does not authorize public workloads.
   and zero retained chunks. Worker compilation receipts and an end-to-end
   forced restart during normal finalization remain open.
 
+- Cloud compiler workers now bind receipt IDs to the task, attempt and
+  operation. After independent verification and artifact commit, the
+  coordinator acknowledges the receipt for the accepted result from the
+  enrolled cloud worker. Failed or rejected attempts leave receipts to expire.
+  The native Kubernetes overlay enables the feature.
+- Sixty targeted tests and typechecks for coordinator, worker, Windows
+  worker and orchestration passed. On Docker Desktop Kubernetes, Python
+  job JOB-NDKJG returned 42 and delivered authenticated bytecode. MySQL
+  confirmed the accepted cloud attempt's receipt was acknowledged and
+  its stored chunks removed. C and Java worker rollouts and the forced
+  restart during normal finalization still require live coverage.
+
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
 - Deployment owns non-deploying CI verification and OCI release gates.

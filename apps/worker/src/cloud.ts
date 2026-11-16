@@ -2,7 +2,7 @@ import {readFile} from 'node:fs/promises';
 import {NativeWorkerSession} from './session.js';
 import {profile} from './profiler.js';
 import {languageProfile, type WorkerLanguage} from './cloud-profile.js';
-import {requestDockerJob} from '@omnicompile/orchestration';
+import {requestDockerJob,workerExecutionReceiptId} from '@omnicompile/orchestration';
 import {runTaskProcess} from './task-process-controller.js';
 
 const coordinator = process.env.COORDINATOR_URL;
@@ -19,10 +19,13 @@ const session = new NativeWorkerSession({
   coordinator,
   credential,
   profile: async () => detected,
-  execute:async(payload,options={})=>{
+  execute:async(payload,options)=>{
     if(process.env.OMNICOMPILE_EXECUTOR_URL&&payload.operation.endsWith('_compile')){
       options.onStarted?.();
-      return requestDockerJob<Awaited<ReturnType<typeof runTaskProcess>>>({kind:'task',language:language as WorkerLanguage,payload},options.signal);
+      const {taskId,attempt}=options.assignment;
+      const requestId=process.env.OMNICOMPILE_EXECUTION_RECEIPTS==='1'
+        ? workerExecutionReceiptId(taskId,attempt,payload.operation) : undefined;
+      return requestDockerJob<Awaited<ReturnType<typeof runTaskProcess>>>({kind:'task',language:language as WorkerLanguage,payload},options.signal,requestId);
     }
     return runTaskProcess(payload,options);
   },

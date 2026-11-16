@@ -36,6 +36,9 @@ spec:
         - name: OMNICOMPILE_EXECUTOR_URL
           valueFrom:
             configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTION_RECEIPTS
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTION_RECEIPTS, optional: true}
         - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
           value: /run/executor/token
         - name: OMNICOMPILE_COMPILER_LANGUAGE
@@ -163,6 +166,9 @@ spec:
         - name: OMNICOMPILE_EXECUTOR_URL
           valueFrom:
             configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTION_RECEIPTS
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTION_RECEIPTS, optional: true}
         - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
           value: /run/executor/token
         - name: OMNICOMPILE_COMPILER_LANGUAGE
@@ -290,6 +296,9 @@ spec:
         - name: OMNICOMPILE_EXECUTOR_URL
           valueFrom:
             configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTOR_URL}
+        - name: OMNICOMPILE_EXECUTION_RECEIPTS
+          valueFrom:
+            configMapKeyRef: {name: omnicompile-config, key: OMNICOMPILE_EXECUTION_RECEIPTS, optional: true}
         - name: OMNICOMPILE_EXECUTOR_TOKEN_FILE
           value: /run/executor/token
         - name: OMNICOMPILE_COMPILER_LANGUAGE
