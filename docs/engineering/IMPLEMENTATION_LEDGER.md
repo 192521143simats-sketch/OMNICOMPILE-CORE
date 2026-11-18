@@ -829,3 +829,9 @@ staging. The local runtime evidence does not authorize public workloads.
 - Added assertions to the existing isolated SQL provider verifier for idle/full/cleanup-held occupancy and unauthorized access. Those fixture assertions have not yet run; live rollout and rendered UI verification of the new field remain pending.
 
 - Resumption reran the 11 focused broker/UI tests and coordinator/web typechecks successfully. The interrupted three-job resource report was not present, so no completion is asserted. A fresh Docker container-list call returned HTTP 500; service health requires recovery and revalidation before live acceptance.
+
+### Post-reboot Docker recovery
+
+- Restarted existing Compose services using existing images and persistent volumes. Compose wait completed successfully and all eight services reported healthy.
+- Managed desktop-control-plane is dead/marked for removal; start is refused and read-only docker cp fails with RWLayer unexpectedly nil. The retained /var volume contains the etcd database (16,801,792 bytes), local-path storage and kubelet PKI. A read-only helper inspected existence only. No persistent volumes or dead node were removed.
+- Cluster control-plane filesystem recovery is unresolved. Existing K: verified disk copy remains available. Local Kubernetes acceptance and live capacity rollout remain blocked; no cloud action occurred.
