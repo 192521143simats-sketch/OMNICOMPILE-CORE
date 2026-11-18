@@ -4,10 +4,11 @@ import type {DockerJob} from './docker-executor-schema.js';
 import type {ClusterApi} from './kubernetes-execution.js';
 import {
   executionLabel,executionTimeoutSeconds,prewarmIdleSeconds,prewarmInputName,prewarmLabel,
-  prewarmLifetimeSeconds,prewarmedManifest,
+  prewarmLifetimeSeconds,prewarmedManifest,runnerCpuMillis,runnerMemoryMiB,
 } from './kubernetes-manifests.js';
 
 type Language=DockerJob['language'];
+export type PrewarmPolicy='fixed'|'demand';
 type Slot=RowDataPacket&{
   language:Language;pod_name:string;pod_uid:string|null;image:string;runtime_class:string;
   state:'PROVISIONING'|'IDLE'|'CLAIMED'|'RETIRING';execution_id:string|null;idle_live:number;
@@ -15,11 +16,50 @@ type Slot=RowDataPacket&{
 export type ClaimedPod={name:string;uid:string;language:Language};
 const languages=['c','python','java'] as const;
 const podLabel='omnicompile.io/prewarm-pod';
+const demandWindowSeconds=300;
+const quotaName='execution-capacity';
+const quotaCosts={
+  pods:1n,'requests.cpu':BigInt(runnerCpuMillis),'requests.memory':BigInt(runnerMemoryMiB)*1024n**2n,
+};
+const memoryUnits:ReadonlyMap<string,bigint>=new Map([
+  ['',1n],['k',1000n],['M',1000n**2n],['G',1000n**3n],['T',1000n**4n],['P',1000n**5n],['E',1000n**6n],
+  ['Ki',1024n],['Mi',1024n**2n],['Gi',1024n**3n],['Ti',1024n**4n],['Pi',1024n**5n],['Ei',1024n**6n],
+]);
+
+// Use integer millicores and bytes for exact threshold comparisons. Unsupported
+// quantity forms leave the allocation unknown and prevent new warm Pods.
+function quotaQuantity(resource:keyof typeof quotaCosts,value:unknown):bigint|undefined{
+  if(typeof value!=='string')return undefined;
+  const match=/^(\d{1,19})([A-Za-z]{0,2})$/.exec(value);
+  if(!match||match[0]!==value)return undefined;
+  const suffix=match[2]!;
+  let multiplier:bigint|undefined;
+  if(resource==='requests.memory')multiplier=memoryUnits.get(suffix);
+  else if(!suffix)multiplier=resource==='requests.cpu'?1000n:1n;
+  else if(resource==='requests.cpu'&&suffix==='m')multiplier=1n;
+  return multiplier===undefined?undefined:BigInt(match[1]!)*multiplier;
+}
+
+function quotaPodBudget(quota:any,namespace:string):number{
+  if(quota?.kind!=='ResourceQuota'||quota.apiVersion!=='v1'||quota.metadata?.name!==quotaName||
+    quota.metadata.namespace!==namespace||quota.spec?.scopes?.length||quota.spec?.scopeSelector)return 0;
+  let budget=BigInt(languages.length);
+  for(const resource of Object.keys(quotaCosts) as (keyof typeof quotaCosts)[]){
+    const hard=quotaQuantity(resource,quota.status?.hard?.[resource]);
+    const specified=quotaQuantity(resource,quota.spec?.hard?.[resource]);
+    const used=quotaQuantity(resource,quota.status?.used?.[resource]);
+    if(hard===undefined||specified!==hard||used===undefined||used>=hard)return 0;
+    const available=(hard-used)/quotaCosts[resource];
+    if(available<budget)budget=available;
+  }
+  return Number(budget);
+}
 
 export class KubernetesPrewarmPool {
   private orphanCursor='';
   constructor(private readonly pool:Pool,private readonly api:ClusterApi,private readonly core:string,
-    private readonly runtime:string,private readonly images:Record<Language,string>,private readonly enabled:boolean){}
+    private readonly runtime:string,private readonly images:Record<Language,string>,private readonly enabled:boolean,
+    private readonly policy:PrewarmPolicy='fixed'){}
 
   private podPath(name:string){return this.core+'/pods/'+name;}
 
@@ -162,14 +202,35 @@ export class KubernetesPrewarmPool {
   async reconcile(){
     // Keep the last configured pool clean even after the feature has been disabled.
     const [slots]=await this.pool.execute<Slot[]>(`SELECT *,
-      idle_expires_at>UTC_TIMESTAMP(3) AS idle_live FROM kubernetes_prewarm_slots WHERE execution_id IS NULL`);
-    const results=await Promise.allSettled(languages.map(async language=>{
-      const slot=slots.find(row=>row.language===language);
-      if(slot)await this.reconcileSlot(slot);
-      else if(this.enabled)await this.provision(language);
-    }));
+      idle_expires_at>UTC_TIMESTAMP(3) AS idle_live FROM kubernetes_prewarm_slots`);
+    const desired=this.enabled?await this.desiredLanguages():new Set<Language>();
+    const missing=languages.filter(language=>desired.has(language)&&!slots.some(row=>row.language===language));
+    const budget=this.policy==='demand'&&missing.length>0?await this.availablePodBudget():missing.length;
+    const provisions=missing.slice(0,budget).map(language=>this.provision(language));
+    const existing=slots.filter(slot=>slot.execution_id===null&&slot.state!=='CLAIMED');
+    const results=await Promise.allSettled([
+      ...provisions,...existing.map(slot=>this.reconcileSlot(slot,desired.has(slot.language))),
+    ]);
     await this.removeExpiredOrphans();
     if(results.some(result=>result.status==='rejected'))throw new Error('Prewarmed pool reconciliation failed.');
+  }
+
+  private async desiredLanguages():Promise<Set<Language>>{
+    if(this.policy==='fixed')return new Set(languages);
+    // UNION can use the created_at range and the unique slot index independently.
+    const [rows]=await this.pool.execute<(RowDataPacket&{warm_demand:Language})[]>(`SELECT language AS warm_demand FROM (
+      SELECT language FROM kubernetes_executions WHERE created_at>=TIMESTAMPADD(SECOND,-?,CURRENT_TIMESTAMP(3))
+      UNION DISTINCT
+      SELECT language FROM kubernetes_executions WHERE slot IS NOT NULL AND expires_at>UTC_TIMESTAMP(3)
+        AND finished_at IS NULL
+    ) AS current_demand`,[demandWindowSeconds]);
+    return new Set(rows.map(row=>row.warm_demand));
+  }
+
+  private async availablePodBudget(){
+    const quota=await this.api('GET',this.core+'/resourcequotas/'+quotaName,undefined,AbortSignal.timeout(3500))
+      .catch(()=>null);
+    return quotaPodBudget(quota,this.core.split('/').at(-1)!);
   }
 
   private async removeExpiredOrphans(){
@@ -208,7 +269,7 @@ export class KubernetesPrewarmPool {
     if(!slot)await this.deleteResource(this.podPath(name),uid,signal);
   }
 
-  private async reconcileSlot(slot:Slot){
+  private async reconcileSlot(slot:Slot,desired:boolean){
     if(slot.state==='RETIRING'){await this.remove(slot);return;}
     // A reserved name may still be in an in-flight create request from another broker.
     if(slot.state==='PROVISIONING'&&slot.idle_live){
@@ -218,7 +279,7 @@ export class KubernetesPrewarmPool {
       }
       return;
     }
-    if(slot.state==='IDLE'&&slot.idle_live&&this.enabled&&
+    if(slot.state==='IDLE'&&slot.idle_live&&desired&&
       slot.image===this.images[slot.language]&&slot.runtime_class===this.runtime){
       const pod=await this.api('GET',this.podPath(slot.pod_name));
       if(this.matches(slot,pod)&&!pod.metadata.deletionTimestamp&&!['Failed','Succeeded'].includes(pod.status?.phase))return;

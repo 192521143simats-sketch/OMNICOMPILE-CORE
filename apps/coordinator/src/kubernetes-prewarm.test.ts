@@ -32,6 +32,11 @@ const name='omni-warm-12345678-0000-4000-a000-000000000003';
 const fixtureJob:DockerJob={kind:'task',language:'c',payload:{operation:'c_compile',sourceName:'main.c',source:'int main(void){return 0;}'}};
 
 function fixture(){
+  const now=Date.now();
+  const demandRows:{language:string;createdAt:number;active:boolean}[]=[];
+  const quotaHard={pods:'5','requests.cpu':'1250m','requests.memory':'1280Mi'};
+  let quota:any={apiVersion:'v1',kind:'ResourceQuota',metadata:{name:'execution-capacity',namespace:'fixtures'},
+    spec:{hard:quotaHard},status:{hard:quotaHard,used:{pods:'1','requests.cpu':'250m','requests.memory':'256Mi'}}};
   let pod:any={
     ...prewarmedManifest(name,'c',image,runtime),
     metadata:{name,uid:'pod-uid',labels:{[prewarmLabel]:'c'},creationTimestamp:new Date().toISOString()},
@@ -59,6 +64,10 @@ function fixture(){
   };
   const execute=vi.fn(async(sql:string,params:any[]=[])=>{
     const affected=(affectedRows=1)=>[{affectedRows}];
+    if(sql.includes('AS warm_demand')){
+      const cutoff=now-params[0]*1000;
+      return [demandRows.filter(row=>row.createdAt>=cutoff||row.active).map(row=>({warm_demand:row.language}))];
+    }
     if(sql.includes('FROM kubernetes_prewarm_slots')){
       if(sql.includes('DELETE FROM')){
         if(slot?.language===params[0]&&slot?.pod_name===params[1]&&slot?.state===params[2])slot=null;
@@ -67,7 +76,7 @@ function fixture(){
       if(sql.includes('WHERE pod_name=?'))return [slot?.pod_name===params[0]?[{...slot}]:[]];
       if(sql.includes('WHERE execution_id=?'))return [slot?.execution_id===params[0]?[{...slot}]:[]];
       if(sql.includes("state='IDLE'"))return [slot?.state==='IDLE'&&slot.idle_live?[{...slot}]:[]];
-      return [slot&&!slot.execution_id?[{...slot}]:[]];
+      return [slot?[{...slot}]:[]];
     }
     if(sql.includes('UPDATE kubernetes_prewarm_slots AS p')){
       if(slot?.state!=='IDLE'||!slot.idle_live)return affected(0);
@@ -80,6 +89,8 @@ function fixture(){
       slot={...slot,state:'RETIRING'};
       return affected();
     }
+    if(sql.includes('INSERT INTO kubernetes_prewarm_slots'))return affected();
+    if(sql.includes("SET state='IDLE',pod_uid=?"))return affected();
     if(sql.includes('INSERT INTO kubernetes_executions')){
       latestExecution=params[0];
       executions.set(latestExecution,{id:latestExecution,request_id:params[5],request_digest:params[6],state:'PROVISIONING',job_uid:null});
@@ -134,6 +145,11 @@ function fixture(){
       commit:async()=>{},rollback:async()=>{},release:()=>{}}),
   } as unknown as Pool;
   const api=vi.fn(async(method:string,path:string,body?:any)=>{
+    if(method==='GET'&&path===core+'/resourcequotas/execution-capacity'){
+      if(quota instanceof Error)throw quota;
+      return quota;
+    }
+    if(method==='POST'&&path===core+'/pods')return {...body,metadata:{...body.metadata,uid:'new-pod-uid'}};
     if(path.includes('/log?'))return '{"ok":true,"result":{"compiled":true}}';
     if(path.includes('/configmaps?')){
       const offset=Number(new URLSearchParams(path.split('?')[1]).get('continue')??'0');
@@ -180,12 +196,17 @@ function fixture(){
     throw Error('Unexpected API: '+method+' '+path);
   });
   const provider=(enabled=true)=>new KubernetesExecutionProvider(db,api,'fixtures',runtime,images,enabled);
-  const pool=(enabled=true)=>new KubernetesPrewarmPool(db,api,core,runtime,images,enabled);
+  const pool=(enabled=true,policy:'fixed'|'demand'='fixed')=>new KubernetesPrewarmPool(db,api,core,runtime,images,enabled,policy);
   return {
     api,execute,provider,pool,maps,
     get pod(){return pod;}, get slot(){return slot;}, get execution(){return executions.get(latestExecution);},
     get executionId(){return latestExecution;},
     forgetSlot(){slot=null;},
+    markProvisioning(){slot={...slot,state:'PROVISIONING'};},
+    demand(language:string,ageSeconds=0,active=false){demandRows.push({language,createdAt:now-ageSeconds*1000,active});},
+    setQuotaUsed(used:Record<string,string>){quota.status.used=used;},
+    setQuota(value:unknown){quota=value;},
+    setQuotaStatusHard(hard:Record<string,string>){quota.status.hard=hard;},
     expire(){slot.idle_live=0;}, expireLease(){cleanupLeaseExpired=true;},
     failDelete(){rejectDelete=true;}, restoreDelete(){rejectDelete=false;},
     failCommit(){rejectCommit=true;}, failClaimReply(){rejectClaimReply=true;},
@@ -370,5 +391,106 @@ describe('Prewarm cleanup pagination',()=>{
     });
     await f.pool(false).reconcile();
     expect(removed).toEqual(pods.map(pod=>pod.metadata.uid));
+  });
+});
+
+describe('Quota-aware prewarm reconciliation',()=>{
+  function creates(f:ReturnType<typeof fixture>){
+    return f.api.mock.calls.filter(([method,path])=>method==='POST'&&path===core+'/pods')
+      .map(([, ,body])=>body.metadata.labels[prewarmLabel]);
+  }
+
+  it('provisions for recent executions and older active reservations within a shared pass budget',async()=>{
+    const f=fixture();
+    f.forgetSlot();
+    f.demand('c',20);
+    f.demand('python',301,true);
+    f.demand('java',301);
+    f.setQuotaUsed({pods:'3','requests.cpu':'750m','requests.memory':'768Mi'});
+    await f.pool(true,'demand').reconcile();
+    expect(creates(f)).toEqual(['c','python']);
+
+    f.api.mockClear();
+    f.demand('java',1);
+    f.setQuotaUsed({pods:'4','requests.cpu':'1','requests.memory':'1Gi'});
+    await f.pool(true,'demand').reconcile();
+    expect(creates(f)).toEqual(['c']);
+  });
+
+  it.each([
+    {pods:'5','requests.cpu':'0','requests.memory':'0'},
+    {pods:'0','requests.cpu':'1001m','requests.memory':'0'},
+    {pods:'0','requests.cpu':'0','requests.memory':'1048577Ki'},
+    {pods:'0','requests.cpu':'0','requests.memory':'100garbage'},
+  ])('skips new Pods when quota is exhausted or invalid %o',async used=>{
+    const f=fixture();
+    f.forgetSlot();
+    f.demand('c');
+    f.setQuotaUsed(used);
+    await f.pool(true,'demand').reconcile();
+    expect(creates(f)).toEqual([]);
+  });
+
+  it.each([null,new Error('quota forbidden')])('keeps cold execution available when quota cannot be read',async quota=>{
+    const f=fixture();
+    f.forgetSlot();
+    f.demand('c');
+    f.setQuota(quota);
+    await f.pool(true,'demand').reconcile();
+    expect(creates(f)).toEqual([]);
+    await expect(f.provider(false).run(fixtureJob,freshSignal())).resolves.toEqual({compiled:true});
+  });
+
+  it('skips new Pods when the quota controller has not reconciled the latest hard limits',async()=>{
+    const f=fixture();
+    f.forgetSlot();
+    f.demand('c');
+    f.setQuotaStatusHard({pods:'4','requests.cpu':'1250m','requests.memory':'1280Mi'});
+    await f.pool(true,'demand').reconcile();
+    expect(creates(f)).toEqual([]);
+  });
+
+  it('keeps an idle Pod for active demand when quota becomes unavailable',async()=>{
+    const f=fixture();
+    f.demand('c',301,true);
+    f.demand('java');
+    f.setQuota(null);
+    await f.pool(true,'demand').reconcile();
+    expect(f.slot).toMatchObject({state:'IDLE'});
+    expect(f.pod).not.toBeNull();
+    expect(creates(f)).toEqual([]);
+  });
+
+  it('retires a pristine idle Pod after its demand window with no replacement',async()=>{
+    const f=fixture();
+    f.demand('c',301);
+    await f.pool(true,'demand').reconcile();
+    expect(f.slot).toBeNull();
+    expect(f.pod).toBeNull();
+    expect(creates(f)).toEqual([]);
+  });
+
+  it('protects claimed Pods and provisioning leases when scaling to zero',async()=>{
+    const claimed=fixture();
+    await claimed.pool().claim('one','c',freshSignal());
+    await claimed.pool(true,'demand').reconcile();
+    expect(claimed.slot).toMatchObject({state:'CLAIMED'});
+    expect(claimed.pod).not.toBeNull();
+
+    const pending=fixture();
+    pending.markProvisioning();
+    const get=pending.api.getMockImplementation()!;
+    pending.api.mockImplementation((method,path,body)=>path===core+'/pods/'+name?Promise.resolve(null):get(method,path,body));
+    await pending.pool(true,'demand').reconcile();
+    expect(pending.slot).toMatchObject({state:'PROVISIONING'});
+    expect(pending.api.mock.calls.some(([method])=>method==='DELETE')).toBe(false);
+  });
+
+  it('keeps the fixed policy independent of quota and demand',async()=>{
+    const f=fixture();
+    f.forgetSlot();
+    await f.pool().reconcile();
+    expect(creates(f)).toEqual(['c','python','java']);
+    expect(f.api.mock.calls.some(([,path])=>path.includes('/resourcequotas/'))).toBe(false);
   });
 });

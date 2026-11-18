@@ -188,7 +188,8 @@ async function main(){
     name:process.env.DB_NAME!,user:process.env.DB_USER!,password:process.env.DB_PASSWORD!}):undefined;
   const kubernetes=store&&api?new KubernetesExecutionProvider(store.pool,api,
     process.env.OMNICOMPILE_EXECUTION_NAMESPACE??'omnicompile-execution',
-    process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images,process.env.OMNICOMPILE_PREWARM_ENABLED==='1'):undefined;
+    process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images,process.env.OMNICOMPILE_PREWARM_ENABLED==='1',
+    process.env.OMNICOMPILE_PREWARM_POLICY==='demand'?'demand':'fixed'):undefined;
   const app=createDockerExecutor(token,undefined,{images,...(kubernetes?{kubernetes}:{})});
   if(kubernetes){
     const timer=setInterval(()=>void kubernetes.reconcile().catch(()=>console.error('Execution reconciliation failed.')),5000);

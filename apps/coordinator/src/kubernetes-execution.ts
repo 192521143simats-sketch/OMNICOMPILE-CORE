@@ -8,7 +8,7 @@ import type {DockerJob} from './docker-executor-schema.js';
 export type ClusterApi = (method:string,path:string,body?:unknown,signal?:AbortSignal)=>Promise<any>;
 const account='/var/run/secrets/kubernetes.io/serviceaccount';
 import {executionLabel as label,executionManifest,executionTimeoutSeconds} from './kubernetes-manifests.js';
-import {KubernetesPrewarmPool} from './kubernetes-prewarm.js';
+import {KubernetesPrewarmPool,type PrewarmPolicy} from './kubernetes-prewarm.js';
 export {executionManifest} from './kubernetes-manifests.js';
 const chunkBytes=600_000;
 const maxPayload=24_000_000;
@@ -73,11 +73,12 @@ export class KubernetesExecutionProvider {
   private reconciliation:Promise<void>|undefined;
   private readonly prewarm:KubernetesPrewarmPool;
   constructor(private readonly pool:Pool,private readonly api:ClusterApi,namespace:string,
-    private readonly runtime:string,private readonly images:Record<DockerJob['language'],string>,private readonly prewarmEnabled=false){
+    private readonly runtime:string,private readonly images:Record<DockerJob['language'],string>,private readonly prewarmEnabled=false,
+    prewarmPolicy:PrewarmPolicy='fixed'){
     if(!/^[a-z0-9][a-z0-9-]{0,62}$/.test(namespace))throw new Error('Invalid execution namespace.');
     this.jobs='/apis/batch/v1/namespaces/'+namespace+'/jobs';
     this.core='/api/v1/namespaces/'+namespace;
-    this.prewarm=new KubernetesPrewarmPool(pool,api,this.core,runtime,images,prewarmEnabled);
+    this.prewarm=new KubernetesPrewarmPool(pool,api,this.core,runtime,images,prewarmEnabled,prewarmPolicy);
     for(const image of Object.values(images))executionManifest(randomUUID(),image,runtime,1);
   }
 

@@ -34,6 +34,9 @@ function assertPoolChanges(baseline, rendered, enabled) {
     env.unshift({ name: prewarmFlag, value: enabled });
   }
 
+  env.splice(env.findIndex((variable) => variable.name === prewarmFlag) + 1, 0,
+    { name: 'OMNICOMPILE_PREWARM_POLICY', value: 'demand' });
+
   resource(expected, 'ResourceQuota', 'execution-capacity').spec.hard = {
     'count/jobs.batch': '2',
     'count/configmaps': '82',
@@ -46,6 +49,8 @@ function assertPoolChanges(baseline, rendered, enabled) {
   const { rules } = resource(expected, 'Role', 'execution-broker');
   rules.find((rule) => rule.resources.includes('configmaps')).verbs.push('list', 'delete');
   rules.find((rule) => rule.resources.includes('pods')).verbs.push('create', 'get', 'delete');
+
+  rules.push({ apiGroups: [''], resources: ['resourcequotas'], resourceNames: ['execution-capacity'], verbs: ['get'] });
 
   assert.deepEqual(rendered, expected);
 }

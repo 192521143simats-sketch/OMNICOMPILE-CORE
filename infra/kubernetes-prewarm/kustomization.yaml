@@ -35,6 +35,13 @@ patches:
     - op: add
       path: /rules/2/verbs/-
       value: delete
+    - op: add
+      path: /rules/-
+      value:
+        apiGroups: [""]
+        resources: [resourcequotas]
+        resourceNames: [execution-capacity]
+        verbs: [get]
 - target:
     kind: Deployment
     name: omnicompile-executor
@@ -51,3 +58,5 @@ patches:
               env:
                 - name: OMNICOMPILE_PREWARM_ENABLED
                   value: "1"
+                - name: OMNICOMPILE_PREWARM_POLICY
+                  value: demand

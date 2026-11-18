@@ -868,3 +868,11 @@ staging. The local runtime evidence does not authorize public workloads.
 - These are non-deploying configuration changes. Local cluster recovery, live prewarm acceptance, actual resource-correlated pool measurements and resource-aware autoscaling remain incomplete.
 
 - The previously pending full verify session completed with exit 0: workspace typechecks/builds passed, Vitest 448 passed with 12 skips across 74 files, and Node script tests 50/50 passed. This evidence precedes the optional demand-policy changes. All eight Compose services remained healthy on reinspection.
+
+### Demand-based, quota-bounded prewarm policy
+
+- Added opt-in demand policy using persisted executions from the preceding five minutes and active reservations. Standard overlays still disable prewarming; existing enabled deployments without the policy retain fixed targets. New enable/drain overlays select demand mode.
+- Provisioning requires validated namespace ResourceQuota headroom for Pod count, requested CPU and requested memory. Each pass budgets additions together; Kubernetes admission remains authoritative. Unknown quota readings prevent new warm Pods. This is allocation headroom, not measured device utilization or proof of schedulability.
+- Idle scale-down uses conditional retirement protecting concurrent claims and in-flight provisioning. Only named execution-capacity ResourceQuota GET permission was added. No runtime rollout or deployment occurred.
+- Independent review approved the eight changed files with no actionable findings. Implementer and reviewer each passed 25 focused prewarm tests; three rendered-overlay regressions and coordinator typecheck passed. Lead reran prewarm/input suites: 45 passed, one Windows symlink test skipped. Diff whitespace checks passed.
+- Rechecked all eight Compose services healthy. Preserved working VHDX still reports Attached=False; administrator mount output remains required. Live managed-cluster recovery, prewarm execution, demand scale-up/down, failure cleanup and timing acceptance remain unverified. Parts 6 and 7 are not sealed.

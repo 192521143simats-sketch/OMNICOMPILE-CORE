@@ -5,6 +5,8 @@ export const prewarmLabel='omnicompile.io/prewarm-language';
 export const prewarmLifetimeSeconds=240;
 export const prewarmIdleSeconds=60;
 export const executionTimeoutSeconds=112;
+export const runnerCpuMillis=250;
+export const runnerMemoryMiB=256;
 
 export function prewarmInputName(podName:string,index:number){
   return podName+'-'+(index===40?'commit':'chunk-'+String(index).padStart(2,'0'));
@@ -22,7 +24,7 @@ export function executionManifest(id:string,image:string,runtimeClassName:string
         terminationGracePeriodSeconds:2,securityContext:{runAsNonRoot:true,runAsUser:1000,runAsGroup:1000,fsGroup:1000,seccompProfile:{type:'RuntimeDefault'}},
         containers:[{name:'runner',image,command:['/bin/sh','-ec','cat /payload/* | node --import tsx apps/coordinator/src/compiler-job.ts'],
           securityContext:{readOnlyRootFilesystem:true,allowPrivilegeEscalation:false,capabilities:{drop:['ALL']}},
-          resources:{requests:{cpu:'250m',memory:'256Mi','ephemeral-storage':'128Mi'},limits:{cpu:'1',memory:'512Mi','ephemeral-storage':'256Mi'}},
+          resources:{requests:{cpu:runnerCpuMillis+'m',memory:runnerMemoryMiB+'Mi','ephemeral-storage':'128Mi'},limits:{cpu:'1',memory:'512Mi','ephemeral-storage':'256Mi'}},
           volumeMounts:[{name:'input',mountPath:'/payload',readOnly:true},{name:'tmp',mountPath:'/tmp'}]}],
         volumes:[{name:'tmp',emptyDir:{medium:'Memory',sizeLimit:'128Mi'}},
           {name:'input',projected:{sources:Array.from({length:count},(_,i)=>({configMap:{name:name+'-'+i,
