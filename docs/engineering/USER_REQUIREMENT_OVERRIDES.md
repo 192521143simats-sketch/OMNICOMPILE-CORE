@@ -94,3 +94,14 @@ Implementation: append-only MySQL migration 0003, existing NetworkService/admiss
 Previously hashed-only default tokens cannot be recovered. Migration supplies each existing network one fresh default link without changing users, enrolled worker credentials, IDs, jobs or artifacts. Admin retrieves that link after coordinator startup. Old unrecognized links show unavailable; existing single-use invitation API remains compatible but cannot bypass a revoked network admission gate. Historical invitation evidence and frozen migrations 0001/0002 are not rewritten.
 
 This is a bounded user-directed admission change, not permission to redesign compilers, authentication, worker protocols, dashboards or deployment.
+
+## 2026-11-18 — local rebuild and frontend name
+
+The user authorizes rebuilding and deploying Kubernetes locally in Docker
+Desktop, preserving all Docker, MySQL and artifact data. No public backend or
+cloud Kubernetes deployment is authorized. The product name remains OmniCompile
+Core; the approved hosting name is omnicompilecore. Domain purchase is not
+authorized. Free Vercel frontend hosting is approved, subject to verifying the
+free plan, address availability and a functioning backend integration. A Vercel
+publication is distinct from local Kubernetes acceptance; no public availability
+or developer-PC independence may be claimed from local tests.

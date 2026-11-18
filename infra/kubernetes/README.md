@@ -164,3 +164,22 @@ For cloud preparation, use the native overlay with the target cluster's
 sandbox RuntimeClass, registry digests, TLS ingress, persistent database
 storage, and private object storage. Keep the local overlay on the
 docker-desktop context.
+
+### Live local compiler acceptance
+
+After the Desktop node is Ready, the application is rolled out and its cloud
+workers are enrolled, leave host port 15173 unused and run from the repository
+root with Docker Desktop's kubectl on PATH:
+
+```sh
+node scripts/Verify-Local-Kubernetes-Compilers.mjs --run --context docker-desktop --base http://127.0.0.1:15173
+```
+
+The runner owns and cleans up its port-forward, creates a fresh user and three
+CLOUD_ONLY jobs, checks real C/Python/Java execution output and authenticated
+artifact downloads, and retains those new records. It does not delete existing
+data. Its loopback/context/Ready guards run before HTTP writes. This is an
+opt-in live test, not a deployment command. Passing CLOUD placement does not
+independently establish the broker provider: correlate actual execution Jobs,
+receipts and database records separately. Admin UI, restart recovery, cancellation
+and live prewarm acceptance remain separate tests.
