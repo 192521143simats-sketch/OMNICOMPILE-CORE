@@ -3,7 +3,7 @@ import {spawn} from 'node:child_process';
 import {randomUUID,timingSafeEqual} from 'node:crypto';
 import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
-import {KubernetesExecutionProvider,inClusterApi} from './kubernetes-execution.js';
+import {KubernetesExecutionProvider,fixedExecutionLimit,inClusterApi} from './kubernetes-execution.js';
 import {Store} from './database.js';
 import {dockerJobSchema,type DockerJob} from './docker-executor-schema.js';
 
@@ -121,7 +121,12 @@ export function createDockerExecutor(
   });
   app.get('/executions',{onRequest:authenticate},async(_request,reply)=>{
     reply.header('Cache-Control','no-store');
-    return {provider:kubernetes?'kubernetes':'docker',items:kubernetes?await kubernetes.list():[]};
+    try{
+      const [busy,items]=kubernetes?await Promise.all([kubernetes.countOccupiedSlots(),kubernetes.list()]):[active.size,[]];
+      return {provider:kubernetes?'kubernetes':'docker',items,capacity:{busy,limit:fixedExecutionLimit}};
+    }catch{
+      return reply.code(503).send({error:{code:'EXECUTIONS_UNAVAILABLE',message:'Execution history is unavailable.'}});
+    }
   });
   app.post('/executions/:id/cancel',{onRequest:authenticate},async(request,reply)=>{
     const id=(request.params as {id:string}).id;
@@ -157,7 +162,7 @@ export function createDockerExecutor(
       return reply.code(400).send({error:{code:'INVALID_EXECUTION_REQUEST_ID',message:'Execution request ID must be a UUID.'}});
     }
     if(requestId&&!kubernetes)return reply.code(422).send({error:{code:'EXECUTION_RECEIPTS_UNSUPPORTED',message:'This provider does not support execution result receipts.'}});
-    if(active.size>=2)return reply.code(429).send({error:{code:'EXECUTOR_BUSY',message:'The execution service is at capacity.'}});
+    if(active.size>=fixedExecutionLimit)return reply.code(429).send({error:{code:'EXECUTOR_BUSY',message:'The execution service is at capacity.'}});
     const abort=new AbortController();active.add(abort);
     const timer=setTimeout(()=>abort.abort(),120_000);
     const disconnected=()=>{if(!reply.raw.writableEnded)abort.abort();};reply.raw.once('close',disconnected);

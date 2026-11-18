@@ -1,4 +1,6 @@
-import {describe,it,expect} from 'vitest';
+import {describe,it,expect,vi} from 'vitest';
+import type {Pool} from 'mysql2/promise';
+import {KubernetesExecutionProvider} from './kubernetes-execution.js';
 import {createDockerExecutor,resolveToolchainImages,runDockerJob} from './docker-executor.js';
 import {dockerJobSchema,type DockerJob} from './docker-executor-schema.js';
 
@@ -101,9 +103,49 @@ describe('Docker execution broker boundary',()=>{
     const first=app.inject(request).then(result=>result),second=app.inject(request).then(result=>result);
     try{
       await admission;
+      const full=await app.inject({url:'/executions',headers:request.headers});
+      expect(full.json()).toEqual({provider:'docker',items:[],capacity:{busy:2,limit:2}});
       expect(releases).toHaveLength(2);
       expect((await app.inject(request)).statusCode).toBe(429);
+      for(const release of releases)release({});
+      await Promise.all([first,second]);
+      const idle=await app.inject({url:'/executions',headers:request.headers});
+      expect(idle.json()).toEqual({provider:'docker',items:[],capacity:{busy:0,limit:2}});
     }finally{for(const release of releases)release({});await Promise.all([first,second]);await app.close();}
+  });
+
+  it('reports SQL slot occupancy only to authenticated clients, including slots held for cleanup', async () => {
+    const cleanup = {id:'fixture-cleanup', state:'CLEANUP_PENDING', slot:1};
+    const completed = {id:'fixture-completed', state:'SUCCEEDED', slot:null};
+    const records = [cleanup, completed];
+    const query = vi.fn(async (sql: string) => {
+      if (/COUNT\(\*\).*FROM kubernetes_executions WHERE slot IS NOT NULL/is.test(sql)) {
+        return [[{busy: records.filter(row => row.slot !== null).length}]];
+      }
+      if (/ORDER BY created_at DESC,id DESC LIMIT 50/.test(sql)) return [records];
+      throw new Error('Unexpected SQL');
+    });
+    const image = `registry.example.test/omnicompile/toolchain@sha256:${'a'.repeat(64)}`;
+    const provider = new KubernetesExecutionProvider({query} as unknown as Pool, vi.fn(), 'fixtures', 'sandbox', {c:image, python:image, java:image});
+    const app = createDockerExecutor(token, undefined, {kubernetes:provider});
+    const headers = {authorization:`Bearer ${token}`};
+    try {
+      expect((await app.inject('/executions')).statusCode).toBe(401);
+      expect(query).not.toHaveBeenCalled();
+      const occupied = await app.inject({url:'/executions',headers});
+      expect(occupied.headers['cache-control']).toBe('no-store');
+      expect(occupied.json()).toMatchObject({provider:'kubernetes',capacity:{busy:1,limit:2},items:[{state:'CLEANUP_PENDING'},{state:'SUCCEEDED'}]});
+      query.mockImplementation(async sql => {
+        if (sql.includes('COUNT(*)')) throw new Error('Private database diagnostic');
+        return [records];
+      });
+      const unavailable = await app.inject({url:'/executions',headers});
+      expect(unavailable.statusCode).toBe(503);
+      expect(unavailable.body).not.toContain('Private database diagnostic');
+      expect(unavailable.json()).not.toHaveProperty('capacity');
+    } finally {
+      await app.close();
+    }
   });
 
   it('creates a fixed, secret-free language container and validates ownership before cleanup',async()=>{

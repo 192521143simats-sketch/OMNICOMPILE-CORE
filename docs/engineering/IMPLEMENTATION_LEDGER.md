@@ -821,3 +821,11 @@ staging. The local runtime evidence does not authorize public workloads.
 - Added --kubernetes-stats to sample real node-wide CPU nanocores and memory working-set bytes plus container readings restricted to omnicompile-execution. Node peaks are explicitly labeled; unavailable measurements remain NULL with valid/error counts. Samples retain source timestamp precision and reject impossible dates/times.
 - Kubectl reads have timeout/output bounds and run serially, with phase cleanup and failure isolation. Phase timing excludes draining an already-started resource read. Independent review approved after timestamp fixes; all 19 focused tests passed.
 - The actual local kubelet endpoint was inspected successfully; workload-correlated sampling and live saturation remain pending, along with prewarm/scaling policy acceptance.
+
+### Actual admission capacity in administration
+
+- The existing authenticated executions response now includes busy/limit from active Docker requests or all non-NULL Kubernetes SQL slots, including pending cleanup. One fixed limit drives admission and validation. Missing legacy readings remain unavailable and database failures return sanitized 503 responses.
+- The existing toolchain view refreshes capacity immediately and every ten seconds while visible, prevents overlapping reads and removes timers/listeners on unmount. Eleven focused broker/UI tests and workspace typechecks passed. Independent review found no blocking defects; a failed cancellation temporarily hides the last reading until the next successful poll.
+- Added assertions to the existing isolated SQL provider verifier for idle/full/cleanup-held occupancy and unauthorized access. Those fixture assertions have not yet run; live rollout and rendered UI verification of the new field remain pending.
+
+- Resumption reran the 11 focused broker/UI tests and coordinator/web typechecks successfully. The interrupted three-job resource report was not present, so no completion is asserted. A fresh Docker container-list call returned HTTP 500; service health requires recovery and revalidation before live acceptance.

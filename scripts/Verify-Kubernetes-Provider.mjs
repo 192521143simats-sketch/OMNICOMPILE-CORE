@@ -79,6 +79,11 @@ const acknowledge=(requestId,authorized=true)=>broker.inject({
   headers:authorized?{authorization:'Bearer '+fixtureToken}:{}
 });
 const start=()=>provider.run(job,new AbortController().signal);
+async function verifyBrokerCapacity(busy){
+  const response=await broker.inject({url:'/executions',headers:{authorization:'Bearer '+fixtureToken}});
+  assert.equal(response.statusCode,200);
+  assert.deepEqual(response.json().capacity,{busy,limit:2});
+}
 async function countSlots(){
   const [[row]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_executions WHERE slot IS NOT NULL');
   return Number(row.total);
@@ -97,6 +102,8 @@ async function running(){
 }
 try{
   await provider.ready();
+  assert.equal((await broker.inject('/executions')).statusCode,401);
+  await verifyBrokerCapacity(0);
   const acknowledgedId=randomUUID();
   assert.equal((await acknowledge(acknowledgedId,false)).statusCode,401);
   assert.equal((await acknowledge('invalid')).statusCode,400);
@@ -203,12 +210,14 @@ try{
   deferDeletion=true;
   assert.deepEqual(await start(),{stdout:'fixture'});
   assert.equal(await countSlots(),1,'A terminating Job should still hold its slot');
+  await verifyBrokerCapacity(1);
   await provider.reconcile();
   assert.equal(await countSlots(),1);
   jobs.delete('omni-'+observedJob);
   deferDeletion=false;
   await provider.reconcile();
   assert.equal(await countSlots(),0);
+  await verifyBrokerCapacity(0);
   for(const [header,expected] of [['875',875],['0',0],['125000',125000],['125001',null],['-1',null],['1.5',null],['1e3',null],[['20','30'],null]]){
     await provider.run(job,new AbortController().signal,header);
     await provider.reconcile();
@@ -259,6 +268,7 @@ try{
   const first=start(),second=start();
   const settled=Promise.allSettled([first,second]);
   const rows=await running();
+  await verifyBrokerCapacity(2);
   const rowsBeforeCapacityRejection=(await provider.list()).length;
   await assert.rejects(start(),{statusCode:429});
   assert.equal((await provider.list()).length,rowsBeforeCapacityRejection);

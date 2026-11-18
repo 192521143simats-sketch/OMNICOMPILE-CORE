@@ -11,6 +11,8 @@ const label='omnicompile.io/execution-id';
 const chunkBytes=600_000;
 const maxPayload=24_000_000;
 const maxReceiptBytes=32_000_000;
+export const fixedExecutionLimit=2;
+const executionSlots=Array.from({length:fixedExecutionLimit},(_,index)=>index+1);
 const receiptSlots=Array.from({length:8},(_,index)=>index+1);
 const digest=(data:Buffer)=>createHash('sha256').update(data).digest('hex');
 const requestError=(statusCode:number,errorCode:string,message:string)=>Object.assign(new Error(message),{statusCode,errorCode});
@@ -106,6 +108,16 @@ export class KubernetesExecutionProvider {
     if(!Array.isArray(cluster?.items)||!Array.isArray(row))throw new Error('Execution dependencies are unavailable.');
   }
 
+  async countOccupiedSlots(){
+    const [[row]]=await this.pool.query<(RowDataPacket&{busy:number})[]>(
+      'SELECT COUNT(*) AS busy FROM kubernetes_executions WHERE slot IS NOT NULL');
+    const busy=row?.busy;
+    if(busy===undefined||!Number.isInteger(busy)||busy<0||busy>fixedExecutionLimit){
+      throw new Error('Invalid execution slot occupancy.');
+    }
+    return busy;
+  }
+
   async list(){
     const [rows]=await this.pool.query<RowDataPacket[]>(`SELECT id,language,kind,state,created_at createdAt,
       finished_at finishedAt,runner_duration_ms runnerDurationMs,
@@ -187,7 +199,7 @@ export class KubernetesExecutionProvider {
     const count=Math.ceil(input.length/chunkBytes);
     const manifest=executionManifest(id,this.images[job.language],this.runtime,count);
     let admitted=false;
-    admission: for(const slot of [1,2])for(const receiptSlot of requestId?receiptSlots:[null]){
+    admission: for(const slot of executionSlots)for(const receiptSlot of requestId?receiptSlots:[null]){
       try{
         await this.pool.execute(`INSERT INTO kubernetes_executions(id,slot,language,kind,state,expires_at,capacity_retry_wait_ms,
           request_id,request_digest,receipt_slot)

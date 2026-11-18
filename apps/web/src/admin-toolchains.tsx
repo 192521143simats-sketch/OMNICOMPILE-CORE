@@ -1,4 +1,4 @@
-import React,{useState} from "react";
+import React,{useCallback,useEffect,useRef,useState} from "react";
 import {api} from "./api.js";
 
 const failureLabels = {
@@ -11,6 +11,7 @@ const failureLabels = {
 
 type ExecutionHistory={
   provider:"docker"|"kubernetes";
+  capacity?:{busy:number;limit:number}|null;
   items:Array<{
     id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;
     runnerDurationMs?:number|null;provisioningDurationMs?:number|null;capacityRetryWaitMs?:number|null;
@@ -30,15 +31,31 @@ export function AdminToolchains(){
   const [history,setHistory]=useState<ExecutionHistory>();
   const [historyError,setHistoryError]=useState("");
   const [checkingHistory,setCheckingHistory]=useState(false);
-  async function refreshHistory(cancelId?:string){
+  const historyRequestPending=useRef(false);
+  const refreshHistory=useCallback(async(cancelId?:string)=>{
+    if(historyRequestPending.current)return;
+    historyRequestPending.current=true;
     setCheckingHistory(true);
-    setHistoryError("");
     try{
       if(cancelId)await api("/api/admin/executions/"+encodeURIComponent(cancelId)+"/cancel",{method:"POST"});
       setHistory(await api("/api/admin/executions"));
+      setHistoryError("");
     }catch(cause){setHistoryError(cause instanceof Error?cause.message:"Execution history is unavailable.");}
-    finally{setCheckingHistory(false);}
-  }
+    finally{
+      historyRequestPending.current=false;
+      setCheckingHistory(false);
+    }
+  },[]);
+  useEffect(()=>{
+    const refreshWhenVisible=()=>{if(document.visibilityState==="visible")void refreshHistory();};
+    refreshWhenVisible();
+    const timer=window.setInterval(refreshWhenVisible,10_000);
+    document.addEventListener("visibilitychange",refreshWhenVisible);
+    return ()=>{
+      window.clearInterval(timer);
+      document.removeEventListener("visibilitychange",refreshWhenVisible);
+    };
+  },[refreshHistory]);
   async function refresh(){
     setPending(true);
     setError("");
@@ -47,6 +64,7 @@ export function AdminToolchains(){
     catch(cause){setError(cause instanceof Error?cause.message:"Toolchain status is unavailable.");}
     finally{setPending(false);}
   }
+  const capacity=historyError?null:history?.capacity;
   return <section className="card" aria-label="Execution toolchains">
     <h2>Execution toolchains</h2>
     <button className="secondary" disabled={pending} type="button" onClick={()=>void refresh()}>
@@ -58,6 +76,9 @@ export function AdminToolchains(){
       <strong>{item.language.toUpperCase()}</strong> · {item.available===null?"Configured · pull not checked":item.available?"Available":"Unavailable"} · <code>{item.reference}</code>
     </li>)}</ul>}
     <h3>Execution history</h3>
+    <p role="status"><strong>Fixed execution capacity</strong> · {capacity
+      ?`${capacity.busy} / ${capacity.limit} busy · ${capacity.limit-capacity.busy} available`
+      :checkingHistory?"Checking…":"Unavailable"}</p>
     <button className="secondary" disabled={checkingHistory} type="button" onClick={()=>void refreshHistory()}>
       {checkingHistory?"Checking executions…":"Refresh executions"}
     </button>

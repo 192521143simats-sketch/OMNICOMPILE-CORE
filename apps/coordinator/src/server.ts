@@ -20,7 +20,7 @@ import {buildReports,type ReportDiagnostic,type ReportOptimization} from "./buil
 import {nativeArtifacts,artifactDisposition,outputName} from "./compiler-artifacts.js";
 import {executeIsolated} from "./isolated-execution.js";
 import {commitExecutionResult,executionReceiptId,isPendingExecutionReceipt} from "./finalization-receipts.js";
-import {kubernetesFailureReasons} from './kubernetes-execution.js';
+import {fixedExecutionLimit,kubernetesFailureReasons} from './kubernetes-execution.js';
 import {runCompilerProcess} from './compiler-process-control.js';
 import {verifyCompilation,describeVerifiedOptimization} from "./compilation-verification.js";
 import {AuthService,passwordPolicy,type AuthUser,type Role} from "./auth.js";
@@ -178,7 +178,9 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     try{
       const result=await requestExecutionStatus();
       if(result.status!==200)throw new Error("Broker unavailable");
-      return z.object({provider:z.enum(["docker","kubernetes"]),items:z.array(z.object({
+      return z.object({provider:z.enum(["docker","kubernetes"]),
+        capacity:z.object({busy:z.number().int().min(0).max(fixedExecutionLimit),limit:z.literal(fixedExecutionLimit)}).nullable().optional(),
+        items:z.array(z.object({
         id:z.uuid(),language:z.enum(["c","python","java"]),kind:z.string(),state:z.string(),
         createdAt:z.string(),finishedAt:z.string().nullable(),runnerDurationMs:z.number().int().nonnegative().nullable().optional(),provisioningDurationMs:z.number().int().nonnegative().nullable().optional(),
         schedulingDurationMs:z.number().int().nonnegative().nullable().optional(),containerStartupDurationMs:z.number().int().nonnegative().nullable().optional(),
