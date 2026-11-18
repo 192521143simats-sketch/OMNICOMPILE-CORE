@@ -45,7 +45,7 @@ The Docker broker runs disposable language jobs on a trusted execution host.
 ## Active implementation ownership
 
 Docker Desktop stays installed on C: per the latest instruction. Its WSL
-data disk remains on D:. The Part 6 local runtime is Docker Desktop's runc
+data disk is on K: under `1. SARVESH SIMATS PROJECT FILES/Docker/DockerDesktopWSL`. The Part 6 local runtime is Docker Desktop's runc
 with the compiler's fail-closed filesystem and network policy. Section
 18.3 of the master development directive treats gVisor and Kata as OCI
 options. Part 10 must validate the selected OCI runtime and CNI before
@@ -147,15 +147,15 @@ staging. The local runtime evidence does not authorize public workloads.
   worker and orchestration passed. On Docker Desktop Kubernetes, Python
   job JOB-NDKJG returned 42 and delivered authenticated bytecode. MySQL
   confirmed the accepted cloud attempt's receipt was acknowledged and
-  its stored chunks removed. C and Java worker rollouts and the forced
-  restart during normal finalization still require live coverage.
+  its stored chunks removed. At that point C and Java worker rollouts and the forced
+  restart during normal finalization still required live coverage.
 
 - On 2026-11-16, the two receipt and finalization unit suites passed all
   four tests. The Docker Desktop data VHDX was detached and DiskPart
   compaction exited successfully. The VHDX remained 41,406,169,088 bytes,
   and D: remained at 10,317,824 bytes free. Docker remained stopped after
   earlier startup attempts stalled under disk pressure. The live C and
-  Java worker receipt checks and the forced restart test remain pending.
+  Java worker receipt checks and the forced restart test were pending.
 
 - Enrollment owns download grants, invitation revalidation and the platform download UI.
 - Execution owns immutable toolchain selection and broker readiness.
@@ -784,3 +784,14 @@ staging. The local runtime evidence does not authorize public workloads.
   failed before creating a probe. No probe Jobs or Pods remained, and
   all eight Compose services stayed healthy. Production gVisor acceptance
   still requires compatible guest Landlock support and the full suite.
+
+### 2026-11-18 local storage and cluster recovery
+
+- Both original and working VHDX copies on K: passed SHA-256 comparison.
+- Docker Desktop uses the original relocated K: directory; eight Compose services passed health inspection.
+- The managed Kubernetes API server lacked its serving certificate. Regenerated only that certificate with the retained cluster CA and existing kubeadm configuration, then restarted kubelet. The local node returned Ready and all seven application Pods became ready.
+- Built the Java receipt derivative and imported both C and Java receipt images into the managed node. Both worker Deployments completed rollout. At that point live receipt and finalization recovery acceptance were pending.
+- Hardened Docker execution regression passed all ten checks, including real C/Python/Java, expected runtime failure, timeout, output ceiling, cancellation and isolation. It reported no SQL changes and zero remaining execution containers.
+- Live C JOB-ONSTR accepted C_COMPILE attempt 1 and Java JOB-FY78B accepted JAVA_COMPILE attempt 1 after enabling the manifest-intended worker receipt flag. All ten authenticated downloads matched metadata sizes; native downloads rejected anonymous requests with 401. Both worker compilation receipts and both program receipts retained their SUCCEEDED request records and had NULL receipt slots/digests/bytes and zero chunks before expiry. C printed C_RECEIPT_OK and Java printed JAVA_RECEIPT_OK. Coordinator interruption during normal finalization remains open.
+
+- Normal finalization recovery passed for JOB-J79A0. Its broker execution 72e1989f-5029-43ab-9b3c-2f42b5f29644 held a completed receipt with one chunk and zero published artifacts while the test held only its job row. After replacing only the coordinator Pod and releasing the row lock, the same execution completed the job and delivered its authorized ELF. Receipt fields became NULL and chunks zero before expiry. Tests created new uniquely named user records; existing records were preserved.
