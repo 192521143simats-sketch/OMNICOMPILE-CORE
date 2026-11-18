@@ -835,3 +835,9 @@ staging. The local runtime evidence does not authorize public workloads.
 - Restarted existing Compose services using existing images and persistent volumes. Compose wait completed successfully and all eight services reported healthy.
 - Managed desktop-control-plane is dead/marked for removal; start is refused and read-only docker cp fails with RWLayer unexpectedly nil. The retained /var volume contains the etcd database (16,801,792 bytes), local-path storage and kubelet PKI. A read-only helper inspected existence only. No persistent volumes or dead node were removed.
 - Cluster control-plane filesystem recovery is unresolved. Existing K: verified disk copy remains available. Local Kubernetes acceptance and live capacity rollout remain blocked; no cloud action occurred.
+
+### Live Compose capacity rollout and cancellation
+
+- Built and rolled out coordinator, executor and frontend images successfully. All eight services became healthy. Frontend returned HTTP 200, anonymous admin executions returned 401, and authenticated private broker capacity returned busy 0 / limit 2.
+- Ran the committed probe inside the Compose executor with its existing mounted credential, without exporting the credential. At 2026-11-18T12:00:47.599Z all six baseline C/Python/Java workloads passed. Sequential batch was 50,956.38003 ms and concurrent batch 14,241.235105 ms. These are Docker-specific single-run measurements with cold/warm ordering and do not establish a universal speedup.
+- Live saturation passed: observed two matching HTTP 429 responses and client AbortError cancellation (388.294 ms); both bounded Python blockers completed expected output (7,605.265 and 7,630.292 ms end-to-end). This proves client retry/cancellation, not server-side cancellation of an admitted job. No matching temporary job containers remained and all eight services stayed healthy. Kubernetes and prewarm/scaling acceptance remain open.
