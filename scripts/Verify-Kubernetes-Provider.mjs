@@ -28,8 +28,16 @@ let podReads=0;
 const failedDeletes=new Set();
 let deferDeletion=false;
 let failNextJobCleanup=false;
+const quotaHard={pods:'5','requests.cpu':'1250m','requests.memory':'1280Mi'};
+let quotaUsed;
+let beforeWarmCommit;
+const demandSources={c:'int main(void){return 0;}',java:'class Main {}'};
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
+  if(method==='GET'&&path==='/api/v1/namespaces/fixture/resourcequotas/execution-capacity'){
+    return quotaUsed?{apiVersion:'v1',kind:'ResourceQuota',metadata:{name,namespace:'fixture'},
+      spec:{hard:quotaHard},status:{hard:quotaHard,used:quotaUsed}}:null;
+  }
   if(method==='GET'&&path.includes('/pods?limit=12'))return {items:[...warmPods.values()]};
   if(method==='POST'&&name==='pods'){
     const pod={...body,metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:new Date().toISOString()},
@@ -76,6 +84,7 @@ const api=async(method,path,body)=>{
       const map={...body,metadata:{...body.metadata,uid:randomUUID()}};
       warmMaps.set(map.metadata.name,map);
       if(map.metadata.name.endsWith('-commit')){
+        await beforeWarmCommit?.();
         const envelope=JSON.parse(Buffer.from(body.binaryData.payload,'base64'));
         assert.equal(envelope.executionId,map.metadata.labels[label]);
         assert.equal(envelope.podId,pod.metadata.name);
@@ -86,7 +95,9 @@ const api=async(method,path,body)=>{
       return map;
     }
     assert.equal(jobs.get(owner.name)?.metadata.uid,owner.uid);
-    assert.equal(JSON.parse(Buffer.from(body.binaryData.payload,'base64')).language,'python');
+    const input=JSON.parse(Buffer.from(body.binaryData.payload,'base64'));
+    const demandLanguage=Object.keys(demandSources).find(language=>demandSources[language]===input.payload.generatedSource);
+    assert.equal(input.language,demandLanguage??'python');
     return {};
   }
   if(path.includes('/pods?')){
@@ -115,7 +126,8 @@ const api=async(method,path,body)=>{
   throw new Error('Unexpected cluster request '+path);
 };
 const image='registry.example.invalid/toolchain@sha256:'+'a'.repeat(64);
-const create=(enabled=false,db=pool)=>new KubernetesExecutionProvider(db,api,'fixture','sandbox-test',{c:image,python:image,java:image},enabled);
+const create=(enabled=false,db=pool,policy='fixed')=>
+  new KubernetesExecutionProvider(db,api,'fixture','sandbox-test',{c:image,python:image,java:image},enabled,policy);
 const job={kind:'execute',language:'python',payload:{language:'python',sourceName:'main.py',generatedSource:'print(42)',input:''}};
 const provider=create();
 const fixtureToken=randomUUID();
@@ -146,8 +158,78 @@ async function running(){
   }
   throw new Error('Two fixture executions did not start');
 }
+async function verifyDemandPrewarm(){
+  const demand=create(true,pool,'demand');
+  const readyLanguages=()=>[...warmPods.values()].map(pod=>pod.metadata.labels[warmLanguage]).sort();
+  quotaUsed={pods:'0','requests.cpu':'0','requests.memory':'0'};
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),[],'Available quota alone must not warm an unused language');
+
+  await start();
+  const recentIds=[observedJob];
+  quotaUsed=undefined;
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),[],'Missing quota must prevent new warm Pods');
+  quotaUsed={pods:'5','requests.cpu':'1250m','requests.memory':'1280Mi'};
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),[],'Full quota must prevent new warm Pods');
+  quotaUsed={pods:'0','requests.cpu':'0','requests.memory':'0'};
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),['python'],'A real cold execution must warm only its language');
+
+  for(const [language,generatedSource] of Object.entries(demandSources)){
+    const sourceName=language==='c'?'main.c':'Main.java';
+    await provider.run({kind:'execute',language,payload:{language,sourceName,generatedSource,input:''}},
+      new AbortController().signal);
+    recentIds.push(observedJob);
+  }
+  quotaUsed={pods:'4','requests.cpu':'1','requests.memory':'1Gi'};
+  await demand.reconcile();
+  const languagesWithOneFreePod=readyLanguages();
+  assert.equal(languagesWithOneFreePod.length,2,'One free unit of quota permits at most one additional warm Pod');
+  assert.ok(languagesWithOneFreePod.includes('python'),'A quota-limited pass must keep the existing idle Pod');
+  quotaUsed={pods:'2','requests.cpu':'500m','requests.memory':'512Mi'};
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),['c','java','python']);
+
+  const commitReached=Promise.withResolvers();
+  const releaseCommit=Promise.withResolvers();
+  beforeWarmCommit=()=>{
+    commitReached.resolve();
+    return releaseCommit.promise;
+  };
+  const execution=Promise.allSettled([demand.run(job,new AbortController().signal)]);
+  try{
+    await Promise.race([
+      commitReached.promise,
+      execution.then(()=>{throw new Error('Warm execution settled before committing input');}),
+    ]);
+    const [[reservation]]=await pool.execute(
+      "SELECT p.pod_name,p.execution_id,e.slot FROM kubernetes_prewarm_slots p JOIN kubernetes_executions e ON e.id=p.execution_id WHERE p.language='python' AND p.state='CLAIMED'");
+    assert.ok(reservation?.slot,'The waiting commit must have an active SQL execution reservation');
+    await pool.execute('UPDATE kubernetes_executions SET created_at=TIMESTAMPADD(SECOND,-301,CURRENT_TIMESTAMP(3)) WHERE id IN (?,?,?,?)',
+      [...recentIds,reservation.execution_id]);
+    await demand.reconcile();
+    assert.deepEqual(readyLanguages(),['python'],'Expired demand must drain pristine warm Pods');
+    assert.ok(warmPods.has(reservation.pod_name),'An active claim must survive expiry of its demand history');
+  }finally{
+    releaseCommit.resolve();
+    beforeWarmCommit=undefined;
+    await execution;
+  }
+  assert.deepEqual(await execution,[{status:'fulfilled',value:{stdout:'fixture'}}]);
+  await demand.reconcile();
+  assert.deepEqual(readyLanguages(),[],'Expired demand must not replace the former claim');
+  const [[{total}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_prewarm_slots');
+  assert.equal(total,0);
+  assert.equal(warmMaps.size,0);
+  assert.equal(await countSlots(),0);
+  quotaUsed=undefined;
+}
+
 try{
   await provider.ready();
+  await verifyDemandPrewarm();
   assert.equal((await broker.inject('/executions')).statusCode,401);
   await verifyBrokerCapacity(0);
   const acknowledgedId=randomUUID();
@@ -398,5 +480,5 @@ try{
   assert.equal(await countSlots(),0);
   const [[{total:remainingWarmRows}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_prewarm_slots');
   assert.equal(remainingWarmRows,0);
-  console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry, expiry, concurrent warm claims, ambiguous commit and disabled drain passed with isolated MySQL and a simulated API.');
+  console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry, expiry, concurrent warm claims, ambiguous commit, disabled drain, and quota-aware demand scaling passed with isolated MySQL and a simulated API.');
 }finally{await broker.close();await pool.end();}
