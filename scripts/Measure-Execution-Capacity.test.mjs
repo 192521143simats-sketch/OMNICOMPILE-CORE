@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import {configuration, aggregate, measureRequest, runBenchmark, workloads} from './Measure-Execution-Capacity.mjs';
+import {configuration, aggregate, measureRequest, runBenchmark, runSaturationProbe, workloads} from './Measure-Execution-Capacity.mjs';
 
 test('explicit opt-in, URL and token file required; only local origins accepted', () => {
   assert.throws(() => configuration([], {}));
@@ -8,7 +8,7 @@ test('explicit opt-in, URL and token file required; only local origins accepted'
   for (const url of ['https://example.com', 'http://localhost@evil.test', 'http://localhost/path', 'file:///tmp/test', 'http://localhost/?token=secret']) {
     assert.throws(() => configuration(['--run', '--url', url, '--token-file', 'secret'], {}));
   }
-  assert.deepEqual(configuration(['--run'], {OMNICOMPILE_EXECUTOR_URL: 'http://127.0.0.1:4100', OMNICOMPILE_EXECUTOR_TOKEN_FILE: 'secret'}), {url: 'http://127.0.0.1:4100', tokenFile: 'secret', concurrency: 3, repeat: 1});
+  assert.deepEqual(configuration(['--run'], {OMNICOMPILE_EXECUTOR_URL: 'http://127.0.0.1:4100', OMNICOMPILE_EXECUTOR_TOKEN_FILE: 'secret'}), {url: 'http://127.0.0.1:4100', tokenFile: 'secret', saturation: false, concurrency: 3, repeat: 1});
 });
 
 test('aggregation includes failed latency and counts successful throughput', () => {
@@ -108,4 +108,92 @@ test('programmatic options are validated before requests are dispatched', async 
   const client = {requestDockerJob() { assert.fail('Unexpected broker request'); }};
   await assert.rejects(runBenchmark(client, {concurrency: 9}), /--concurrency/);
   await assert.rejects(runBenchmark(client, {repeat: Infinity}), /--repeat/);
+});
+test('saturation requires explicit opt-in and the default report omits the probe', async () => {
+  const args = ['--run', '--url', 'http://localhost:4102', '--token-file', 'secret'];
+  assert.equal(configuration(args, {}).saturation, false);
+  assert.equal(configuration([...args, '--saturation'], {}).saturation, true);
+  const report = await runBenchmark({async requestDockerJob(job) {
+    return job.kind === 'task' ? {result: {artifactBase64: 'amFy', fileName: 'Capacity.jar'}} : {execution: {status: 'SUCCEEDED', stdout: '4999950000\n'}};
+  }});
+  assert.equal(Object.hasOwn(report, 'saturation'), false);
+});
+
+function saturationFixture(t, {contenderAccepted = false, blockerOutput = '4999950000\n'} = {}) {
+  const brokerUrl = 'http://localhost:4102';
+  const jobsUrl = new URL('/jobs', brokerUrl);
+  const blockerOutputResult = {execution: {status: 'SUCCEEDED', stdout: blockerOutput}};
+  const calls = [];
+  const attempts = [];
+  const blockers = [];
+  let signal;
+  const fetch = t.mock.method(globalThis, 'fetch', async (url, options) => {
+    attempts.push({url, options});
+    return new Response('withheld', {status: 429});
+  });
+  const client = {async requestDockerJob(job, requestSignal) {
+    calls.push(job);
+    if (calls.length < 3) return new Promise(resolve => blockers.push(resolve));
+    signal = requestSignal;
+    try {
+      if (contenderAccepted) return blockerOutputResult;
+      const options = {method: 'POST', body: JSON.stringify(job)};
+      const wrongMethod = await globalThis.fetch(jobsUrl, {...options, method: 'GET'});
+      const wrongUrl = await globalThis.fetch(new URL('/elsewhere', brokerUrl), options);
+      const wrongBody = await globalThis.fetch(jobsUrl, {...options, body: JSON.stringify(calls[0])});
+      for (const response of [wrongMethod, wrongUrl, wrongBody]) assert.equal(await response.text(), 'withheld');
+      const first = await globalThis.fetch(jobsUrl, options);
+      assert.equal(await first.text(), 'withheld');
+      signal.throwIfAborted();
+      const retry = await globalThis.fetch(jobsUrl, options);
+      assert.equal(await retry.text(), 'withheld');
+      signal.throwIfAborted();
+      assert.fail('Contender should be aborted after the retry receives 429');
+    } finally {
+      blockers.forEach(resolve => resolve(blockerOutputResult));
+    }
+  }};
+  return {brokerUrl, client, calls, attempts, fetch, get signal() {return signal;}};
+}
+
+test('saturation aborts a retried contender while both Python blockers are pending', async t => {
+  const fixture = saturationFixture(t);
+  const result = await runSaturationProbe(fixture.client, {url: fixture.brokerUrl});
+  assert.equal(fixture.calls.length, 3);
+  assert.ok(fixture.calls.slice(0, 2).every(job => job.language === 'python' && job.payload.generatedSource.includes('time.sleep(')));
+  assert.equal(fixture.signal.aborted, true);
+  assert.equal(fixture.attempts.length, 5);
+  assert.equal(result.status, 'passed');
+  assert.equal(result.capacityRejections, 2);
+  assert.equal(result.contender.error.name, 'AbortError');
+  assert.deepEqual(result.blockers.map(blocker => blocker.ok), [true, true]);
+  assert.equal(globalThis.fetch, fixture.fetch);
+});
+
+test('saturation remains inconclusive when the contender is admitted', async t => {
+  const fixture = saturationFixture(t, {contenderAccepted: true});
+  const result = await runSaturationProbe(fixture.client, {url: fixture.brokerUrl});
+  assert.equal(result.status, 'inconclusive');
+  assert.equal(result.capacityRejections, 0);
+  assert.equal(result.contender.ok, true);
+  assert.equal(globalThis.fetch, fixture.fetch);
+});
+
+test('saturation fails when a blocker returns unexpected output', async t => {
+  const fixture = saturationFixture(t, {blockerOutput: 'secret'});
+  const result = await runSaturationProbe(fixture.client, {url: fixture.brokerUrl});
+  assert.equal(result.status, 'failed');
+  assert.equal(result.contender.error.name, 'AbortError');
+  assert.ok(!JSON.stringify(result).includes('secret'));
+});
+
+test('overlapping saturation probes preserve the active probe transport', async t => {
+  const fixture = saturationFixture(t);
+  const first = runSaturationProbe(fixture.client, {url: fixture.brokerUrl});
+  const observedFetch = globalThis.fetch;
+  const second = runSaturationProbe({requestDockerJob() {assert.fail('Overlapping dispatch');}}, {url: fixture.brokerUrl});
+  assert.equal(globalThis.fetch, observedFetch);
+  await assert.rejects(second, /already running/);
+  assert.equal((await first).status, 'passed');
+  assert.equal(globalThis.fetch, fixture.fetch);
 });

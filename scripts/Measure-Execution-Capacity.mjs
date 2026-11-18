@@ -1,10 +1,12 @@
 // Opt-in real broker measurement. Run with node --import tsx; never starts services.
+import {randomUUID} from 'node:crypto';
 import {readFile} from 'node:fs/promises';
 import {resolve} from 'node:path';
 import {pathToFileURL} from 'node:url';
 
 const benchmarkLimits = {concurrency: 8, repeat: 10};
 const benchmarkDefaults = {concurrency: 3, repeat: 1};
+let saturationProbeActive = false;
 
 function boundedOption(name, value) {
   const number = typeof value === 'string' && /^[1-9][0-9]*$/.test(value) ? Number(value) : value;
@@ -19,8 +21,9 @@ export function configuration(args, env = process.env) {
   for (let i = 0; i < args.length; i++) {
     const key = args[i];
     if (key === '--run') options.run = true;
+    else if (key === '--saturation') options.saturation = true;
     else if (['--url', '--token-file', '--concurrency', '--repeat'].includes(key) && args[i + 1] && !args[i + 1].startsWith('--')) options[key.slice(2)] = args[++i];
-    else throw new Error('Expected --run --url <local broker URL> --token-file <credential file> [--concurrency 1-8] [--repeat 1-10].');
+    else throw new Error('Expected --run --url <local broker URL> --token-file <credential file> [--concurrency 1-8] [--repeat 1-10] [--saturation].');
   }
   if (!options.run) throw new Error('Real execution requires explicit --run.');
   const configured = options.url ?? env.OMNICOMPILE_EXECUTOR_URL;
@@ -28,7 +31,7 @@ export function configuration(args, env = process.env) {
   if (!configured || !tokenFile) throw new Error('An explicit broker URL and token file are required.');
   const url = new URL(configured);
   if (!['http:', 'https:'].includes(url.protocol) || !['localhost', '127.0.0.1', '[::1]'].includes(url.hostname) || url.username || url.password || url.pathname !== '/' || url.search || url.hash) throw new Error('Broker URL must be a localhost HTTP(S) origin without credentials.');
-  return {url: url.origin, tokenFile,
+  return {url: url.origin, tokenFile, saturation: options.saturation === true,
     concurrency: boundedOption('concurrency', options.concurrency ?? benchmarkDefaults.concurrency),
     repeat: boundedOption('repeat', options.repeat ?? benchmarkDefaults.repeat)};
 }
@@ -78,6 +81,54 @@ export async function measureRequest(client, workload, {now = () => performance.
   }
 }
 
+export async function runSaturationProbe(client, {url, now = () => performance.now()} = {}) {
+  if (saturationProbeActive) throw new Error('A saturation probe is already running.');
+  const brokerJobsUrl = new URL('/jobs', url).href;
+  const contenderWorkload = {...workloads[1], sourceName: 'capacity-probe-' + randomUUID() + '.py'};
+  const contenderBody = JSON.stringify({kind: 'execute', language: 'python', payload: contenderWorkload});
+  const blockerSleepSeconds = 3;
+  const blockerWorkload = {...workloads[1], generatedSource: 'import time\ntime.sleep(' + blockerSleepSeconds + ')\n' + workloads[1].generatedSource};
+  const blockerTimeoutMs = 90_000;
+  const contenderTimeoutMs = 8_000;
+  const contenderAbort = new AbortController();
+  const originalFetch = globalThis.fetch;
+  let pendingBlockers = 2;
+  let capacityRejections = 0;
+
+  saturationProbeActive = true;
+  // Observe only the uniquely marked contender. The executor client retains ownership
+  // of the response body and uses its ordinary capacity retry and cancellation path.
+  globalThis.fetch = async (input, options) => {
+    const response = await originalFetch(input, options);
+    if (options?.method === 'POST' && options.body === contenderBody && String(input) === brokerJobsUrl &&
+        response.status === 429 && pendingBlockers === 2 && !contenderAbort.signal.aborted) {
+      if (++capacityRejections === 2) contenderAbort.abort();
+    }
+    return response;
+  };
+
+  const timer = setTimeout(() => contenderAbort.abort(new DOMException('Probe deadline elapsed.', 'TimeoutError')), contenderTimeoutMs);
+  try {
+    const blockerSignal = AbortSignal.timeout(blockerTimeoutMs);
+    const blockerRequests = [1, 2].map(() =>
+      measureRequest(client, blockerWorkload, {now, signal: blockerSignal}).finally(() => pendingBlockers--));
+    const contender = await measureRequest(client, contenderWorkload, {now, signal: contenderAbort.signal});
+    clearTimeout(timer);
+    const blockers = await Promise.all(blockerRequests);
+    const clientCancelled = contender.cancelled === true && contender.error?.name === 'AbortError';
+    const observedCapacityRetry = capacityRejections === 2;
+    let status = 'inconclusive';
+    if (blockers.some(blocker => !blocker.ok)) status = 'failed';
+    else if (observedCapacityRetry) status = clientCancelled ? 'passed' : 'failed';
+    return {status, capacityRejections, observedCapacityRetry, clientCancelled,
+      blockerSleepSeconds, blockerTimeoutMs, contenderTimeoutMs, blockers, contender};
+  } finally {
+    clearTimeout(timer);
+    globalThis.fetch = originalFetch;
+    saturationProbeActive = false;
+  }
+}
+
 async function measureBatch(client, jobs, concurrency, now) {
   const samples = new Array(jobs.length);
   let next = 0;
@@ -95,7 +146,9 @@ async function measureBatch(client, jobs, concurrency, now) {
 export async function runBenchmark(client, {
   now = () => performance.now(),
   concurrency = benchmarkDefaults.concurrency,
-  repeat = benchmarkDefaults.repeat
+  repeat = benchmarkDefaults.repeat,
+  saturation = false,
+  url
 } = {}) {
   const requestedConcurrency = boundedOption('concurrency', concurrency);
   const repetitions = boundedOption('repeat', repeat);
@@ -103,13 +156,16 @@ export async function runBenchmark(client, {
   const sequential = await measureBatch(client, jobs, 1, now);
   const effectiveConcurrency = Math.min(requestedConcurrency, jobs.length);
   const concurrent = await measureBatch(client, jobs, effectiveConcurrency, now);
+  const saturationResult = saturation ? await runSaturationProbe(client, {url, now}) : null;
   return {schemaVersion: 1, measuredAt: new Date().toISOString(), concurrency: requestedConcurrency, effectiveConcurrency,
     repeat: repetitions, sequential, concurrent,
+    ...(saturationResult ? {saturation: saturationResult} : {}),
     limitations: ['Throughput counts logical workloads per second. Java sends separate compile and execute requests.',
       'End-to-end and Java compile round-trip timings include transport and any admission retries.',
       'The job response provides program duration but omits broker execution IDs and Kubernetes stage timings.',
       'The configured logical concurrency does not establish broker saturation.',
-      'Cancellation under saturation was not exercised.', 'CPU and RAM usage were not measured.'],
+      saturationResult ? 'The probe observes HTTP 429 responses while the blocker requests are pending. It does not identify the jobs occupying the broker slots or verify server-side cancellation.' :
+        'Cancellation under saturation was not exercised.', 'CPU and RAM usage were not measured.'],
     cpuUsage: null, memoryUsageBytes: null};
 }
 
@@ -122,13 +178,13 @@ export async function main(args = process.argv.slice(2)) {
   const client = await import('../packages/orchestration/src/docker-executor-client.ts');
   const report = await runBenchmark(client, config);
   process.stdout.write(JSON.stringify(report, null, 2) + '\n');
-  if (report.sequential.failed || report.concurrent.failed) process.exitCode = 1;
+  if (report.sequential.failed || report.concurrent.failed || (report.saturation && report.saturation.status !== 'passed')) process.exitCode = 1;
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   main().catch(() => {
     // Never print credentials, transport URLs, or server diagnostics.
-    process.stderr.write('Capacity measurement failed. Check the local broker, credential file and tsx loader. Usage: --run --url <local broker URL> --token-file <credential file> [--concurrency 1-8] [--repeat 1-10].\n');
+    process.stderr.write('Capacity measurement failed. Check the local broker, credential file and tsx loader. Usage: --run --url <local broker URL> --token-file <credential file> [--concurrency 1-8] [--repeat 1-10] [--saturation].\n');
     process.exitCode = 1;
   });
 }

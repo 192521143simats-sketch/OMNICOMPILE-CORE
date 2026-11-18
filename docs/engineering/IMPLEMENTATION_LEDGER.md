@@ -807,3 +807,9 @@ staging. The local runtime evidence does not authorize public workloads.
 - The operator ran the committed probe against the local Kubernetes broker at concurrency 3 and repeat 2. The supplied PowerShell transcript reports measuredAt 2026-11-18T05:04:55.902Z. Parsed all 12 samples: expected output, exit code zero, no failures.
 - Six sequential workloads took 67,992.8472 ms (0.088245 successful workloads/s; mean 11,331.8227 ms). Six concurrent workloads took 52,727.9800 ms (0.113792 workloads/s; mean 20,464.2098 ms). Throughput improved about 28.95 percent on this sample while individual latency increased. This is a single mixed-language sample and does not establish a universal concurrency policy.
 - Post-run inspection found no labeled execution Jobs, Pods, ConfigMaps or NetworkPolicies; all eight Compose services remained healthy. Saturation/cancellation, actual resource readings, and prewarm/scaling acceptance remain open.
+
+### Opt-in capacity rejection and cancellation probe
+
+- Added --saturation to observe only a uniquely marked contender request. It requires two real matching HTTP 429 responses while the two bounded Python blocker requests remain pending, then checks client cancellation and both expected outputs. Missing evidence returns inconclusive and a nonzero CLI exit. It does not assert server-side cancellation or broker slot ownership.
+- Review found overlapping exported probes could corrupt fetch restoration. A synchronous active-probe guard and regression close that issue. All 13 focused tests passed; scoped re-review approved the intended Node CLI.
+- Live saturation remains unverified. Kubelet node statistics are available through the authenticated node proxy despite metrics-server being absent. All eight Compose services remain healthy and no labeled runner Jobs/Pods remain.
