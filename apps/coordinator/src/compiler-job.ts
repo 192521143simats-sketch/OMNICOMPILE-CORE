@@ -7,6 +7,7 @@ import {runOwnedProcess} from '@omnicompile/orchestration';
 import {compileCSource} from '@omnicompile/compiler-c';
 import {dockerJobSchema,programExecutionSchema,type DockerJob} from './docker-executor-schema.js';
 import type {ExecutionEvidence} from './execution-evidence.js';
+import {readPrewarmedJob} from './prewarmed-input.js';
 
 const outputLimit=65536;
 
@@ -82,10 +83,35 @@ async function run(job:DockerJob){
   return (await runOwnedProcess(entry,job.payload)).result;
 }
 
-async function main(){
+async function readStdinJob(){
   const chunks:Buffer[]=[];let size=0;
   for await(const chunk of process.stdin){size+=chunk.length;if(size>24_000_000)throw new Error('The isolated job payload exceeds its size limit.');chunks.push(Buffer.from(chunk));}
-  const job=dockerJobSchema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+  return dockerJobSchema.parse(JSON.parse(Buffer.concat(chunks).toString('utf8')));
+}
+
+async function readRunnerJob(args:string[]){
+  const [mode,language,podId]=args;
+  if(mode!=='--prewarmed')return readStdinJob();
+  if(args.length!==3||(language!=='c'&&language!=='python'&&language!=='java')||!podId||podId.length>253){
+    throw new Error('Invalid prewarmed runner arguments.');
+  }
+  const controller=new AbortController();
+  const stop=()=>controller.abort();
+  process.on('SIGTERM',stop);
+  process.on('SIGINT',stop);
+  try{
+    const job=await readPrewarmedJob(language,podId,{signal:controller.signal});
+    controller.signal.throwIfAborted();
+    return job;
+  }
+  finally{
+    process.off('SIGTERM',stop);
+    process.off('SIGINT',stop);
+  }
+}
+
+async function main(){
+  const job=await readRunnerJob(process.argv.slice(2));
   const result=await run(job);console.log(JSON.stringify({ok:true,result}));
 }
 if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)void main().catch(cause=>{
