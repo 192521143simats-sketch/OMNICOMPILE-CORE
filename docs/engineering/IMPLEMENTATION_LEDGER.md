@@ -852,3 +852,10 @@ staging. The local runtime evidence does not authorize public workloads.
 - Headless Edge verified actual Compose admin login and rendered capacity on /admin: 0 / 2 busy, 2 available. The authenticated /api/admin/executions response agreed with HTTP 200 and busy 0 / limit 2. The first browser probe incorrectly navigated to the public root; correcting its route resolved that probe without application changes.
 
 - Live Docker occupancy test observed busy 0 -> 2 -> 0 while two bounded Python requests executed. Both returned SUCCEEDED with stdout 42 and capacity retained limit 2. The verification used the executor's existing in-container credential and did not export it.
+
+### Opt-in durable prewarm pool implementation
+
+- Added migration 0024 and provider-integrated pristine bare-Pod provisioning, unique durable claims, immutable input commit publication, UID-bound cleanup, expiry/orphan reconciliation and disabled draining. Default cold execution remains the configured path. The active execution limit remains two.
+- Review-driven fixes cover warm input lifetime, ambiguous claim lease retention, drain permissions, bounded ConfigMap pagination including empty continued pages, and paginated orphan inventories. Warm container lifetime is not reported as execution time. Native enable/drain overlays render; documentation scopes them to matching native environments and calls out the separate Desktop composition requirement.
+- Final focused verification passed 42 tests with one Windows symlink skip; coordinator typecheck passed. Isolated fixture 20587cb7219b0387 exited zero using real MySQL and simulated Kubernetes, covering concurrency, ambiguous commit and disabled drain. No project DB was reset.
+- Live Kubernetes pool acceptance, Desktop-specific pool composition, resource-aware autoscaling and end-to-end pool timing remain incomplete. Managed cluster filesystem recovery still needs the administrator disk inspection. The pool has not been enabled or deployed.

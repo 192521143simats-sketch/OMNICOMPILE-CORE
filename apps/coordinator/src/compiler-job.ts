@@ -90,9 +90,9 @@ async function readStdinJob(){
 }
 
 async function readRunnerJob(args:string[]){
-  const [mode,language,podId]=args;
+  const [mode,language,podId,waitMs]=args;
   if(mode!=='--prewarmed')return readStdinJob();
-  if(args.length!==3||(language!=='c'&&language!=='python'&&language!=='java')||!podId||podId.length>253){
+  if((args.length!==3&&args.length!==4)||(waitMs!==undefined&&(!/^\d{5,6}$/.test(waitMs)||Number(waitMs)<60_000||Number(waitMs)>240_000))||(language!=='c'&&language!=='python'&&language!=='java')||!podId||podId.length>253){
     throw new Error('Invalid prewarmed runner arguments.');
   }
   const controller=new AbortController();
@@ -100,7 +100,7 @@ async function readRunnerJob(args:string[]){
   process.on('SIGTERM',stop);
   process.on('SIGINT',stop);
   try{
-    const job=await readPrewarmedJob(language,podId,{signal:controller.signal});
+    const job=await readPrewarmedJob(language,podId,{signal:controller.signal,timeoutMs:waitMs===undefined?60_000:Number(waitMs)});
     controller.signal.throwIfAborted();
     return job;
   }

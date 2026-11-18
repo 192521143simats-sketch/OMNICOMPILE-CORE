@@ -7,7 +7,9 @@ import type {DockerJob} from './docker-executor-schema.js';
 
 export type ClusterApi = (method:string,path:string,body?:unknown,signal?:AbortSignal)=>Promise<any>;
 const account='/var/run/secrets/kubernetes.io/serviceaccount';
-const label='omnicompile.io/execution-id';
+import {executionLabel as label,executionManifest,executionTimeoutSeconds} from './kubernetes-manifests.js';
+import {KubernetesPrewarmPool} from './kubernetes-prewarm.js';
+export {executionManifest} from './kubernetes-manifests.js';
 const chunkBytes=600_000;
 const maxPayload=24_000_000;
 const maxReceiptBytes=32_000_000;
@@ -58,29 +60,6 @@ export function inClusterApi():ClusterApi {
   };
 }
 
-export function executionManifest(id:string,image:string,runtimeClassName:string,count:number){
-  if(!/^[a-z0-9][a-z0-9._:/-]*@sha256:[a-f0-9]{64}$/.test(image))throw new Error('Execution image must be digest pinned.');
-  if(!/^[a-z0-9][a-z0-9.-]{0,62}$/.test(runtimeClassName))throw new Error('A sandbox RuntimeClass is required.');
-  if(!Number.isInteger(count)||count<1||count>40)throw new Error('Invalid execution input size.');
-  const name='omni-'+id;
-  return {
-    apiVersion:'batch/v1',kind:'Job',metadata:{name,labels:{[label]:id}},
-    spec:{backoffLimit:0,activeDeadlineSeconds:105,ttlSecondsAfterFinished:300,parallelism:1,completions:1,
-      template:{metadata:{labels:{[label]:id,'app':'omnicompile-execution'}},spec:{
-        runtimeClassName,restartPolicy:'Never',automountServiceAccountToken:false,enableServiceLinks:false,
-        terminationGracePeriodSeconds:2,securityContext:{runAsNonRoot:true,runAsUser:1000,runAsGroup:1000,fsGroup:1000,seccompProfile:{type:'RuntimeDefault'}},
-        containers:[{name:'runner',image,command:['/bin/sh','-ec','cat /payload/* | node --import tsx apps/coordinator/src/compiler-job.ts'],
-          securityContext:{readOnlyRootFilesystem:true,allowPrivilegeEscalation:false,capabilities:{drop:['ALL']}},
-          resources:{requests:{cpu:'250m',memory:'256Mi','ephemeral-storage':'128Mi'},limits:{cpu:'1',memory:'512Mi','ephemeral-storage':'256Mi'}},
-          volumeMounts:[{name:'input',mountPath:'/payload',readOnly:true},{name:'tmp',mountPath:'/tmp'}]}],
-        volumes:[{name:'tmp',emptyDir:{medium:'Memory',sizeLimit:'128Mi'}},
-          {name:'input',projected:{sources:Array.from({length:count},(_,i)=>({configMap:{name:name+'-'+i,
-            items:[{key:'payload',path:String(i).padStart(2,'0')}]}}))}}],
-      }},
-    },
-  };
-}
-
 type ExecutionIdentity={id:string;job_uid:string|null};
 type ExecutionRow=RowDataPacket&ExecutionIdentity;
 export const kubernetesFailureReasons=[
@@ -92,11 +71,13 @@ export class KubernetesExecutionProvider {
   private readonly core:string;
   private readonly pending=new Map<string,AbortController>();
   private reconciliation:Promise<void>|undefined;
+  private readonly prewarm:KubernetesPrewarmPool;
   constructor(private readonly pool:Pool,private readonly api:ClusterApi,namespace:string,
-    private readonly runtime:string,private readonly images:Record<DockerJob['language'],string>){
+    private readonly runtime:string,private readonly images:Record<DockerJob['language'],string>,private readonly prewarmEnabled=false){
     if(!/^[a-z0-9][a-z0-9-]{0,62}$/.test(namespace))throw new Error('Invalid execution namespace.');
     this.jobs='/apis/batch/v1/namespaces/'+namespace+'/jobs';
     this.core='/api/v1/namespaces/'+namespace;
+    this.prewarm=new KubernetesPrewarmPool(pool,api,this.core,runtime,images,prewarmEnabled);
     for(const image of Object.values(images))executionManifest(randomUUID(),image,runtime,1);
   }
 
@@ -106,6 +87,7 @@ export class KubernetesExecutionProvider {
       this.api('GET',this.jobs+'?limit=1',undefined,AbortSignal.timeout(3500))
     ]);
     if(!Array.isArray(cluster?.items)||!Array.isArray(row))throw new Error('Execution dependencies are unavailable.');
+    await this.prewarm.ready();
   }
 
   async countOccupiedSlots(){
@@ -215,68 +197,105 @@ export class KubernetesExecutionProvider {
     if(!admitted)throw Object.assign(new Error('Execution service is at capacity.'),{statusCode:429});
     const abort=new AbortController();
     this.pending.set(id,abort);
-    const bounded=AbortSignal.any([signal,abort.signal,AbortSignal.timeout(112_000)]);
+    const bounded=AbortSignal.any([signal,abort.signal,AbortSignal.timeout(executionTimeoutSeconds*1000)]);
     const name=manifest.metadata.name;
     let uid:string|undefined;
     let createAttempted=false;
+    let claimAttempted=false;
+    let warmClaimConfirmed=false;
+    let publishPending=false;
     let outcome='FAILED';
     let failureReason:FailureReason|null='PROVISIONING_FAILED';
     try{
       bounded.throwIfAborted();
-      createAttempted=true;
-      const created=await this.api('POST',this.jobs,manifest,bounded);
-      uid=created?.metadata?.uid;
-      if(!uid)throw new Error('Execution Job identity is missing.');
-      await this.pool.execute('UPDATE kubernetes_executions SET job_uid=? WHERE id=?',[uid,id]);
-      for(let i=0;i<count;i++){
-        await this.api('POST',this.core+'/configmaps',{
-          apiVersion:'v1',kind:'ConfigMap',
-          metadata:{name:name+'-'+i,labels:{[label]:id},ownerReferences:[{apiVersion:'batch/v1',kind:'Job',name,uid}]},
-          immutable:true,binaryData:{payload:input.subarray(i*chunkBytes,(i+1)*chunkBytes).toString('base64')},
-        },bounded);
-      }
-      const selector=encodeURIComponent(label+'='+id);
+      claimAttempted=this.prewarmEnabled;
+      const warm=claimAttempted?await this.prewarm.claim(id,job.language,bounded):undefined;
+      claimAttempted=warm!==undefined;
+      warmClaimConfirmed=warm!==undefined;
+      bounded.throwIfAborted();
+      let created:any;
       let pod:any;
-      let runnerStarted=false;
-      for(;;){
-        bounded.throwIfAborted();
-        const [rows]=await this.pool.execute<RowDataPacket[]>('SELECT state FROM kubernetes_executions WHERE id=?',[id]);
-        if(rows[0]?.state==='CANCEL_REQUESTED'){abort.abort();bounded.throwIfAborted();}
-        const state=await this.api('GET',this.jobs+'/'+name,undefined,bounded);
-        if(state?.metadata?.uid!==uid)throw new Error('Execution Job identity changed.');
-        const failure=state.status?.conditions?.find((condition:{type:string;status:string;reason?:string})=>
-          condition.type==='Failed'&&condition.status==='True');
-        if(failure?.reason==='DeadlineExceeded'){
-          outcome='TIMED_OUT';
-          failureReason='DEADLINE_EXCEEDED';
-          throw new Error('The Kubernetes Job exceeded its execution deadline.');
-        }
-        const succeeded=state.status?.succeeded===1;
-        if(succeeded)failureReason='RESULT_COLLECTION_FAILED';
-        // Once the runner starts, follow the Job until fresh Pod data is needed for results.
-        if(!runnerStarted||succeeded){
-          const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
-          pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
-          const runner=pod?.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner');
-          const startedAt=runner?.state?.running?.startedAt??runner?.state?.terminated?.startedAt;
-          if(!runnerStarted&&Number.isFinite(Date.parse(startedAt))){
-            bounded.throwIfAborted();
-            await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
-            runnerStarted=true;
-            if(!succeeded)failureReason='EXECUTION_FAILED';
+      if(warm){
+        const [running]=await this.pool.execute<ResultSetHeader>(
+          "UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
+        if(running.affectedRows!==1){abort.abort();bounded.throwIfAborted();}
+        await this.prewarm.getPod(warm,bounded);
+        publishPending=true;
+        await this.prewarm.publish(warm,id,input,chunkBytes,bounded);
+        publishPending=false;
+        failureReason='EXECUTION_FAILED';
+        for(;;){
+          bounded.throwIfAborted();
+          const [[row]]=await this.pool.execute<RowDataPacket[]>('SELECT state FROM kubernetes_executions WHERE id=?',[id]);
+          if(row?.state==='CANCEL_REQUESTED'){abort.abort();bounded.throwIfAborted();}
+          pod=await this.prewarm.getPod(warm,bounded);
+          if(pod.status?.reason==='DeadlineExceeded'){
+            outcome='TIMED_OUT';
+            failureReason='DEADLINE_EXCEEDED';
+            throw new Error('The prewarmed Kubernetes Pod exceeded its deadline.');
           }
+          if(pod.status?.phase==='Failed')throw new Error('The prewarmed Kubernetes Pod failed.');
+          if(pod.status?.phase==='Succeeded'){
+            failureReason='RESULT_COLLECTION_FAILED';
+            break;
+          }
+          await delay(750,undefined,{signal:bounded});
         }
-        if(failure)throw new Error('Execution Job failed.');
-        if(succeeded){
-          if(!runnerStarted)throw new Error('Execution runner start evidence is missing.');
-          break;
+      }else{
+        createAttempted=true;
+        created=await this.api('POST',this.jobs,manifest,bounded);
+        uid=created?.metadata?.uid;
+        if(!uid)throw new Error('Execution Job identity is missing.');
+        await this.pool.execute('UPDATE kubernetes_executions SET job_uid=? WHERE id=?',[uid,id]);
+        for(let i=0;i<count;i++){
+          await this.api('POST',this.core+'/configmaps',{
+            apiVersion:'v1',kind:'ConfigMap',
+            metadata:{name:name+'-'+i,labels:{[label]:id},ownerReferences:[{apiVersion:'batch/v1',kind:'Job',name,uid}]},
+            immutable:true,binaryData:{payload:input.subarray(i*chunkBytes,(i+1)*chunkBytes).toString('base64')},
+          },bounded);
         }
-        await delay(750,undefined,{signal:bounded});
+        const selector=encodeURIComponent(label+'='+id);
+        let runnerStarted=false;
+        for(;;){
+          bounded.throwIfAborted();
+          const [rows]=await this.pool.execute<RowDataPacket[]>('SELECT state FROM kubernetes_executions WHERE id=?',[id]);
+          if(rows[0]?.state==='CANCEL_REQUESTED'){abort.abort();bounded.throwIfAborted();}
+          const state=await this.api('GET',this.jobs+'/'+name,undefined,bounded);
+          if(state?.metadata?.uid!==uid)throw new Error('Execution Job identity changed.');
+          const failure=state.status?.conditions?.find((condition:{type:string;status:string;reason?:string})=>
+            condition.type==='Failed'&&condition.status==='True');
+          if(failure?.reason==='DeadlineExceeded'){
+            outcome='TIMED_OUT';
+            failureReason='DEADLINE_EXCEEDED';
+            throw new Error('The Kubernetes Job exceeded its execution deadline.');
+          }
+          const succeeded=state.status?.succeeded===1;
+          if(succeeded)failureReason='RESULT_COLLECTION_FAILED';
+          // Once the runner starts, follow the Job until fresh Pod data is needed for results.
+          if(!runnerStarted||succeeded){
+            const pods=await this.api('GET',this.core+'/pods?labelSelector='+selector,undefined,bounded);
+            pod=pods?.items?.find((item:any)=>item.metadata?.ownerReferences?.some((owner:any)=>owner.kind==='Job'&&owner.uid===uid));
+            const runner=pod?.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner');
+            const startedAt=runner?.state?.running?.startedAt??runner?.state?.terminated?.startedAt;
+            if(!runnerStarted&&Number.isFinite(Date.parse(startedAt))){
+              bounded.throwIfAborted();
+              await this.pool.execute("UPDATE kubernetes_executions SET state='RUNNING' WHERE id=? AND state='PROVISIONING'",[id]);
+              runnerStarted=true;
+              if(!succeeded)failureReason='EXECUTION_FAILED';
+            }
+          }
+          if(failure)throw new Error('Execution Job failed.');
+          if(succeeded){
+            if(!runnerStarted)throw new Error('Execution runner start evidence is missing.');
+            break;
+          }
+          await delay(750,undefined,{signal:bounded});
+        }
       }
       if(!pod?.metadata?.name)throw new Error('Execution Pod is missing.');
       const terminated=pod.status?.containerStatuses?.find((container:{name:string})=>container.name==='runner')?.state?.terminated;
       const startedAt=Date.parse(terminated?.startedAt);
-      const createdAt=Date.parse(created.metadata.creationTimestamp);
+      const createdAt=Date.parse(created?.metadata?.creationTimestamp);
       const provisioning=startedAt-createdAt;
       const provisioningDurationMs=Number.isInteger(provisioning)&&provisioning>=0&&provisioning<=0xffffffff?provisioning:null;
       const scheduled=pod.status?.conditions?.find((condition:{type:string;status:string;lastTransitionTime?:string})=>
@@ -287,7 +306,7 @@ export class KubernetesExecutionProvider {
         ? scheduledAt-createdAt : null;
       const containerStartupDurationMs=schedulingDurationMs===null?null:startedAt-scheduledAt;
       const duration=Date.parse(terminated?.finishedAt)-startedAt;
-      const runnerDurationMs=Number.isInteger(duration)&&duration>=0&&duration<=0xffffffff?duration:null;
+      const runnerDurationMs=!warm&&Number.isInteger(duration)&&duration>=0&&duration<=0xffffffff?duration:null;
       const output=await this.api('GET',this.core+'/pods/'+encodeURIComponent(pod.metadata.name)+'/log?container=runner&limitBytes=32000000',undefined,bounded);
       let value;
       try{value=JSON.parse(output);}catch{throw new Error('The execution result could not be read.');}
@@ -338,15 +357,22 @@ export class KubernetesExecutionProvider {
       }
       throw error;
     }finally{
-      try{await this.finish({id,job_uid:uid??null},outcome,failureReason,createAttempted&&!uid);}
+      try{
+        // An unacknowledged claim may still be committing. Keep the execution lease
+        // until reconciliation can resolve ownership from the durable rows.
+        if(claimAttempted&&!warmClaimConfirmed)await this.markCleanupPending(id,outcome,failureReason);
+        else await this.finish({id,job_uid:uid??null},outcome,failureReason,createAttempted&&!uid,claimAttempted,publishPending);
+      }
       finally{this.pending.delete(id);}
     }
   }
 
-  private async finish(row:ExecutionIdentity,outcome:string,failureReason:FailureReason|null,holdIfMissing=false){
+  private async finish(row:ExecutionIdentity,outcome:string,failureReason:FailureReason|null,holdIfMissing=false,checkPrewarm=false,holdPrewarm=false){
     const path=this.jobs+'/omni-'+row.id;
     try{
-      let job=await this.api('GET',path);
+      const warmFinished=checkPrewarm?await this.prewarm.finish(row.id,holdPrewarm):undefined;
+      if(warmFinished===false)throw new Error('Waiting for prewarmed execution resources to be removed.');
+      let job=warmFinished===undefined?await this.api('GET',path):null;
       if(job){
         const uid=job.metadata?.uid;
         if(!uid||job.metadata?.labels?.[label]!==row.id||(row.job_uid&&uid!==row.job_uid))
@@ -370,17 +396,23 @@ export class KubernetesExecutionProvider {
         state=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
         WHERE id=? AND slot IS NOT NULL`,[failureReason,outcome,row.id]);
     }catch{
-      await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),
+      await this.markCleanupPending(row.id,outcome,failureReason);
+    }
+  }
+
+  private async markCleanupPending(id:string,outcome:string,failureReason:FailureReason|null){
+    await this.pool.execute(`UPDATE kubernetes_executions SET cleanup_outcome=IF(receipt_expires_at IS NOT NULL,'SUCCEEDED',IF(state='CANCEL_REQUESTED','CANCELLED',?)),
         failure_reason=IF(receipt_expires_at IS NOT NULL,NULL,IF(state='CANCEL_REQUESTED','CANCELLED',COALESCE(failure_reason,?))),
         state='CLEANUP_PENDING',finished_at=COALESCE(finished_at,UTC_TIMESTAMP(3))
-        WHERE id=? AND slot IS NOT NULL`,[outcome,failureReason,row.id]);
-    }
+        WHERE id=? AND slot IS NOT NULL`,[outcome,failureReason,id]);
   }
 
   async reconcile(){
     this.reconciliation??=this.reconcileOnce().finally(()=>{this.reconciliation=undefined;});
     return this.reconciliation;
   }
+
+  async waitForReconciliation(){await this.reconciliation;}
 
   private async reconcileOnce(){
     const [rows]=await this.pool.execute<(ExecutionRow&{state:string;finished_at:Date|null;cleanup_outcome:string|null})[]>(`SELECT id,job_uid,state,finished_at,cleanup_outcome
@@ -391,7 +423,7 @@ export class KubernetesExecutionProvider {
         row.state==='CLEANUP_PENDING'?(row.cleanup_outcome??'FAILED'):row.finished_at?row.state:'TIMED_OUT';
       // Existing stage failures survive reconciliation through the COALESCE update.
       const failureReason=outcome==='CANCELLED'?'CANCELLED':outcome==='TIMED_OUT'?'DEADLINE_EXCEEDED':null;
-      await this.finish(row,outcome,failureReason);
+      await this.finish(row,outcome,failureReason,false,true);
     }
     const connection=await this.pool.getConnection();
     try{
@@ -408,5 +440,6 @@ export class KubernetesExecutionProvider {
       await connection.rollback();
       throw error;
     }finally{connection.release();}
+    await this.prewarm.reconcile();
   }
 }

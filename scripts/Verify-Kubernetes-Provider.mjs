@@ -10,6 +10,11 @@ const target=assertIsolatedTarget();
 await verifyIsolatedCoordinator(target);
 const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
 const jobs=new Map();
+const warmPods=new Map();
+const warmMaps=new Map();
+const warmLanguage='omnicompile.io/prewarm-language';
+let warmCommits=0;
+let coldCreates=0;
 const label='omnicompile.io/execution-id';
 let complete=true;
 let failureReason;
@@ -25,7 +30,33 @@ let deferDeletion=false;
 let failNextJobCleanup=false;
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
+  if(method==='GET'&&path.includes('/pods?limit=12'))return {items:[...warmPods.values()]};
+  if(method==='POST'&&name==='pods'){
+    const pod={...body,metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:new Date().toISOString()},
+      status:{phase:'Running',conditions:[{type:'Ready',status:'True'}]}};
+    warmPods.set(pod.metadata.name,pod);
+    return pod;
+  }
+  if(path.includes('/pods/omni-warm-')&&!path.includes('/log?')){
+    const pod=warmPods.get(name);
+    if(method==='DELETE'){
+      assert.equal(body.preconditions.uid,pod?.metadata.uid);
+      warmPods.delete(name);
+      return null;
+    }
+    return pod??null;
+  }
+  if(method==='GET'&&path.includes('/configmaps?')){
+    const selector=new URLSearchParams(path.split('?')[1]).get('labelSelector')??'';
+    const podName=selector.match(/omnicompile.io\/prewarm-pod=([^,]+)/)?.[1];
+    return {items:[...warmMaps.values()].filter(map=>map.metadata.ownerReferences[0].name===podName)};
+  }
+  if(method==='DELETE'&&path.includes('/configmaps/')){
+    assert.equal(body.preconditions.uid,warmMaps.get(name)?.metadata.uid);
+    warmMaps.delete(name);return null;
+  }
   if(method==='POST'&&name==='jobs'){
+    coldCreates++;
     assert.equal(body.spec.template.spec.automountServiceAccountToken,false);
     assert.equal(body.spec.template.spec.runtimeClassName,'sandbox-test');
     assert.equal(body.spec.activeDeadlineSeconds,105);
@@ -39,6 +70,21 @@ const api=async(method,path,body)=>{
     if(inputProvisioningError)throw new Error('Fixture provisioning failure');
     assert.equal(body.immutable,true);
     const owner=body.metadata.ownerReferences[0];
+    if(owner.kind==='Pod'){
+      const pod=warmPods.get(owner.name);
+      assert.equal(pod?.metadata.uid,owner.uid);
+      const map={...body,metadata:{...body.metadata,uid:randomUUID()}};
+      warmMaps.set(map.metadata.name,map);
+      if(map.metadata.name.endsWith('-commit')){
+        const envelope=JSON.parse(Buffer.from(body.binaryData.payload,'base64'));
+        assert.equal(envelope.executionId,map.metadata.labels[label]);
+        assert.equal(envelope.podId,pod.metadata.name);
+        assert.equal(envelope.chunkCount,1);
+        warmCommits++;
+        pod.status={phase:'Succeeded'};
+      }
+      return map;
+    }
     assert.equal(jobs.get(owner.name)?.metadata.uid,owner.uid);
     assert.equal(JSON.parse(Buffer.from(body.binaryData.payload,'base64')).language,'python');
     return {};
@@ -69,7 +115,7 @@ const api=async(method,path,body)=>{
   throw new Error('Unexpected cluster request '+path);
 };
 const image='registry.example.invalid/toolchain@sha256:'+'a'.repeat(64);
-const create=()=>new KubernetesExecutionProvider(pool,api,'fixture','sandbox-test',{c:image,python:image,java:image});
+const create=(enabled=false,db=pool)=>new KubernetesExecutionProvider(db,api,'fixture','sandbox-test',{c:image,python:image,java:image},enabled);
 const job={kind:'execute',language:'python',payload:{language:'python',sourceName:'main.py',generatedSource:'print(42)',input:''}};
 const provider=create();
 const fixtureToken=randomUUID();
@@ -295,5 +341,62 @@ try{
   await restarted.reconcile();
   assert.equal((await restarted.list()).find(row=>row.id===expired).state,'TIMED_OUT');
   assert.equal((await restarted.list()).find(row=>row.id===expired).failureReason,'DEADLINE_EXCEEDED');
-  console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry and expiry passed with isolated MySQL and a simulated API.');
+  complete=true;
+  runnerState={terminated:{startedAt:'2026-01-01T00:00:00Z',finishedAt:'2026-01-01T00:00:03Z'}};
+  const warmA=create(true),warmB=create(true);
+  await Promise.all([warmA.reconcile(),warmB.reconcile()]);
+  assert.equal(warmPods.size,3);
+  const [[{total:pristineRows}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_prewarm_slots');
+  assert.equal(pristineRows,3);
+  const baselineJobs=coldCreates;
+  const commitsBefore=warmCommits;
+  const warmKey=randomUUID(),secondKey=randomUUID();
+  await Promise.all([[warmA,warmKey],[warmB,secondKey]].map(([service,key])=>service.run(job,new AbortController().signal,undefined,key)));
+  assert.equal(coldCreates,baselineJobs+1,'Exactly one request must run cold');
+  assert.equal(warmCommits,commitsBefore+1,'Exactly one request can publish to a warm Pod');
+  assert.equal(warmMaps.size,0);
+  assert.equal(await countSlots(),0);
+  const [timings]=await pool.execute('SELECT runner_duration_ms FROM kubernetes_executions WHERE request_id IN (?,?)',[warmKey,secondKey]);
+  assert.equal(timings.filter(row=>row.runner_duration_ms===null).length,1,'Warm runner lifetime must not be reported as execution duration');
+  assert.deepEqual(await create().run(job,new AbortController().signal,undefined,warmKey),{stdout:'fixture'});
+
+  await warmA.reconcile();
+  let delayedCommit;
+  let ambiguousId;
+  const ambiguousPool={
+    execute:async(sql,params)=>{
+      if(!sql.includes('UPDATE kubernetes_prewarm_slots AS p'))return pool.execute(sql,params);
+      ambiguousId=params[0];
+      const connection=await pool.getConnection();
+      try{
+        await connection.beginTransaction();
+        const [changed]=await connection.execute(sql,params);
+        assert.equal(changed.affectedRows,1,'Fixture must mutate an uncommitted warm claim');
+        delayedCommit=delay(150).then(()=>connection.commit()).finally(()=>connection.release());
+      }catch(error){
+        await connection.rollback();
+        connection.release();
+        throw error;
+      }
+      throw Error('Fixture disconnected before claim commit was visible');
+    },
+  };
+  const coldBeforeAmbiguous=coldCreates;
+  await assert.rejects(create(true,ambiguousPool).run(job,new AbortController().signal),/disconnected/);
+  await delayedCommit;
+  const [[ambiguous]]=await pool.execute('SELECT state,slot FROM kubernetes_executions WHERE id=?',[ambiguousId]);
+  assert.equal(ambiguous.state,'CLEANUP_PENDING');
+  assert.notEqual(ambiguous.slot,null,'An ambiguous claim must keep the lease');
+  assert.equal(coldCreates,coldBeforeAmbiguous);
+  await create().reconcile();
+  assert.equal(warmPods.size,1,'Disabled reconciliation may drain idle Pods while preserving the unexpired claim');
+  const claimedPod=[...warmPods.values()][0];
+  assert.equal(claimedPod.metadata.labels[warmLanguage],'python');
+  await pool.execute('UPDATE kubernetes_executions SET expires_at=UTC_TIMESTAMP(3) WHERE id=?',[ambiguousId]);
+  await create().reconcile();
+  assert.equal(warmPods.size,0);
+  assert.equal(await countSlots(),0);
+  const [[{total:remainingWarmRows}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_prewarm_slots');
+  assert.equal(remainingWarmRows,0);
+  console.log('Kubernetes execution persistence, two-slot admission, cancellation, cleanup retry, expiry, concurrent warm claims, ambiguous commit and disabled drain passed with isolated MySQL and a simulated API.');
 }finally{await broker.close();await pool.end();}

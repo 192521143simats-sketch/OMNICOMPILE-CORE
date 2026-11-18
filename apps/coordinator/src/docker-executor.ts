@@ -188,12 +188,12 @@ async function main(){
     name:process.env.DB_NAME!,user:process.env.DB_USER!,password:process.env.DB_PASSWORD!}):undefined;
   const kubernetes=store&&api?new KubernetesExecutionProvider(store.pool,api,
     process.env.OMNICOMPILE_EXECUTION_NAMESPACE??'omnicompile-execution',
-    process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images):undefined;
+    process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images,process.env.OMNICOMPILE_PREWARM_ENABLED==='1'):undefined;
   const app=createDockerExecutor(token,undefined,{images,...(kubernetes?{kubernetes}:{})});
   if(kubernetes){
     const timer=setInterval(()=>void kubernetes.reconcile().catch(()=>console.error('Execution reconciliation failed.')),5000);
     timer.unref();
-    app.addHook('onClose',async()=>{clearInterval(timer);await store?.close();});
+    app.addHook('onClose',async()=>{clearInterval(timer);try{await kubernetes.waitForReconciliation();}finally{await store?.close();}});
   }
   await app.listen({host:'0.0.0.0',port:4102});
   for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{void app.close();});
