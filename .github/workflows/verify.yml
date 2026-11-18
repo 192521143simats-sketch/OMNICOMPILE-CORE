@@ -35,6 +35,11 @@ jobs:
     timeout-minutes: 10
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
       - name: Render and validate Kubernetes manifests without a cluster
         shell: bash
         run: |
@@ -52,12 +57,25 @@ jobs:
             chmod +x kubectl
             tar -xzf kubeconform.tar.gz kubeconform
           )
-          "$tools/kubectl" kustomize infra/kubernetes > "$RUNNER_TEMP/omnicompile-manifests.yaml"
-          "$tools/kubectl" kustomize infra/kubernetes-native > "$RUNNER_TEMP/omnicompile-native.yaml"
-          "$tools/kubectl" kustomize infra/kubernetes-desktop > "$RUNNER_TEMP/omnicompile-desktop.yaml"
+          overlays=(
+            kubernetes
+            kubernetes-native
+            kubernetes-native-prewarm
+            kubernetes-native-prewarm-drain
+            kubernetes-desktop
+            kubernetes-desktop-prewarm
+            kubernetes-desktop-prewarm-drain
+          )
+          manifests=()
+          for overlay in "${overlays[@]}"; do
+            manifest="$RUNNER_TEMP/omnicompile-$overlay.yaml"
+            "$tools/kubectl" kustomize "infra/$overlay" > "$manifest"
+            manifests+=("$manifest")
+          done
           "$tools/kubeconform" -strict -summary -kubernetes-version 1.36.1 \
             -schema-location 'https://raw.githubusercontent.com/yannh/kubernetes-json-schema/3f9a43d91bb63cd92fc8e3e7201302138eec072f/{{.NormalizedKubernetesVersion}}-standalone{{.StrictSuffix}}/{{.ResourceKind}}{{.KindSuffix}}.json' \
-            "$RUNNER_TEMP/omnicompile-manifests.yaml" "$RUNNER_TEMP/omnicompile-native.yaml" "$RUNNER_TEMP/omnicompile-desktop.yaml" infra/kubernetes/migration-job.yaml
+            "${manifests[@]}" infra/kubernetes/migration-job.yaml
+          OMNICOMPILE_KUBECTL="$tools/kubectl" node --test infra/kubernetes/prewarm-overlays.test.mjs
   docker:
     runs-on: ubuntu-latest
     timeout-minutes: 45

@@ -136,6 +136,7 @@ Render the local overlay with `kubectl kustomize infra/kubernetes-desktop`.
 It inherits the native execution broker and uses the local runc RuntimeClass,
 a 1 GiB MySQL claim, database-backed artifacts, and a loopback web origin.
 Keep the existing Compose database separate.
+For the optional pool, see the [Docker Desktop prewarm and drain procedures](../kubernetes-native-prewarm/README.md#docker-desktop-rollout).
 
 Build the existing Compose images before rollout. Ensure the Desktop
 provisioner can resolve the local application tags and the exact compiler

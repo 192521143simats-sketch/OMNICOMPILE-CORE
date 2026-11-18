@@ -859,3 +859,10 @@ staging. The local runtime evidence does not authorize public workloads.
 - Review-driven fixes cover warm input lifetime, ambiguous claim lease retention, drain permissions, bounded ConfigMap pagination including empty continued pages, and paginated orphan inventories. Warm container lifetime is not reported as execution time. Native enable/drain overlays render; documentation scopes them to matching native environments and calls out the separate Desktop composition requirement.
 - Final focused verification passed 42 tests with one Windows symlink skip; coordinator typecheck passed. Isolated fixture 20587cb7219b0387 exited zero using real MySQL and simulated Kubernetes, covering concurrency, ambiguous commit and disabled drain. No project DB was reset.
 - Live Kubernetes pool acceptance, Desktop-specific pool composition, resource-aware autoscaling and end-to-end pool timing remain incomplete. Managed cluster filesystem recovery still needs the administrator disk inspection. The pool has not been enabled or deployed.
+
+### Desktop prewarm composition and continuous validation
+
+- Shared the existing pool patches through one Kustomize component, adding Desktop-specific enable/drain overlays that retain runc, development origins, absent Ingress and pinned MySQL with 1Gi storage. Native rendered warm/drain output stayed byte-identical.
+- Persisted three machine regression tests comparing full rendered resources with only expected quota/RBAC/flag differences; all passed with actual Docker Desktop kubectl. All seven overlays rendered. CI now validates all seven and runs the regression with its checksum-verified tool. Workflow YAML and Bash syntax checks passed locally; GitHub execution remains unverified.
+- Full unit regression after pool integration passed 448 tests with 12 skips across 74 files. Additional workspace typechecks passed; a separately started verify run remained active without a final result and is not counted as complete.
+- These are non-deploying configuration changes. Local cluster recovery, live prewarm acceptance, actual resource-correlated pool measurements and resource-aware autoscaling remain incomplete.
