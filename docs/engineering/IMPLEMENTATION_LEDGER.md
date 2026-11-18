@@ -850,3 +850,5 @@ staging. The local runtime evidence does not authorize public workloads.
 - This is the connected runner prerequisite only. Durable pool claims, Pod provisioning/reconciliation, resource-aware scaling, and live pool acceptance remain incomplete. No runtime feature was enabled or deployed.
 
 - Headless Edge verified actual Compose admin login and rendered capacity on /admin: 0 / 2 busy, 2 available. The authenticated /api/admin/executions response agreed with HTTP 200 and busy 0 / limit 2. The first browser probe incorrectly navigated to the public root; correcting its route resolved that probe without application changes.
+
+- Live Docker occupancy test observed busy 0 -> 2 -> 0 while two bounded Python requests executed. Both returned SUCCEEDED with stdout 42 and capacity retained limit 2. The verification used the executor's existing in-container credential and did not export it.
