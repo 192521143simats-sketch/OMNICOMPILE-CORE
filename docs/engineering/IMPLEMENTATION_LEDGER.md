@@ -801,3 +801,9 @@ staging. The local runtime evidence does not authorize public workloads.
 - Added an explicit local opt-in capacity probe with bounded logical concurrency (1-8) and repetitions (1-10), deterministic C/Python/Java output checks, sequential/concurrent throughput and actual execution durations. Java compilation round trip is reported separately. Missing CPU/RAM and broker stage measurements remain unavailable.
 - Independent review found reflected stdout/error fields could leak sensitive broker content. The regression reproduced that issue; unexpected stdout is now suppressed and error fields constrained. All eight targeted tests passed and scoped re-review approved.
 - Live capacity execution did not run: automatic approval rejected broker credential retrieval into a temporary file with the message blocked by policy. Part 7 remains open for real capacity, saturation/cancellation, resource and prewarm/scaling acceptance. All eight Compose services and seven Kubernetes application Pods passed health checks.
+
+### 2026-11-18 user-executed local capacity evidence
+
+- The operator ran the committed probe against the local Kubernetes broker at concurrency 3 and repeat 2. The supplied PowerShell transcript reports measuredAt 2026-11-18T05:04:55.902Z. Parsed all 12 samples: expected output, exit code zero, no failures.
+- Six sequential workloads took 67,992.8472 ms (0.088245 successful workloads/s; mean 11,331.8227 ms). Six concurrent workloads took 52,727.9800 ms (0.113792 workloads/s; mean 20,464.2098 ms). Throughput improved about 28.95 percent on this sample while individual latency increased. This is a single mixed-language sample and does not establish a universal concurrency policy.
+- Post-run inspection found no labeled execution Jobs, Pods, ConfigMaps or NetworkPolicies; all eight Compose services remained healthy. Saturation/cancellation, actual resource readings, and prewarm/scaling acceptance remain open.
