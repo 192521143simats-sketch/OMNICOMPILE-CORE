@@ -848,3 +848,5 @@ staging. The local runtime evidence does not authorize public workloads.
 - Independent review identified payload text leakage in parse errors and cancellation during readiness cleanup. Regression tests reproduced both; fixed messages and post-cleanup abort checks passed scoped re-review.
 - Focused suites passed 29 tests; one AtomicWriter-style symlink test skipped because Windows denied symlink creation. Coordinator typecheck/build and diff checks passed. Automatic approval rejected the live restricted Docker fixture command with blocked by policy, so live CLI dispatch is unverified.
 - This is the connected runner prerequisite only. Durable pool claims, Pod provisioning/reconciliation, resource-aware scaling, and live pool acceptance remain incomplete. No runtime feature was enabled or deployed.
+
+- Headless Edge verified actual Compose admin login and rendered capacity on /admin: 0 / 2 busy, 2 available. The authenticated /api/admin/executions response agreed with HTTP 200 and busy 0 / limit 2. The first browser probe incorrectly navigated to the public root; correcting its route resolved that probe without application changes.
