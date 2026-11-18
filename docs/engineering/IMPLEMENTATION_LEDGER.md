@@ -813,3 +813,11 @@ staging. The local runtime evidence does not authorize public workloads.
 - Added --saturation to observe only a uniquely marked contender request. It requires two real matching HTTP 429 responses while the two bounded Python blocker requests remain pending, then checks client cancellation and both expected outputs. Missing evidence returns inconclusive and a nonzero CLI exit. It does not assert server-side cancellation or broker slot ownership.
 - Review found overlapping exported probes could corrupt fetch restoration. A synchronous active-probe guard and regression close that issue. All 13 focused tests passed; scoped re-review approved the intended Node CLI.
 - Live saturation remains unverified. Kubelet node statistics are available through the authenticated node proxy despite metrics-server being absent. All eight Compose services remain healthy and no labeled runner Jobs/Pods remain.
+
+- Full workspace verification after the saturation change exited zero: typechecks and builds passed, Vitest 412 passed with 11 opt-in skips across 71 files, Node tests 44/44 passed. These are offline regressions and do not establish live saturation or prewarm behavior.
+
+### Optional kubelet resource sampling
+
+- Added --kubernetes-stats to sample real node-wide CPU nanocores and memory working-set bytes plus container readings restricted to omnicompile-execution. Node peaks are explicitly labeled; unavailable measurements remain NULL with valid/error counts. Samples retain source timestamp precision and reject impossible dates/times.
+- Kubectl reads have timeout/output bounds and run serially, with phase cleanup and failure isolation. Phase timing excludes draining an already-started resource read. Independent review approved after timestamp fixes; all 19 focused tests passed.
+- The actual local kubelet endpoint was inspected successfully; workload-correlated sampling and live saturation remain pending, along with prewarm/scaling policy acceptance.

@@ -197,3 +197,123 @@ test('overlapping saturation probes preserve the active probe transport', async 
   assert.equal((await first).status, 'passed');
   assert.equal(globalThis.fetch, fixture.fetch);
 });
+
+test('Kubernetes sampling is explicit and optional', () => {
+  const args = ['--run', '--url', 'http://localhost:4102', '--token-file', 'secret'];
+  assert.equal(configuration([...args, '--kubernetes-stats'], {}).kubernetesStats, true);
+  assert.equal(configuration(args, {}).kubernetesStats, undefined);
+});
+
+const sourceTime = '2026-11-18T04:30:00.000123456Z';
+const validStats = {cpu: {time: sourceTime, usageNanoCores: 0}, memory: {time: sourceTime, workingSetBytes: 2048}};
+
+function successfulJob(job) {
+  return job.kind === 'task' ? {result: {artifactBase64: 'amFy', fileName: 'Capacity.jar'}} :
+    {execution: {status: 'SUCCEEDED', stdout: '4999950000\n'}};
+}
+
+test('Kubernetes stats preserve measured zero, require source timestamps and filter pod scope', async () => {
+  const summary = {
+    node: {cpu: {time: sourceTime, usageNanoCores: -1}, memory: {workingSetBytes: 123}},
+    pods: [
+      {podRef: {namespace: 'other'}, containers: [validStats]},
+      {podRef: {namespace: 'omnicompile-execution'}, containers: [validStats, {cpu: {time: sourceTime, usageNanoCores: '34'}}]}
+    ]
+  };
+  const report = await runBenchmark({requestDockerJob: async job => successfulJob(job)}, {
+    kubernetesStats: true, readKubernetesStats: async () => JSON.stringify(summary)
+  });
+  assert.equal(report.cpuUsage, null);
+  assert.equal(report.memoryUsageBytes, null);
+  const phase = report.kubernetesStats.phases.sequential;
+  assert.deepEqual(phase.validCounts, {nodeCpu: 0, nodeMemory: 0, containerCpu: 1, containerMemory: 1});
+  assert.deepEqual(phase.errors, {unavailable: 0, invalidSummary: 0, invalidReadings: 4});
+  const [sample] = phase.samples;
+  assert.deepEqual(sample.node, {cpu: null, memory: null});
+  assert.deepEqual(sample.containers, [
+    {cpu: {time: sourceTime, usageNanoCores: 0},
+      memory: {time: sourceTime, workingSetBytes: 2048}},
+    {cpu: null, memory: null}
+  ]);
+});
+
+test('sampler stops timers between phases and redacts unavailable/malformed stats', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  let reads = 0;
+  const report = await runBenchmark({requestDockerJob: async job => successfulJob(job)}, {
+    kubernetesStats: true,
+    async readKubernetesStats() {
+      if (++reads === 1) throw new Error('kubectl secret diagnostics');
+      return 'secret invalid JSON';
+    }
+  });
+  t.mock.timers.tick(6000);
+  assert.equal(reads, 2);
+  assert.equal(report.concurrent.successful, 3);
+  assert.equal(report.kubernetesStats.phases.sequential.errors.unavailable, 1);
+  assert.equal(report.kubernetesStats.phases.concurrent.errors.invalidSummary, 1);
+  assert.equal(report.cpuUsage, null);
+  assert.equal(report.memoryUsageBytes, null);
+  assert.ok(!JSON.stringify(report).includes('secret'));
+});
+
+test('sampler aborts active stats reads on a benchmark error', async () => {
+  const phaseError = new Error('clock failed');
+  let aborted = false;
+  await assert.rejects(runBenchmark({requestDockerJob: async job => successfulJob(job)}, {
+    kubernetesStats: true,
+    now() {throw phaseError;},
+    readKubernetesStats(signal) {
+      return new Promise((resolve, reject) => signal.addEventListener('abort', () => {
+        aborted = true;
+        reject(signal.reason);
+      }, {once: true}));
+    }
+  }), phaseError);
+  assert.equal(aborted, true);
+});
+
+test('periodic sampling serializes reads and reports observed node peaks', async t => {
+  t.mock.timers.enable({apis: ['setTimeout']});
+  let reads = 0;
+  let finishRead;
+  let finishJob;
+  const blockedJob = new Promise(resolve => { finishJob = resolve; });
+  const benchmark = runBenchmark({async requestDockerJob(job) {
+    await blockedJob;
+    return successfulJob(job);
+  }}, {
+    kubernetesStats: true,
+    readKubernetesStats() {
+      reads++;
+      if (reads > 1) return JSON.stringify({node: validStats, pods: []});
+      return new Promise(resolve => { finishRead = resolve; });
+    }
+  });
+  t.mock.timers.tick(6000);
+  assert.equal(reads, 1);
+  finishRead(JSON.stringify({node: {cpu: {time: sourceTime, usageNanoCores: 50}, memory: validStats.memory}, pods: []}));
+  await Promise.resolve();
+  t.mock.timers.tick(2000);
+  assert.equal(reads, 2);
+  finishJob();
+  const report = await benchmark;
+  assert.equal(reads, 3);
+  assert.equal(report.cpuUsage, 50);
+  assert.equal(report.memoryUsageBytes, 2048);
+  assert.deepEqual(report.kubernetesStats.phases.sequential.validCounts,
+    {nodeCpu: 2, nodeMemory: 2, containerCpu: 0, containerMemory: 0});
+});
+
+test('impossible source dates and times are counted as invalid readings', async () => {
+  const summary = {node: {
+    cpu: {time: '2026-02-30T04:30:00Z', usageNanoCores: 10},
+    memory: {time: '2026-11-18T24:00:00Z', workingSetBytes: 2048}
+  }, pods: []};
+  const report = await runBenchmark({requestDockerJob: async job => successfulJob(job)}, {
+    kubernetesStats: true, readKubernetesStats: async () => JSON.stringify(summary)
+  });
+  assert.equal(report.cpuUsage, null);
+  assert.equal(report.memoryUsageBytes, null);
+  assert.equal(report.kubernetesStats.phases.sequential.errors.invalidReadings, 2);
+});
