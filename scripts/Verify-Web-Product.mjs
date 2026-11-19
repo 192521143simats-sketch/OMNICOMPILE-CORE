@@ -122,8 +122,7 @@ try{
           await page.goto('/dashboard');
           await page.getByLabel('Language',{exact:true}).selectOption(item.language);
           await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
-          await page.getByLabel('Source filename',{exact:true}).fill(item.name);
-          await page.getByLabel('Source code',{exact:true}).fill(item.source);
+          await page.getByLabel('Upload source file').setInputFiles({name:item.name,mimeType:'text/plain',buffer:Buffer.from(item.source)});
           const submitted=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
           const response=await submitted;expect(response.status()).toBe(202);const job=await response.json();
