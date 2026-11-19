@@ -31,6 +31,7 @@ let failNextJobCleanup=false;
 const quotaHard={pods:'5','requests.cpu':'1250m','requests.memory':'1280Mi'};
 let quotaUsed;
 let beforeWarmCommit;
+let failWarmDelete=false;
 const demandSources={c:'int main(void){return 0;}',java:'class Main {}'};
 const api=async(method,path,body)=>{
   const name=path.split('/').at(-1);
@@ -40,15 +41,24 @@ const api=async(method,path,body)=>{
   }
   if(method==='GET'&&path.includes('/pods?limit=12'))return {items:[...warmPods.values()]};
   if(method==='POST'&&name==='pods'){
-    const pod={...body,metadata:{...body.metadata,uid:randomUUID(),creationTimestamp:new Date().toISOString()},
+    const pod={...body,metadata:{...body.metadata,uid:randomUUID(),resourceVersion:'1',creationTimestamp:new Date().toISOString()},
       status:{phase:'Running',conditions:[{type:'Ready',status:'True'}]}};
     warmPods.set(pod.metadata.name,pod);
     return pod;
   }
   if(path.includes('/pods/omni-warm-')&&!path.includes('/log?')){
     const pod=warmPods.get(name);
+    if(method==='PATCH'){
+      assert.equal(body.metadata.uid,pod?.metadata.uid);
+      assert.equal(body.metadata.resourceVersion,pod?.metadata.resourceVersion);
+      assert.ok(warmMaps.has(name+'-commit'),'Refresh must follow the commit ConfigMap');
+      pod.metadata.annotations={...pod.metadata.annotations,...body.metadata.annotations};
+      pod.metadata.resourceVersion=String(Number(pod.metadata.resourceVersion)+1);
+      return pod;
+    }
     if(method==='DELETE'){
       assert.equal(body.preconditions.uid,pod?.metadata.uid);
+      if(failWarmDelete)throw Error('Fixture warm cleanup failure');
       warmPods.delete(name);
       return null;
     }
@@ -453,6 +463,23 @@ try{
   assert.equal(timings.filter(row=>row.runner_duration_ms===null).length,1,'Warm runner lifetime must not be reported as execution duration');
   assert.deepEqual(await create().run(job,new AbortController().signal,undefined,warmKey),{stdout:'fixture'});
 
+  await warmA.reconcile();
+  const delayedCleanupKey=randomUUID();
+  failWarmDelete=true;
+  try{assert.deepEqual(await warmA.run(job,new AbortController().signal,undefined,delayedCleanupKey),{stdout:'fixture'});}
+  finally{failWarmDelete=false;}
+  const [[delayedCleanup]]=await pool.execute(`SELECT id,state,cleanup_outcome,slot,
+    expires_at>UTC_TIMESTAMP(3) AS lease_live FROM kubernetes_executions WHERE request_id=?`,[delayedCleanupKey]);
+  assert.equal(delayedCleanup.state,'CLEANUP_PENDING');
+  assert.equal(delayedCleanup.cleanup_outcome,'SUCCEEDED');
+  assert.notEqual(delayedCleanup.slot,null);
+  assert.equal(Number(delayedCleanup.lease_live),1,'Cleanup retry must not require lease expiry');
+  await create().reconcile();
+  const [[cleanedSuccess]]=await pool.execute('SELECT state,slot FROM kubernetes_executions WHERE id=?',[delayedCleanup.id]);
+  assert.equal(cleanedSuccess.state,'SUCCEEDED');
+  assert.equal(cleanedSuccess.slot,null,'Successful warm cleanup must release the unexpired lease');
+  assert.equal(warmMaps.size,0);
+  assert.equal(warmPods.size,0);
   await warmA.reconcile();
   let delayedCommit;
   let ambiguousId;

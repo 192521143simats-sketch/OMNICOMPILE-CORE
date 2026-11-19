@@ -425,7 +425,7 @@ export class KubernetesExecutionProvider {
 
   private async reconcileOnce(){
     const [rows]=await this.pool.execute<(ExecutionRow&{state:string;finished_at:Date|null;cleanup_outcome:string|null})[]>(`SELECT id,job_uid,state,finished_at,cleanup_outcome
-      FROM kubernetes_executions WHERE slot IS NOT NULL AND (expires_at<=UTC_TIMESTAMP(3) OR (finished_at IS NOT NULL AND (job_uid IS NOT NULL OR state<>'CLEANUP_PENDING')))`);
+      FROM kubernetes_executions WHERE slot IS NOT NULL AND (expires_at<=UTC_TIMESTAMP(3) OR (finished_at IS NOT NULL AND (job_uid IS NOT NULL OR state<>'CLEANUP_PENDING' OR cleanup_outcome='SUCCEEDED')))`);
     for(const row of rows){
       if(this.pending.has(row.id))continue;
       const outcome=row.state==='CANCEL_REQUESTED'?'CANCELLED':

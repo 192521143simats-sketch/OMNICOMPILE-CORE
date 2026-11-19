@@ -126,7 +126,9 @@ function fixture(){
       Object.assign(row,{state:params[1],released:true});return affected();
     }
     if(sql.includes('SELECT id,job_uid,state,finished_at')){
-      return [[...executions.values()].filter(row=>!row.released&&(cleanupLeaseExpired||row.finished_at&&row.state!=='CLEANUP_PENDING'))];
+      const successfulCleanup=sql.includes("cleanup_outcome='SUCCEEDED'");
+      return [[...executions.values()].filter(row=>!row.released&&(cleanupLeaseExpired||row.finished_at&&
+        (row.job_uid||row.state!=='CLEANUP_PENDING'||successfulCleanup&&row.cleanup_outcome==='SUCCEEDED')))];
     }
     if(sql.includes('FROM kubernetes_executions WHERE request_id=?')){
       return [[...executions.values()].filter(row=>row.request_id===params[0])];
@@ -314,6 +316,21 @@ describe('Durable Kubernetes prewarm handoff',()=>{
     const calls=f.api.mock.calls.length;
     await expect(f.provider(false).run(fixtureJob,freshSignal(),undefined,requestId)).resolves.toEqual({compiled:true});
     expect(f.api.mock.calls).toHaveLength(calls);
+  });
+
+  it('retries successful warm cleanup before the execution lease expires',async()=>{
+    const f=fixture();
+    f.failDelete();
+    await expect(f.provider().run(fixtureJob,freshSignal())).resolves.toEqual({compiled:true});
+    expect(f.execution).toMatchObject({state:'CLEANUP_PENDING',cleanup_outcome:'SUCCEEDED'});
+    expect(f.execution.released).not.toBe(true);
+    expect(f.slot).toMatchObject({state:'CLAIMED'});
+    f.restoreDelete();
+    await f.provider(false).reconcile();
+    expect(f.execution).toMatchObject({state:'SUCCEEDED',released:true});
+    expect(f.pod).toBeNull();
+    expect(f.slot).toBeNull();
+    expect(f.maps.size).toBe(0);
   });
 
   it('holds an ambiguous claim and never provisions a cold Job for that execution',async()=>{
