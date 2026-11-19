@@ -41,3 +41,6 @@ apps/android-worker/**/build-acceptance/
 *.aab
 *.msi
 *.msix
+
+.vercel
+.env*

@@ -1,7 +1,0 @@
-sample-c-easy.c: JOB-VF2P3, 4 verified artifacts, runnable output checked
-sample-c-tough.c: JOB-T8J1G, 4 verified artifacts, runnable output checked
-sample-python-easy.py: JOB-7EIB8, 5 verified artifacts, runnable output checked
-sample-python-tough.py: JOB-GJ8FY, 5 verified artifacts, runnable output checked
-sample-java-easy.java: JOB-BL29A, 5 verified artifacts, runnable output checked
-sample-java-tough.java: JOB-XNZ0R, 5 verified artifacts, runnable output checked
-Six language samples, authorized downloads, invalid source, and missing artifacts verified.

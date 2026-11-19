@@ -1,8 +1,20 @@
+import { backendConfig, isBackendAvailable } from './backend-config.js';
+
 export async function api(path:string,options:RequestInit={}){
+  // Check backend availability in offline mode
+  if (!isBackendAvailable()) {
+    throw new Error("Backend is offline. Login, compilation, and worker enrollment are unavailable.");
+  }
+
+  // Construct full URL for remote mode
+  const url = backendConfig.mode === 'remote' && backendConfig.apiBaseUrl
+    ? `${backendConfig.apiBaseUrl}${path}`
+    : path;
+
   const headers=new Headers(options.headers);
   if(options.body&&!headers.has("content-type"))headers.set("content-type","application/json");
   let response:Response;
-  try{response=await fetch(path,{credentials:"include",...options,headers});}
+  try{response=await fetch(url,{credentials:"include",...options,headers});}
   catch(cause){if(cause instanceof Error&&cause.name==="AbortError")throw cause;throw new Error("Unable to reach OmniCompile Core. Check your connection and try again.");}
   const contentType=response.headers.get("content-type")??"";
   let body:any=null;

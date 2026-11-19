@@ -1,1 +1,0 @@
-{"actualInnoDBDeadlockRecovery":"passed","transactionInvocations":3,"committedRowValues":[2,2]}

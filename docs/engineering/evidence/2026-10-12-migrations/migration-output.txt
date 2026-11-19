@@ -1,1 +1,0 @@
-{"baselineAdopted":true,"legacyDataAndBackfillsPreserved":true,"actualBaselineInterruptionRecovered":true,"serializedConcurrentStartup":true,"partialDdlRecovery":true,"failedMigrationNotRecorded":true,"changedDefinitionRejected":true,"newerDatabaseRejected":true,"probeInvocations":2}

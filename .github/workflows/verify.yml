@@ -27,6 +27,19 @@ jobs:
         with:
           distribution: temurin
           java-version: '21'
+      - name: Install checksum-pinned release scanner
+        run: node scripts/Install-Release-Scanner.mjs
+      - name: Scan the committed release source for secrets
+        run: node scripts/Verify-Release-Security.mjs source
+      - name: Retain sanitized source scan evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-source-security
+          path: .runtime/security-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
       - run: npm ci
       - run: npm run verify
       - run: npm audit --omit=dev --audit-level=high
@@ -78,7 +91,7 @@ jobs:
           OMNICOMPILE_KUBECTL="$tools/kubectl" node --test infra/kubernetes/prewarm-overlays.test.mjs
   docker:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 120
     env:
       MYSQL_ROOT_PASSWORD: ci-ephemeral-database-only
       ADMIN_USERNAME: admin
@@ -110,6 +123,19 @@ jobs:
       - run: docker compose restart omnicompile-c-worker omnicompile-python-worker omnicompile-java-worker
       - run: node infra/docker/verification/Verify-Docker-Compilers.mjs
       - run: node infra/docker/verification/Verify-Docker-Execution.mjs
+      - name: Install checksum-pinned release scanner
+        run: node scripts/Install-Release-Scanner.mjs
+      - name: Scan built image contents and generate bound CycloneDX SBOMs
+        run: node scripts/Verify-Release-Security.mjs images
+      - name: Retain sanitized image findings and image SBOMs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-image-security
+          path: .runtime/security-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 7
       - if: always()
         run: docker compose stop
       # No registry publishing, infrastructure creation or deployment is performed.

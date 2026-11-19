@@ -1,0 +1,105 @@
+# Vercel Deployment - Ignore unnecessary files
+# Only upload the built frontend from apps/web/dist
+
+# Dependencies
+node_modules/
+.npm/
+.pnpm-store/
+
+# Build artifacts (except apps/web/dist which Vercel needs)
+apps/coordinator/dist/
+apps/worker/dist/
+apps/android-worker/
+apps/windows-worker/
+packages/*/dist/
+*.tsbuildinfo
+
+# Docker and container artifacts
+.docker/
+infra/docker/
+*.dockerfile
+docker-compose*.yml
+Dockerfile*
+
+# Kubernetes manifests
+infra/kubernetes/
+*.yaml
+*.yml
+kustomization.yaml
+
+# Database and runtime data
+.runtime/
+*.sql
+*.db
+*.sqlite
+*.log
+logs/
+
+# Environment and secrets
+.env*
+!.env.example
+*.pem
+*.key
+*.crt
+secrets/
+
+# IDE and OS files
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Test and coverage
+coverage/
+.nyc_output/
+*.lcov
+test-results/
+playwright-report/
+
+# Documentation (don't need in deployment)
+docs/
+*.md
+!README.md
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Backup files
+*.backup
+*.bak
+*.tmp
+
+# Windows specific
+$RECYCLE.BIN/
+Desktop.ini
+
+# Large binary files that might be in the repo
+*.exe
+*.msi
+*.dmg
+*.pkg
+*.deb
+*.rpm
+*.iso
+*.img
+*.vhd
+*.vhdx
+
+# Android build artifacts
+*.apk
+*.aab
+*.ap_
+*.dex
+
+# Archives
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
