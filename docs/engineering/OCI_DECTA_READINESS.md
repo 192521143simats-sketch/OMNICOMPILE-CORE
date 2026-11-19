@@ -1,7 +1,9 @@
 # OCI and release readiness
 
-Reviewed 12 November 2026. This checkpoint records the deployment preparation and
-the evidence required before provisioning an environment.
+Local configuration rechecked 19 November 2026. This checkpoint records deployment
+preparation, not an OCI or Vercel deployment acceptance. The pricing observations
+below are historical research from 12 November and were not revalidated in this
+local audit; obtain current tenancy-specific quotas and quotes before provisioning.
 
 ## OCI capacity and cost
 
@@ -21,11 +23,13 @@ constrain simultaneous builds and leave little capacity for high availability.
 
 ## Deployment boundary
 
-- The Kubernetes preparation renders a single coordinator, three language
-  peers, a frontend, and MySQL. Its migration Job is applied separately. The
-  current broker runs on a dedicated Docker host behind private HTTPS.
-  In-cluster per-assignment execution Jobs, a Kubernetes execution provider,
-  prewarming and OCI infrastructure provisioning remain open.
+- The base Kubernetes preparation renders a single coordinator, three language
+  peers, a frontend, and MySQL, using a dedicated Docker execution host behind
+  private HTTPS. Its migration Job is applied separately. The optional native
+  Kubernetes overlay implements the existing broker API using isolated execution
+  Jobs and persisted admission/cleanup. Optional prewarm and drain overlays also
+  exist. OCI infrastructure provisioning and target-cluster acceptance remain open;
+  local provider evidence does not establish OKE compatibility or production readiness.
 - Choose an OKE pod networking setup that enforces NetworkPolicy. Oracle
   documents Calico policy integration with VCN-native pod networking. Test
   restrictions from workload pods, including egress to the executor and
@@ -57,10 +61,30 @@ constrain simultaneous builds and leave little capacity for high availability.
   validation in CI, image and secret scanning, SBOMs and deployment approval
   gates still need release automation.
 
-## Verification for this checkpoint
+## Local verification on 19 November 2026
 
-- Local Kustomize rendering returned 17 resources. The migration Job remains
-  separate. The workstation has no current Kubernetes context.
+- Read-only Kustomize rendering passed for all seven overlays: base (17 resources),
+  native, native prewarm, native drain, Desktop, Desktop prewarm and Desktop drain
+  (26 resources each). Parsed resources had API versions, kinds and names;
+  Deployment selectors matched template labels. This is a structural check,
+  not Kubernetes API/OpenAPI admission or live OCI validation.
+- `node --test infra/kubernetes/prewarm-overlays.test.mjs scripts/initialize-environment.test.mjs`
+  passed all four tests. The overlays preserve base RBAC, and environment
+  initialization preserves existing credentials and hash-only authentication.
+- The Vercel configuration parsed as JSON; recognized SPA and enrollment routes
+  matched while API, WebSocket and unsupported enrollment routes did not match its
+  SPA rules. Static Caddy contract checks confirmed coordinator route preservation,
+  HTML-shell rewriting and credential-header stripping. Caddy was not started,
+  and no Vercel schema service, public deployment, DNS or TLS endpoint was contacted.
+- No cluster resources, Docker services, accounts, domains or deployment settings
+  were changed. See [Parts 10/11 handoff](PART10_11_DEPLOYMENT_GATES.md) for the
+  startup trace and remaining acceptance gates.
+
+## Historical routing evidence from 12 November 2026
+
+- The base Kustomize render returned 17 resources. The migration Job remained
+  separate. The workstation had no current Kubernetes context at that checkpoint;
+  this historical observation is not a statement about the current workstation.
 - A disposable Caddy container and fixture upstream verified the invitation
   chooser and all three platform URLs, including valid trailing slashes where
   exercised, HTML-shell rewrites, local rejection of unsupported join paths,

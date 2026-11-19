@@ -1,4 +1,5 @@
 import { z } from "zod";
+export * from './project.js';
 import {sha256TaskSchema,primeCountTaskSchema,sha256ChainTaskSchema,matrixMultiplyTaskSchema,portableBenchmarkTaskSchema} from "./portable-catalogue.js";
 export * from "./portable-catalogue.js";
 import {contributionPolicySchema} from "./network-policy.js";

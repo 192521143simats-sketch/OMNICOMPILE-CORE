@@ -114,6 +114,25 @@ try{
           expect(report.compilationSummary.sourceFile).toBe(item.file);expect(report.finalResult.status).toBe('SUCCESS');
           console.log(`Actual ${item.language} source upload, native compilation, report and download passed.`);
         }
+        for(const item of [
+          {language:'c',name:'main.c',source:'int main(void) {\n int x=1;\n return missing;\n}\n'},
+          {language:'python',name:'main.py',source:'def main():\n    x = 1\n    return (\n'},
+          {language:'java',name:'Main.java',source:'public class Main {\n public static void main(String[] args) {\n  System.out.println(missing);\n }\n}'},
+        ]){
+          await page.goto('/dashboard');
+          await page.getByLabel('Language',{exact:true}).selectOption(item.language);
+          await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
+          await page.getByLabel('Source filename',{exact:true}).fill(item.name);
+          await page.getByLabel('Source code',{exact:true}).fill(item.source);
+          const submitted=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
+          await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
+          const response=await submitted;expect(response.status()).toBe(202);const job=await response.json();
+          let detail;
+          await expect.poll(async()=>{detail=await (await context.request.get(`/api/compilations/${job.id}`)).json();return detail.status;},{timeout:60000}).toBe('FAILED');
+          expect(detail.error).toMatch(/Line 3, column [1-9]\d*:/);
+          await expect(page.getByRole('alert').filter({hasText:'Compilation failed'}).locator('pre')).toContainText(/Line 3, column [1-9]\d*:/);
+          console.log(`Actual ${item.language} failed job persisted and displayed compiler line3/column.`);
+        }
         await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.setViewportSize({width:1280,height:720});
         await admin.getByRole('button',{name:'Tasks & jobs'}).click();await admin.getByRole('button',{name:'Inspect job'}).first().click();await expect(admin.getByRole('heading',{name:'Job details'})).toBeVisible();await admin.getByRole('button',{name:'Close details'}).click();
         await admin.getByRole('button',{name:'Inspect task'}).first().click();await expect(admin.getByRole('heading',{name:'Task details'})).toBeVisible();await admin.getByRole('button',{name:'Close details'}).click();

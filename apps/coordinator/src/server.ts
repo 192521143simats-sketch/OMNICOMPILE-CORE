@@ -6,6 +6,9 @@ import rateLimit from "@fastify/rate-limit";
 import websocket from "@fastify/websocket";
 import type {WebSocket} from "ws";
 import {z} from "zod";
+import {projectInputSchema} from '@omnicompile/contracts';
+import {analyzeProject} from './project-analysis.js';
+import {formatCompilationFailure} from './compilation-diagnostics.js';
 import {encodeProtocolMessage,parseWorkerMessage,PROTOCOL_VERSION,ProtocolCompatibilityError,testTaskSchema,networkPolicySchema,portableWorkloadCatalogue,type CoordinatorMessage} from "@omnicompile/contracts";
 import {acknowledgeExecutionReceipt,requestExecutionStatus,requestDockerCapabilities,selectNode,workerExecutionReceiptId,type ExecutionMode} from "@omnicompile/orchestration";
 import {selectExecutionNetwork} from './network-placement.js';
@@ -142,7 +145,7 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
   async function failJob(jobId:string,cause:unknown,diagnostics?:ReportDiagnostic[]){
     if((await store.getCompilationJob(jobId))?.status==="CANCELLED")return;
     const detail=cause as {diagnostics?:ReportDiagnostic[]},errors=diagnostics??detail?.diagnostics??[{severity:"error" as const,message:cause instanceof Error?cause.message:"Compilation failed",line:null,column:null}];
-    const error=errors.map(item=>item.message).join("\n").slice(0,2000),source=await store.getCompilationSource(jobId);if(!source){await store.failCompilationJob(jobId,error);return;}
+    const error=formatCompilationFailure(errors),source=await store.getCompilationSource(jobId);if(!source){await store.failCompilationJob(jobId,error);return;}
     const reports=await buildReports({language:source.language,sourceName:source.sourceName,source:source.sourceText,artifacts:[],status:"FAILED",diagnostics:errors,processingTimeMs:Date.now()-Date.parse(source.createdAt)});
     await store.attachFailureReports(jobId,reports,error);const failedJob=await store.getCompilationJob(jobId);runBackground(()=>productEvent(failedJob?.userId??null,"job_failed",{language:source.language.toUpperCase(),status:"FAILED"}),logBackgroundFailure);
   }
@@ -271,6 +274,11 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
 
   app.get("/api/networks",{preHandler:requireUser},async()=>{const page=await networks.listNetworks({page:1,pageSize:100});return{items:page.items.filter((item:any)=>item.status==="ACTIVE")};});
   app.get("/api/jobs",{preHandler:requireUser},async(request:AuthRequest,reply)=>{const parsed=pageSchema.safeParse(request.query);return parsed.success?networks.listJobs(parsed.data,request.auth!.role==="ADMIN"?undefined:request.auth!.id):reply.code(400).send(apiError("INVALID_PAGE","Invalid pagination parameters."));});
+  app.post('/api/compilations/project-analysis',{preHandler:requireRole('USER'),bodyLimit:6_500_000,config:{rateLimit:{max:10,timeWindow:'1 minute'}}},async(request:AuthRequest,reply)=>{
+    const parsed=projectInputSchema.safeParse(request.body);
+    if(!parsed.success)return reply.code(400).send(apiError('INVALID_PROJECT','Check project paths, language, entry point and source limits.'));
+    return analyzeProject(parsed.data);
+  });
   app.post("/api/compilations",{preHandler:requireRole("USER")},async(request:AuthRequest,reply)=>{
     const parsed=z.object({language:z.enum(["c","python","java"]),sourceName:z.string().min(1).max(255),source:z.string().min(1).max(1_000_000),executionInput:z.string().max(16384).default(""),executionMode:z.enum(["CLOUD_ONLY","LOCAL_ONLY","HYBRID"]).default("CLOUD_ONLY")}).safeParse(request.body);
     if(!parsed.success)return reply.code(400).send(apiError("INVALID_COMPILATION","Check the compilation request.",parsed.error.issues));
