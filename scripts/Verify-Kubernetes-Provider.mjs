@@ -8,7 +8,7 @@ import {assertIsolatedTarget,verifyIsolatedCoordinator} from './Integration-Targ
 
 const target=assertIsolatedTarget();
 await verifyIsolatedCoordinator(target);
-const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
+const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD,timezone:'Z'});
 const jobs=new Map();
 const warmPods=new Map();
 const warmMaps=new Map();
@@ -138,9 +138,18 @@ const acknowledge=(requestId,authorized=true)=>broker.inject({
 });
 const start=()=>provider.run(job,new AbortController().signal);
 async function verifyBrokerCapacity(busy){
+  const requestedAt=Date.now();
   const response=await broker.inject({url:'/executions',headers:{authorization:'Bearer '+fixtureToken}});
   assert.equal(response.statusCode,200);
-  assert.deepEqual(response.json().capacity,{busy,limit:2});
+  const status=response.json();
+  assert.deepEqual(status.capacity,{busy,limit:2});
+  assert.equal(status.prewarm.enabled,false,'Disabled configuration must not hide retained reservations');
+  assert.equal(status.prewarm.policy,'fixed');
+  const observedAt=Date.parse(status.prewarm.observedAt);
+  assert.ok(observedAt>=requestedAt&&observedAt<=Date.now());
+  const [rows]=await pool.query('SELECT language,state,expires_at FROM kubernetes_prewarm_slots ORDER BY language');
+  assert.deepEqual(status.prewarm.slots,rows.map(row=>({language:row.language,state:row.state,expiresAt:row.expires_at.toISOString()})));
+  return status;
 }
 async function countSlots(){
   const [[row]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_executions WHERE slot IS NOT NULL');
@@ -430,6 +439,8 @@ try{
   assert.equal(warmPods.size,3);
   const [[{total:pristineRows}]]=await pool.query('SELECT COUNT(*) total FROM kubernetes_prewarm_slots');
   assert.equal(pristineRows,3);
+  const reservations=await verifyBrokerCapacity(0);
+  assert.deepEqual(reservations.prewarm.slots.map(row=>row.language).sort(),['c','java','python']);
   const baselineJobs=coldCreates;
   const commitsBefore=warmCommits;
   const warmKey=randomUUID(),secondKey=randomUUID();

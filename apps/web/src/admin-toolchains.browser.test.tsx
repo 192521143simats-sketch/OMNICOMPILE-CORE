@@ -59,6 +59,7 @@ it("polls every ten seconds while visible and clears polling on unmount",async()
     expect(fetchStatus).toHaveBeenCalledTimes(1);
     await act(async()=>completeRequest?.(firstResponse()));
     expect(host.textContent).toContain("1 / 2 busy");
+    expect(host.textContent).toContain("Not applicable to Docker execution");
     visibility.mockReturnValue("hidden");
     await act(async()=>vi.advanceTimersByTime(10_000));
     expect(fetchStatus).toHaveBeenCalledTimes(1);
@@ -75,4 +76,29 @@ it("polls every ten seconds while visible and clears polling on unmount",async()
     vi.unstubAllGlobals();
   }
   expect(fetchStatus).toHaveBeenCalledTimes(2);
+});
+
+
+it("shows database prewarm reservations and clears stale observations on errors",async()=>{
+  const prewarm={enabled:false,policy:"demand",observedAt:"2026-11-19T00:00:00Z",slots:[{language:"python",state:"RETIRING",expiresAt:"2026-11-19T00:01:00Z"}]};
+  const fetchStatus=vi.fn().mockResolvedValueOnce(Response.json({provider:"kubernetes",items:[],prewarm}))
+    .mockResolvedValueOnce(Response.json({provider:"kubernetes",items:[]}))
+    .mockResolvedValueOnce(Response.json({provider:"kubernetes",items:[],prewarm}))
+    .mockResolvedValueOnce(Response.json({error:{message:"Unavailable"}},{status:503}));
+  const host=document.createElement("div"),root=createRoot(host);
+  vi.stubGlobal("fetch",fetchStatus);
+  const refresh=async()=>{await act(async()=>Array.from(host.querySelectorAll("button")).find(node=>node.textContent==="Refresh executions")!.click());};
+  try{
+    await act(async()=>root.render(<AdminToolchains/>));
+    expect(host.textContent).toContain("Prewarm reservations");
+    expect(host.textContent).not.toContain(String.fromCharCode(0xfffd));
+    expect(host.textContent).toContain("Disabled  -  demand policy");
+    expect(host.textContent).toContain("Database observations");
+    expect(host.textContent).toContain("PYTHON  -  RETIRING");
+    await refresh();
+    expect(host.textContent).toContain("Prewarm reservations  -  Unavailable");
+    expect(host.textContent).not.toContain("RETIRING");
+    await refresh();await refresh();
+    expect(host.textContent).not.toContain("RETIRING");
+  }finally{await act(async()=>root.unmount());vi.unstubAllGlobals();}
 });

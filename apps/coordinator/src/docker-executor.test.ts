@@ -2,7 +2,7 @@ import {describe,it,expect,vi} from 'vitest';
 import type {Pool} from 'mysql2/promise';
 import {KubernetesExecutionProvider} from './kubernetes-execution.js';
 import {createDockerExecutor,resolveToolchainImages,runDockerJob} from './docker-executor.js';
-import {dockerJobSchema,type DockerJob} from './docker-executor-schema.js';
+import {dockerJobSchema,prewarmStatusSchema,type DockerJob} from './docker-executor-schema.js';
 
 const token='x'.repeat(64);
 const job:DockerJob={kind:'task',language:'c',payload:{operation:'c_compile',sourceName:'main.c',source:'int main(void){return 0;}'}};
@@ -104,13 +104,13 @@ describe('Docker execution broker boundary',()=>{
     try{
       await admission;
       const full=await app.inject({url:'/executions',headers:request.headers});
-      expect(full.json()).toEqual({provider:'docker',items:[],capacity:{busy:2,limit:2}});
+      expect(full.json()).toEqual({provider:'docker',items:[],prewarm:null,capacity:{busy:2,limit:2}});
       expect(releases).toHaveLength(2);
       expect((await app.inject(request)).statusCode).toBe(429);
       for(const release of releases)release({});
       await Promise.all([first,second]);
       const idle=await app.inject({url:'/executions',headers:request.headers});
-      expect(idle.json()).toEqual({provider:'docker',items:[],capacity:{busy:0,limit:2}});
+      expect(idle.json()).toEqual({provider:'docker',items:[],prewarm:null,capacity:{busy:0,limit:2}});
     }finally{for(const release of releases)release({});await Promise.all([first,second]);await app.close();}
   });
 
@@ -122,6 +122,7 @@ describe('Docker execution broker boundary',()=>{
       if (/COUNT\(\*\).*FROM kubernetes_executions WHERE slot IS NOT NULL/is.test(sql)) {
         return [[{busy: records.filter(row => row.slot !== null).length}]];
       }
+      if (sql.includes('FROM kubernetes_prewarm_slots')) return [[{language:'c',state:'RETIRING',expiresAt:new Date('2026-11-19T00:00:00Z'),pod_name:'private-pod'}]];
       if (/ORDER BY created_at DESC,id DESC LIMIT 50/.test(sql)) return [records];
       throw new Error('Unexpected SQL');
     });
@@ -133,6 +134,9 @@ describe('Docker execution broker boundary',()=>{
       expect((await app.inject('/executions')).statusCode).toBe(401);
       expect(query).not.toHaveBeenCalled();
       const occupied = await app.inject({url:'/executions',headers});
+      expect(occupied.json().prewarm).toEqual({enabled:false,policy:'fixed',observedAt:expect.any(String),slots:[{language:'c',state:'RETIRING',expiresAt:'2026-11-19T00:00:00.000Z'}]});
+      expect(occupied.body).not.toContain('private-pod');
+      expect(query.mock.calls.some(([sql])=>/FROM kubernetes_prewarm_slots ORDER BY language LIMIT 3/.test(sql))).toBe(true);
       expect(occupied.headers['cache-control']).toBe('no-store');
       expect(occupied.json()).toMatchObject({provider:'kubernetes',capacity:{busy:1,limit:2},items:[{state:'CLEANUP_PENDING'},{state:'SUCCEEDED'}]});
       query.mockImplementation(async sql => {
@@ -186,4 +190,27 @@ describe('Docker execution broker boundary',()=>{
     expect(dockerJobSchema.safeParse({...job,payload:{operation:'prime_count',limit:5}}).success).toBe(false);
     expect(dockerJobSchema.safeParse({...job,kind:'execute',payload:{language:'java',sourceName:'Main.java',generatedSource:''}}).success).toBe(false);
   });
+});
+
+
+it('validates bounded prewarm observations and strips private fields at the admin boundary',()=>{
+  const valid={enabled:true,policy:'demand',observedAt:'2026-11-19T00:00:00.000Z',slots:[{language:'java',state:'IDLE',expiresAt:null,pod_name:'private'}]};
+  expect(prewarmStatusSchema.parse(valid).slots[0]).not.toHaveProperty('pod_name');
+  for(const invalid of [{...valid,observedAt:'bad'},{...valid,policy:'automatic'},
+    {...valid,slots:Array(4).fill(valid.slots[0])},{...valid,slots:[{language:'java',state:'READY',expiresAt:null}]}]){
+    expect(prewarmStatusSchema.safeParse(invalid).success).toBe(false);
+  }
+});
+
+
+it('reports enabled demand policy and bounded empty observations without querying Kubernetes',async()=>{
+  const query=vi.fn(async()=>[[]]);
+  const cluster=vi.fn();
+  const image='fixture/runner@sha256:'+'a'.repeat(64);
+  const provider=new KubernetesExecutionProvider({query} as unknown as Pool,cluster,'fixtures','sandbox',{c:image,python:image,java:image},true,'demand');
+  const report=await provider.prewarmStatus();
+  expect(report).toEqual({enabled:true,policy:'demand',observedAt:expect.any(String),slots:[]});
+  expect(Number.isNaN(Date.parse(report.observedAt))).toBe(false);
+  expect(query).toHaveBeenCalledTimes(1);
+  expect(cluster).not.toHaveBeenCalled();
 });

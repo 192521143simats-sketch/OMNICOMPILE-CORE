@@ -22,3 +22,9 @@ export const dockerJobSchema=z.discriminatedUnion('kind',[
   if(requested!==job.language)context.addIssue({code:'custom',message:'Job language does not match its payload.'});
 });
 export type DockerJob=z.infer<typeof dockerJobSchema>;
+
+
+export const prewarmStatusSchema=z.object({enabled:z.boolean(),policy:z.enum(['fixed','demand']),observedAt:z.iso.datetime(),
+  slots:z.array(z.object({language:z.enum(['c','python','java']),
+    state:z.enum(['PROVISIONING','IDLE','CLAIMED','RETIRING']),expiresAt:z.iso.datetime().nullable()})).max(3)
+});

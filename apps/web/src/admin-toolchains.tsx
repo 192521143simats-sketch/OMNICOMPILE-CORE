@@ -12,6 +12,8 @@ const failureLabels = {
 type ExecutionHistory={
   provider:"docker"|"kubernetes";
   capacity?:{busy:number;limit:number}|null;
+  prewarm?:{enabled:boolean;policy:"fixed"|"demand";observedAt:string;
+    slots:Array<{language:"c"|"python"|"java";state:"PROVISIONING"|"IDLE"|"CLAIMED"|"RETIRING";expiresAt:string|null}>}|null;
   items:Array<{
     id:string;language:string;kind:string;state:string;createdAt:string;finishedAt:string|null;
     runnerDurationMs?:number|null;provisioningDurationMs?:number|null;capacityRetryWaitMs?:number|null;
@@ -65,6 +67,7 @@ export function AdminToolchains(){
     finally{setPending(false);}
   }
   const capacity=historyError?null:history?.capacity;
+  const prewarm=historyError?null:history?.prewarm;
   return <section className="card" aria-label="Execution toolchains">
     <h2>Execution toolchains</h2>
     <button className="secondary" disabled={pending} type="button" onClick={()=>void refresh()}>
@@ -76,6 +79,15 @@ export function AdminToolchains(){
       <strong>{item.language.toUpperCase()}</strong> · {item.available===null?"Configured · pull not checked":item.available?"Available":"Unavailable"} · <code>{item.reference}</code>
     </li>)}</ul>}
     <h3>Execution history</h3>
+    <p role="status"><strong>Prewarm reservations</strong>  -  {prewarm
+      ?`${prewarm.enabled?"Enabled":"Disabled"}  -  ${prewarm.policy} policy`
+      :!historyError&&history?.provider==="docker"?"Not applicable to Docker execution":"Unavailable"}</p>
+    {prewarm&&<>
+      <p>Database observations  -  {new Date(prewarm.observedAt).toLocaleString()}. Reservation states do not report Pod health or readiness.</p>
+      {prewarm.slots.length===0?<p>No reservations recorded.</p>:<ul aria-label="Prewarm reservations">{prewarm.slots.map(slot=><li key={slot.language}>
+        {slot.language.toUpperCase()}  -  {slot.state}  -  Expires {slot.expiresAt?new Date(slot.expiresAt).toLocaleString():"unavailable"}
+      </li>)}</ul>}
+    </>}
     <p role="status"><strong>Fixed execution capacity</strong> · {capacity
       ?`${capacity.busy} / ${capacity.limit} busy · ${capacity.limit-capacity.busy} available`
       :checkingHistory?"Checking…":"Unavailable"}</p>

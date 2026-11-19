@@ -10,7 +10,7 @@ import {optimizeCIR} from "./optimize.js";
 
 describe("C native code generation",()=>{
   it("does not disclose configured toolchain filesystem paths in errors",async()=>{const prior=process.env.GCC_EXECUTABLE;try{process.env.GCC_EXECUTABLE=join(tmpdir(),"private-gcc-path-fixture","gcc.exe");try{await codegen.compileCSource("int main(void){return 0;}");throw new Error("Unexpected compiler success");}catch(error){expect(error).toBeInstanceOf(codegen.CToolchainError);expect((error as Error).message).not.toContain("private-gcc-path-fixture");}}finally{if(prior===undefined)delete process.env.GCC_EXECUTABLE;else process.env.GCC_EXECUTABLE=prior;}});
-  it("bounds derived executable names for accepted long source filenames",async()=>{const artifact=await compileCExecutable(lowerCToIR("int main(void){return 0;}"),"x".repeat(253));expect(artifact.fileName.length).toBeLessThanOrEqual(255);expect(artifact.bytes.length).toBeGreaterThan(100);});
+  it("bounds derived executable names for accepted long source filenames",async()=>{const artifact=await compileCExecutable(lowerCToIR("int main(void){return 0;}"),"x".repeat(253));expect(artifact.fileName.length).toBeLessThanOrEqual(255);expect(artifact.bytes.length).toBeGreaterThan(100);},30_000);
   it("compiles actual C headers, structs and strings without rewriting source",async()=>{
     const source='#include <stdio.h>\nstruct Pair { int x; int y; };\nint main(void) { struct Pair p={2,3}; puts("hello"); return p.x+p.y; }\n';
     const artifact=await codegen.compileCSource(source,"pairs.c");

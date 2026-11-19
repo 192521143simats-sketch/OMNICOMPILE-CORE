@@ -20,6 +20,7 @@ import {buildReports,type ReportDiagnostic,type ReportOptimization} from "./buil
 import {nativeArtifacts,artifactDisposition,outputName} from "./compiler-artifacts.js";
 import {executeIsolated} from "./isolated-execution.js";
 import {commitExecutionResult,executionReceiptId,isPendingExecutionReceipt} from "./finalization-receipts.js";
+import {prewarmStatusSchema} from './docker-executor-schema.js';
 import {fixedExecutionLimit,kubernetesFailureReasons} from './kubernetes-execution.js';
 import {runCompilerProcess} from './compiler-process-control.js';
 import {verifyCompilation,describeVerifiedOptimization} from "./compilation-verification.js";
@@ -179,6 +180,7 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
       const result=await requestExecutionStatus();
       if(result.status!==200)throw new Error("Broker unavailable");
       return z.object({provider:z.enum(["docker","kubernetes"]),
+        prewarm:prewarmStatusSchema.nullable().optional(),
         capacity:z.object({busy:z.number().int().min(0).max(fixedExecutionLimit),limit:z.literal(fixedExecutionLimit)}).nullable().optional(),
         items:z.array(z.object({
         id:z.uuid(),language:z.enum(["c","python","java"]),kind:z.string(),state:z.string(),

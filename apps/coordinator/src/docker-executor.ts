@@ -122,8 +122,8 @@ export function createDockerExecutor(
   app.get('/executions',{onRequest:authenticate},async(_request,reply)=>{
     reply.header('Cache-Control','no-store');
     try{
-      const [busy,items]=kubernetes?await Promise.all([kubernetes.countOccupiedSlots(),kubernetes.list()]):[active.size,[]];
-      return {provider:kubernetes?'kubernetes':'docker',items,capacity:{busy,limit:fixedExecutionLimit}};
+      const [busy,items,prewarm]=kubernetes?await Promise.all([kubernetes.countOccupiedSlots(),kubernetes.list(),kubernetes.prewarmStatus()]):[active.size,[],null];
+      return {provider:kubernetes?'kubernetes':'docker',items,prewarm,capacity:{busy,limit:fixedExecutionLimit}};
     }catch{
       return reply.code(503).send({error:{code:'EXECUTIONS_UNAVAILABLE',message:'Execution history is unavailable.'}});
     }

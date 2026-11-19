@@ -74,7 +74,7 @@ export class KubernetesExecutionProvider {
   private readonly prewarm:KubernetesPrewarmPool;
   constructor(private readonly pool:Pool,private readonly api:ClusterApi,namespace:string,
     private readonly runtime:string,private readonly images:Record<DockerJob['language'],string>,private readonly prewarmEnabled=false,
-    prewarmPolicy:PrewarmPolicy='fixed'){
+    private readonly prewarmPolicy:PrewarmPolicy='fixed'){
     if(!/^[a-z0-9][a-z0-9-]{0,62}$/.test(namespace))throw new Error('Invalid execution namespace.');
     this.jobs='/apis/batch/v1/namespaces/'+namespace+'/jobs';
     this.core='/api/v1/namespaces/'+namespace;
@@ -99,6 +99,14 @@ export class KubernetesExecutionProvider {
       throw new Error('Invalid execution slot occupancy.');
     }
     return busy;
+  }
+
+  async prewarmStatus(){
+    const [rows]=await this.pool.query<RowDataPacket[]>(
+      'SELECT language,state,expires_at AS expiresAt FROM kubernetes_prewarm_slots ORDER BY language LIMIT 3');
+    return {enabled:this.prewarmEnabled,policy:this.prewarmPolicy,observedAt:new Date().toISOString(),
+      slots:rows.map(row=>({language:row.language,state:row.state,
+        expiresAt:row.expiresAt==null?null:new Date(row.expiresAt).toISOString()}))};
   }
 
   async list(){
