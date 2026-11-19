@@ -132,6 +132,17 @@ export class KubernetesPrewarmPool {
       },signal);
       if(created?.metadata?.name!==name)throw new Error('Prewarmed input publication could not be confirmed.');
     }
+    // An annotation update asks kubelet to refresh optional projected ConfigMaps
+    // immediately. Fence the merge patch against deletion/name reuse and updates.
+    const pod=await this.getPod(claim,signal);
+    const resourceVersion=pod.metadata.resourceVersion;
+    if(typeof resourceVersion!=='string'||!resourceVersion)throw new Error('Prewarmed Pod version is unavailable.');
+    const annotations={'omnicompile.io/input-refresh':id};
+    const refreshed=await this.api('PATCH',this.podPath(claim.name),{
+      metadata:{uid:claim.uid,resourceVersion,annotations},
+    },signal);
+    if(refreshed?.metadata?.uid!==claim.uid||refreshed.metadata.annotations?.['omnicompile.io/input-refresh']!==id)
+      throw new Error('Prewarmed input refresh could not be confirmed.');
   }
 
   async finish(id:string,hold:boolean):Promise<boolean|undefined>{

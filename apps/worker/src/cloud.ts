@@ -1,7 +1,6 @@
 import {readFile} from 'node:fs/promises';
 import {NativeWorkerSession} from './session.js';
-import {profile} from './profiler.js';
-import {languageProfile, type WorkerLanguage} from './cloud-profile.js';
+import {cloudProfile, type WorkerLanguage} from './cloud-profile.js';
 import {requestDockerJob,workerExecutionReceiptId} from '@omnicompile/orchestration';
 import {runTaskProcess} from './task-process-controller.js';
 
@@ -13,7 +12,7 @@ if (!coordinator || !['c', 'python', 'java'].includes(language ?? '') || !creden
 }
 const credential = (await readFile(credentialFile, 'utf8')).trim();
 if (!credential || credential.length > 4096) throw new Error('A valid scoped enrollment credential is required.');
-const detected = languageProfile(await profile(), language as WorkerLanguage);
+const detected = await cloudProfile(language as WorkerLanguage);
 let previous = '';
 const session = new NativeWorkerSession({
   coordinator,

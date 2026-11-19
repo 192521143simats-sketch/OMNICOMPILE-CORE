@@ -57,4 +57,10 @@ async function main(){
   }
   for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{void app.close();});
 }
-if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)void main().catch(()=>{console.error('Compiler service initialization failed');process.exit(1);});
+export function compilerStartupDiagnostic(error:unknown){
+  let candidate:unknown;
+  try{candidate=error&&typeof error==='object'&&'code' in error?error.code:undefined;}catch{}
+  const code=typeof candidate==='string'&&['CLOUD_TOOLCHAIN_UNAVAILABLE','ENOENT','EACCES','EADDRINUSE'].includes(candidate)?candidate:'INITIALIZATION_FAILED';
+  return {message:'Compiler service initialization failed',code};
+}
+if(process.argv[1]&&import.meta.url===pathToFileURL(process.argv[1]).href)void main().catch(error=>{console.error(JSON.stringify(compilerStartupDiagnostic(error)));process.exit(1);});

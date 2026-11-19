@@ -39,7 +39,7 @@ function fixture(){
     spec:{hard:quotaHard},status:{hard:quotaHard,used:{pods:'1','requests.cpu':'250m','requests.memory':'256Mi'}}};
   let pod:any={
     ...prewarmedManifest(name,'c',image,runtime),
-    metadata:{name,uid:'pod-uid',labels:{[prewarmLabel]:'c'},creationTimestamp:new Date().toISOString()},
+    metadata:{name,uid:'pod-uid',resourceVersion:'123',labels:{[prewarmLabel]:'c'},creationTimestamp:new Date().toISOString()},
     status:{phase:'Running',conditions:[{type:'Ready',status:'True'}]},
   };
   let slot:any={
@@ -48,6 +48,7 @@ function fixture(){
   };
   let rejectDelete=false;
   let rejectCommit=false;
+  let rejectPatch=false;
   let rejectClaimReply=false;
   let onCommit=()=>{};
   let latestExecution='';
@@ -171,6 +172,12 @@ function fixture(){
     }
     if(path===core+'/pods/'+name){
       if(method==='GET')return pod;
+      if(method==='PATCH'){
+        if(rejectPatch)throw Error('refresh patch failed');
+        if(body.metadata.uid!==pod?.metadata.uid||body.metadata.resourceVersion!==pod?.metadata.resourceVersion)throw Error('pod identity conflict');
+        pod.metadata.annotations={...pod.metadata.annotations,...body.metadata.annotations};
+        return pod;
+      }
       if(method==='DELETE'){
         if(rejectDelete)throw Error('pod deletion failed');
         if(pod?.metadata.uid===body.preconditions.uid)pod=null;
@@ -210,6 +217,7 @@ function fixture(){
     expire(){slot.idle_live=0;}, expireLease(){cleanupLeaseExpired=true;},
     failDelete(){rejectDelete=true;}, restoreDelete(){rejectDelete=false;},
     failCommit(){rejectCommit=true;}, failClaimReply(){rejectClaimReply=true;},
+    failPatch(){rejectPatch=true;},
     afterCommit(callback:()=>void){onCommit=callback;},
   };
 }
@@ -251,6 +259,47 @@ describe('Durable Kubernetes prewarm handoff',()=>{
     expect(JSON.parse(Buffer.from(maps[40].binaryData.payload,'base64').toString())).toMatchObject({
       podId:name,executionId,language:'c',chunkCount:40,byteLength:24_000_000,
     });
+    const last=f.api.mock.calls.at(-1);
+    expect(last).toEqual(['PATCH',core+'/pods/'+name,{metadata:{uid:'pod-uid',resourceVersion:'123',
+      annotations:{'omnicompile.io/input-refresh':executionId}}},expect.any(AbortSignal)]);
+  });
+
+  it('fails closed and quarantines input when the refresh patch fails',async()=>{
+    const f=fixture(); f.failPatch();
+    await expect(f.provider().run(fixtureJob,freshSignal())).rejects.toThrow('refresh patch failed');
+    expect(f.execution).toMatchObject({state:'CLEANUP_PENDING'});
+    expect(f.slot).toMatchObject({state:'CLAIMED'});
+    expect(f.pod).toBeNull();
+    expect(f.api.mock.calls.some(([,path])=>path.includes('/log?'))).toBe(false);
+    f.expireLease(); await f.provider(false).reconcile();
+    expect(f.slot).toBeNull(); expect(f.maps.size).toBe(0);
+  });
+
+  it('never patches a replaced Pod after commit',async()=>{
+    const f=fixture();
+    f.afterCommit(()=>{f.pod.metadata.uid='replacement';});
+    await expect(f.pool().publish({name,uid:'pod-uid',language:'c'},'execution',Buffer.from('source-secret'),600_000,freshSignal()))
+      .rejects.toThrow('identity changed');
+    expect(f.api.mock.calls.some(([method])=>method==='PATCH')).toBe(false);
+  });
+
+  it.each(['uid','resourceVersion'])('fences a %s race between the refresh read and patch',async field=>{
+    const f=fixture();
+    const original=f.api.getMockImplementation()!;
+    f.api.mockImplementation(async(method,path,body)=>{
+      const result=await original(method,path,body);
+      if(method==='GET'&&path===core+'/pods/'+name&&f.maps.size>0){
+        const snapshot=structuredClone(result);
+        f.pod.metadata[field]='replacement';
+        return snapshot;
+      }
+      return result;
+    });
+    await expect(f.pool().publish({name,uid:'pod-uid',language:'c'},'execution',Buffer.from('source-secret'),600_000,freshSignal()))
+      .rejects.toThrow('identity conflict');
+    expect(f.api.mock.calls.find(([method])=>method==='PATCH')?.[2]).toEqual({metadata:{
+      uid:'pod-uid',resourceVersion:'123',annotations:{'omnicompile.io/input-refresh':'execution'},
+    }});
   });
 
   it('persists the receipt before cleanup and replays it through a restarted broker',async()=>{

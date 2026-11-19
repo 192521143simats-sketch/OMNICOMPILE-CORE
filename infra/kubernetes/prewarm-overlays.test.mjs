@@ -48,7 +48,7 @@ function assertPoolChanges(baseline, rendered, enabled) {
   };
   const { rules } = resource(expected, 'Role', 'execution-broker');
   rules.find((rule) => rule.resources.includes('configmaps')).verbs.push('list', 'delete');
-  rules.find((rule) => rule.resources.includes('pods')).verbs.push('create', 'get', 'delete');
+  rules.find((rule) => rule.resources.includes('pods')).verbs.push('create', 'get', 'delete', 'patch');
 
   rules.push({ apiGroups: [''], resources: ['resourcequotas'], resourceNames: ['execution-capacity'], verbs: ['get'] });
 
@@ -62,6 +62,8 @@ test('the base Kubernetes overlay renders', () => {
 for (const platform of ['native', 'desktop']) {
   test(`${platform} prewarm and drain render with only the expected pool changes`, () => {
     const baseline = render(`kubernetes-${platform}`);
+    assert.ok(!resource(baseline, 'Role', 'execution-broker').rules
+      .some((rule) => rule.resources.includes('pods') && rule.verbs.includes('patch')));
     const env = brokerEnvironment(baseline);
     assert.notEqual(env.find((variable) => variable.name === prewarmFlag)?.value, '1');
     const runtimeClass = env.find((variable) => variable.name === 'OMNICOMPILE_SANDBOX_RUNTIME_CLASS').value;

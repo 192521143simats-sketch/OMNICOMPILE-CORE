@@ -36,6 +36,9 @@ patches:
       path: /rules/2/verbs/-
       value: delete
     - op: add
+      path: /rules/2/verbs/-
+      value: patch
+    - op: add
       path: /rules/-
       value:
         apiGroups: [""]

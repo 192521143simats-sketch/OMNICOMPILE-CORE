@@ -38,7 +38,7 @@ export function inClusterApi():ClusterApi {
     const payload=body===undefined?undefined:JSON.stringify(body);
     return new Promise((resolve,reject)=>{
       const req=request({hostname,port:process.env.KUBERNETES_SERVICE_PORT_HTTPS??443,method,path,ca,signal:bounded,
-        headers:{Authorization:'Bearer '+token.trim(),'Content-Type':'application/json',
+        headers:{Authorization:'Bearer '+token.trim(),'Content-Type':method==='PATCH'?'application/merge-patch+json':'application/json',
           ...(payload===undefined?{}:{'Content-Length':Buffer.byteLength(payload)})}},response=>{
         const chunks:Buffer[]=[];let bytes=0;
         response.on('error',reject);
