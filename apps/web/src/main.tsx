@@ -1,4 +1,3 @@
-import {ExecutionPreference,ExecutionPlacement,type ExecutionMode} from './execution-placement.js';
 import {CompilerMetrics} from "./compiler-metrics.js";
 import React,{useEffect,useMemo,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
@@ -15,6 +14,7 @@ import {WorkerInstallation,type DistributionPlatform} from "./worker-installatio
 import {joinAllowsPlatform,joinPath,parseJoinRoute,WorkerChoices,type JoinPlatform,type JoinWorkerType} from "./worker-onboarding.js";
 import {Login,Signup,Forgot,Reset} from "./auth-pages.js";
 import "./terminal.css";
+import "./landing.css";
 
 type User={id:string;name:string;email:string;role:"ADMIN"|"USER"};
 type Page<T>={items:T[];page:number;pageSize:number;totalItems:number;totalPages:number};
@@ -24,199 +24,44 @@ const statusClass=(status:string)=>`status status-${status.toLowerCase()}`;
 function Header({user}:{user?:User|null|undefined}){useEffect(()=>{let active=true;if(user)api("/api/user/settings").then(preferences=>{if(active)document.documentElement.dataset.reducedMotion=String(preferences.reducedMotion);}).catch(()=>{});return()=>{active=false;};},[user?.id]);const[logoutError,setLogoutError]=useState("");async function logout(){try{await api("/api/auth/logout",{method:"POST"});go("/login");}catch(cause){setLogoutError(cause instanceof Error?cause.message:"Unable to sign out.");}}return <><a className="skip-link" href="#main-content">Skip to content</a><header><a href="/" className="brand"><span>OC</span> OmniCompile Core</a><nav>{user?.role==="ADMIN"?<><a href="/admin">Admin</a><button className="link-button" onClick={logout}>Logout</button></>:user?<><a href="/dashboard">Compiler</a><button className="link-button" onClick={logout}>Logout</button></>:<a href="/login">Login</a>}</nav></header>{logoutError&&<Notice error={logoutError}/>}</>}
 function Shell({user,title,subtitle,children}:{user?:User|null|undefined;title:string;subtitle:string;children:React.ReactNode}){return <><Header user={user}/><main id="main-content" tabIndex={-1}><div className="heading"><p className="eyebrow">Distributed compute platform</p><h1>{title}</h1><p>{subtitle}</p></div>{children}</main></>}
 function Metric({name,value}:{name:string;value:React.ReactNode}){return <div className="metric"><span>{name}</span><strong>{value}</strong></div>}
-function Home(){return <Shell title="Hardware-adaptive distributed compilation." subtitle="OmniCompile Core connects authenticated users with consent-based browser and native workers through isolated distributed networks."><div className="grid three"><a className="card action" href="/login"><h2>Sign in</h2><p>Access your compiler workspace or administration console.</p></a><a className="card action" href="/signup"><h2>Create an account</h2><p>Submit source and download your compilation artifacts.</p></a><div className="card"><h2>Join a network</h2><p>Open the reusable link supplied by an administrator. Consent is always explicit.</p></div></div></Shell>}
 
-
-function useUser(requiredRole?:"ADMIN"|"USER"){const[user,setUser]=useState<User|null>(null),[loading,setLoading]=useState(true);useEffect(()=>{api("/api/auth/me").then(({user})=>{if(requiredRole&&user.role!==requiredRole)go(user.role==="ADMIN"?"/admin":"/dashboard");else setUser(user)}).catch(()=>go("/login")).finally(()=>setLoading(false))},[]);return{user,loading};}
-function DataTable({columns,items,empty="No records found."}:{columns:Array<{label:string;render:(item:any)=>React.ReactNode}>;items:any[];empty?:string}){return <div className="table-wrap"><table><thead><tr>{columns.map(column=><th key={column.label}>{column.label}</th>)}</tr></thead><tbody>{items.length?items.map((item,index)=><tr key={item.id??index}>{columns.map(column=><td key={column.label}>{column.render(item)}</td>)}</tr>):<tr><td colSpan={columns.length} className="empty">{empty}</td></tr>}</tbody></table></div>}
-
-function AdminV2(){
-  const{user,loading}=useUser("ADMIN"),[tab,setTab]=useState<"overview"|"workloads"|"audit">("overview"),[overview,setOverview]=useState<any>(null),[networkPage,setNetworkPage]=useState<Page<any>>({items:[],page:1,pageSize:10,totalItems:0,totalPages:1}),[nodesData,setNodesData]=useState<Page<any>>({items:[],page:1,pageSize:10,totalItems:0,totalPages:1}),[nodePage,setNodePage]=useState(1),[jobs,setJobs]=useState<Page<any>>({items:[],page:1,pageSize:10,totalItems:0,totalPages:1}),[tasks,setTasks]=useState<Page<any>>({items:[],page:1,pageSize:10,totalItems:0,totalPages:1}),[audit,setAudit]=useState<Page<any>>({items:[],page:1,pageSize:10,totalItems:0,totalPages:1}),[page,setPage]=useState(1),[jobPage,setJobPage]=useState(1),[taskPage,setTaskPage]=useState(1),[inspection,setInspection]=useState<{kind:"task"|"job"|"network"|"node";id:string;node?:any}|null>(null),[error,setError]=useState(""),[joinUrl,setJoinUrl]=useState(""),[joinLink,setJoinLink]=useState<{networkId:string;enabled:boolean}|null>(null),[invitationNotice,setInvitationNotice]=useState(""),[copyState,setCopyState]=useState<"idle"|"copied"|"failed">("idle"),[refreshing,setRefreshing]=useState(false),[refreshedAt,setRefreshedAt]=useState<Date|null>(null),[network,setNetwork]=useState({name:"Network Alpha",description:"Browser and native optimization workers",maxNodes:50});
-  async function refresh(){setRefreshing(true);try{const snapshot=await api("/api/admin/overview");setOverview(snapshot);if(tab==="overview"){const[networksPage,nodesPage]=await Promise.all([api(`/api/admin/networks?page=${page}&pageSize=10`),api(`/api/admin/nodes?page=${nodePage}&pageSize=10`)]);setNetworkPage(networksPage);setNodesData(nodesPage);}if(tab==="workloads"){const[jobsResult,tasksResult]=await Promise.all([api(`/api/admin/jobs?page=${jobPage}&pageSize=10`),api(`/api/admin/tasks?page=${taskPage}&pageSize=10`)]);setJobs(jobsResult);setTasks(tasksResult);}if(tab==="audit")setAudit(await api(`/api/admin/audit?page=${page}&pageSize=10`));setError("");setRefreshedAt(new Date());}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}finally{setRefreshing(false);}}
-  const liveRefresh=useRef(refresh);liveRefresh.current=refresh;
-  useEffect(()=>{
-    if(!user)return;let stopped=false,socket:WebSocket|undefined,reconnect:ReturnType<typeof setTimeout>|undefined,scheduled:ReturnType<typeof setTimeout>|undefined;
-    void liveRefresh.current();
-    function connect(){if(stopped)return;const protocol=location.protocol==="https:"?"wss:":"ws:";socket=new WebSocket(`${protocol}//${location.host}/ws/admin`);
-      socket.onmessage=event=>{try{const message=JSON.parse(event.data);if(message.type==="snapshot"){setOverview(message.data);if(!scheduled)scheduled=setTimeout(()=>{scheduled=undefined;void liveRefresh.current();},750);}}catch{setError("Live update could not be read. Use Refresh to synchronize.");}};
-      socket.onclose=event=>{if(!stopped&&event.code!==1008)reconnect=setTimeout(connect,2000);};
-      socket.onerror=()=>setError("Live connection interrupted. Refresh remains available.");
-    }
-    connect();const fallback=setInterval(()=>void liveRefresh.current(),10000);
-    return()=>{stopped=true;clearInterval(fallback);clearTimeout(reconnect);clearTimeout(scheduled);socket?.close();};
-  },[user]);
-  useEffect(()=>{if(user)void refresh()},[tab,page,nodePage,jobPage,taskPage]);
-  async function createNetwork(event:React.FormEvent){event.preventDefault();try{const result=await api("/api/admin/networks",{method:"POST",body:JSON.stringify({...network,expiresAt:null,requireAdminApproval:true})});setJoinUrl(result.joinUrl);setJoinLink({networkId:result.id,enabled:result.joinLinkEnabled});setInvitationNotice("");setCopyState("idle");setPage(1);await refresh();}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}}
-  async function showJoinLink(networkId:string){try{const link=await api(`/api/admin/networks/${networkId}/join-link`);setJoinUrl(link.joinUrl);setJoinLink({networkId,enabled:link.enabled});setInvitationNotice("");setCopyState("idle");setError("");}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}}
-  useEffect(()=>{setJoinLink(current=>{if(!current)return current;const row=networkPage.items.find(item=>item.id===current.networkId);return row&&Boolean(row.joinLinkEnabled)!==current.enabled?{...current,enabled:Boolean(row.joinLinkEnabled)}:current;});},[networkPage]);
-  async function toggleJoinLink(networkId:string,enabled:boolean){try{const link=await api(`/api/admin/networks/${networkId}/join-link`,{method:"POST",body:JSON.stringify({enabled})});setJoinUrl(link.joinUrl);setJoinLink({networkId,enabled:link.enabled});setInvitationNotice(link.enabled?"Network link invoked. Devices can consent and join while capacity is available.":"Network link revoked. New devices cannot join; existing workers stay enrolled.");setError("");await refresh();}catch(cause){setError(cause instanceof Error?cause.message:String(cause));}}
-  async function copyJoinLink(){try{let copied=false;if(navigator.clipboard?.writeText)try{await navigator.clipboard.writeText(joinUrl);copied=true;}catch{/* HTTP LAN pages may not expose the secure clipboard API. */}if(!copied){const field=document.createElement("textarea");field.value=joinUrl;field.style.position="fixed";field.style.left="-9999px";document.body.appendChild(field);field.select();copied=document.execCommand("copy");field.remove();}if(!copied)throw new Error("Copy was blocked by this browser");setCopyState("copied");}catch{setCopyState("failed");}setTimeout(()=>setCopyState("idle"),2400);}
-  async function revoke(nodeId:string){try{await api(`/api/admin/nodes/${nodeId}/revoke`,{method:"POST"});await refresh();}catch(cause){setError(cause instanceof Error?cause.message:"Worker revocation failed.");}}
-  async function disable(networkId:string){try{await api(`/api/admin/networks/${networkId}/disable`,{method:"POST"});await refresh();}catch(cause){setError(cause instanceof Error?cause.message:"Network disable failed.");}}
-  if(loading||!user)return null;
-  const totalPages=tab==="overview"?networkPage.totalPages:tab==="workloads"?Math.max(jobs.totalPages,tasks.totalPages):audit.totalPages;
-  return <Shell user={user} title="Dashboard" subtitle="Monitor coordinator health, distributed networks, workers, compilation history, and security events.">
-    <div className="tabs"><button className={tab==="overview"?"active":"secondary"} onClick={()=>{setTab("overview");setPage(1)}}>Overview</button><button className={tab==="workloads"?"active":"secondary"} onClick={()=>{setTab("workloads");setPage(1)}}>Tasks &amp; jobs</button><button className={tab==="audit"?"active":"secondary"} onClick={()=>{setTab("audit");setPage(1)}}>Audit</button><button className="secondary refresh-button" disabled={refreshing} onClick={refresh}>{refreshing?<><span className="spinner"/>Refreshing…</>:"Refresh"}</button>{refreshedAt&&<span className="refresh-time">Updated {refreshedAt.toLocaleTimeString()}</span>}</div>
-    <Notice error={error}/>{inspection&&<AdminInspector {...inspection} onClose={()=>setInspection(null)}/>}
-    {tab==="overview"&&<><EnrollmentAdmin networks={networkPage.items}/><AdminToolchains/><div className="metrics"><Metric name="Coordinator" value={overview?.coordinator.status??"—"}/><Metric name="Active networks" value={overview?.summary.activeNetworks??0}/><Metric name="Online workers" value={overview?.summary.onlineWorkers??0}/><Metric name="Busy workers" value={overview?.summary.busyWorkers??0}/><Metric name="Active jobs" value={overview?.summary.activeJobs??0}/><Metric name="Queued / failed" value={`${overview?.summary.queuedTasks??0} / ${overview?.summary.failedTasks??0}`}/></div>
-      <form className="card inline-form" onSubmit={createNetwork}><h2>Create distributed network</h2><label>Name<input value={network.name} onChange={e=>setNetwork({...network,name:e.target.value})}/></label><label>Description<input value={network.description} onChange={e=>setNetwork({...network,description:e.target.value})}/></label><label>Node limit<input type="number" min="1" value={network.maxNodes} onChange={e=>setNetwork({...network,maxNodes:Number(e.target.value)})}/></label><button>Create network</button>{joinUrl&&<div className="notice"><b>Default network join link</b><p>{joinLink?.enabled?"Invoked — multiple devices can consent and join, subject to the node limit.":"Revoked — this link is unavailable until the administrator invokes it."}</p><div className="copy"><code>{joinUrl}</code><button type="button" className={copyState==="copied"?"copy-success":""} onClick={copyJoinLink}>{copyState==="copied"?"✓ Copied":copyState==="failed"?"Copy failed — retry":"Copy"}</button>{joinLink&&<button type="button" role="switch" aria-checked={joinLink.enabled} onClick={()=>toggleJoinLink(joinLink.networkId,!joinLink.enabled)}>{joinLink.enabled?"Revoke link":"Invoke link"}</button>}</div></div>}{invitationNotice&&<p role="status">{invitationNotice}</p>}</form>
-      <section><div className="section-title"><h2>Networks and worker nodes</h2><span className="muted">Only active networks are listed. Capacity counts connected nodes.</span></div><DataTable items={networkPage.items} columns={[{label:"Network",render:x=><><strong>Network {x.networkCode}</strong><br/><span>{x.name}</span></>},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Capacity",render:x=>`${x.nodeCount}/${x.maxNodes}`},{label:"Action",render:x=><><button onClick={()=>showJoinLink(x.id)}>Show / copy link</button> <button className="secondary" onClick={()=>setInspection({kind:"network",id:x.id})}>Scheduling policy</button> <button role="switch" aria-label={`Admission for ${x.name}`} aria-checked={Boolean(x.joinLinkEnabled)} disabled={x.status!=="ACTIVE"} onClick={()=>toggleJoinLink(x.id,!x.joinLinkEnabled)}>{x.joinLinkEnabled?"Revoke link":"Invoke link"}</button> <button className="danger" disabled={x.status!=="ACTIVE"} onClick={()=>disable(x.id)}>Disable</button></>}]} /><Pagination page={page} totalPages={networkPage.totalPages} onChange={setPage}/><h3>Worker nodes</h3><DataTable items={nodesData.items} columns={[{label:"Node ID",render:x=><code>{x.id}</code>},{label:"Network",render:x=>x.networkName},{label:"Type",render:x=>x.workerType},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Last heartbeat",render:x=>new Date(x.lastHeartbeat).toLocaleString()},{label:"Actions",render:x=><><button className="secondary" onClick={()=>setInspection({kind:"node",id:x.id,node:x})}>Inspect node</button> <button className="danger" onClick={()=>revoke(x.id)}>Revoke node</button></>}]}/><Pagination page={nodePage} totalPages={nodesData.totalPages} onChange={setNodePage}/></section></>}
-    {tab==="workloads"&&<><section><h2>Compilation history</h2><DataTable items={jobs.items} columns={[{label:"Job",render:x=><code>{x.id}</code>},{label:"Source",render:x=>`${x.sourceName} (${x.language.toUpperCase()})`},{label:"Network",render:x=>x.networkName?`Network ${x.networkCode} — ${x.networkName}`:"—"},{label:"Participating nodes",render:x=><ul className="node-list compact">{x.participatingNodes?.length?x.participatingNodes.map((node:string)=><li key={node}><code>{node}</code></li>):<li>—</li>}</ul>},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Details",render:x=><button className="secondary" onClick={()=>setInspection({kind:"job",id:x.id})}>Inspect job</button>},{label:"Artifact",render:x=>x.artifactId?<a href={`/api/artifacts/${x.artifactId}/download`}>{x.fileName}</a>:"—"}]} /><Pagination page={jobPage} totalPages={jobs.totalPages} onChange={setJobPage}/></section><section><h2>Distributed task attempts</h2><DataTable items={tasks.items} columns={[{label:"Task",render:x=><code>{x.id}</code>},{label:"Network",render:x=>x.networkName},{label:"Kind",render:x=>x.kind},{label:"Status",render:x=><span className={statusClass(x.status)}>{x.status}</span>},{label:"Attempts",render:x=>x.attemptCount},{label:"Assigned node",render:x=>x.assignedNodeId??"—"},{label:"Details",render:x=><button className="secondary" onClick={()=>setInspection({kind:"task",id:x.id})}>Inspect task</button>}]} /><Pagination page={taskPage} totalPages={tasks.totalPages} onChange={setTaskPage}/></section></>}
-    {tab==="audit"&&<section><h2>Audit events</h2><DataTable items={audit.items} columns={[{label:"Event",render:x=>x.eventType},{label:"Actor",render:x=>x.actorType},{label:"Target",render:x=>x.targetId??"—"},{label:"Time",render:x=>new Date(x.createdAt).toLocaleString()}]}/></section>}
-    {tab==="audit"&&<Pagination page={page} totalPages={totalPages} onChange={setPage}/>}
-  </Shell>;
+function Home(){
+  return (
+    <div className="landing-container">
+      <header className="landing-header">
+        <a href="/" className="brand"><span>OC</span> OmniCompile Core</a>
+        <nav>
+          <a href="/login" className="nav-link-login">Sign In</a>
+          <a href="/signup" className="nav-link-signup">Get Started</a>
+        </nav>
+      </header>
+      <main className="landing-hero">
+        <div className="hero-content">
+          <p className="hero-eyebrow">&gt; ZERO-TRUST DISTRIBUTED COMPILER PIPELINE</p>
+          <h1>Hardware-Adaptive Distributed Compilation for Heterogeneous Edge-to-Cloud Orchestration</h1>
+          <p className="hero-desc">
+            OmniCompile Core seamlessly combines real C, Python, and Java compiler pipelines with intelligent, capability-aware scheduling across decentralized worker nodes and isolated cloud environments.
+          </p>
+          <div className="hero-actions">
+            <a href="/login" className="btn-primary-red">Get Started</a>
+            <a href="/signup" className="btn-secondary-outline">Create Account</a>
+          </div>
+        </div>
+        <div className="hero-features">
+          <div className="feature-card">
+            <h3>Three Complete Pipelines</h3>
+            <p>Independent processing and optimization for C, Python, and Java source code.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Zero-Trust Worker Network</h3>
+            <p>Consent-based browser, Windows, and Android worker nodes securely enrolled via single admin links.</p>
+          </div>
+          <div className="feature-card">
+            <h3>Smart Resource Scheduling</h3>
+            <p>Automatically detects local capabilities and routes to local toolchains or isolated cloud toolchains.</p>
+          </div>
+        </div>
+      </main>
+    </div>
+  );
 }
-
-const samples={c:"int main(void){ return 42; }",python:"value = 20 + 22\nprint(value)\n",java:'public class Main { public static void main(String[] args) { System.out.print(42); } }'};
-
-const stageDescriptions:Record<string,string>={VALIDATING:"Validating submitted source",DISTRIBUTED_OPTIMIZATION:"Optimizing through compatible workers",DISTRIBUTED_COMPILATION:"Compiling through a native worker",VERIFYING_COMPILATION:"Independently verifying generated output",CODE_GENERATING:"Generating usable output",PROGRAM_EXECUTION:"Executing in the isolated environment",ARTIFACT_GENERATION:"Preparing verified downloads",COMPLETED:"Compilation complete"};
-function CompilationStages({job,language}:{job:any;language:keyof typeof samples}){const irMode=language==="c"&&(job?.batchId||!job||job.stage==="VALIDATING");const stages=["VALIDATING",irMode?"DISTRIBUTED_OPTIMIZATION":"DISTRIBUTED_COMPILATION",...(!irMode?["VERIFYING_COMPILATION"]:[]),"CODE_GENERATING","PROGRAM_EXECUTION","ARTIFACT_GENERATION","COMPLETED"],current=job?Math.max(0,stages.indexOf(job.stage)):0;return <ol className="compilation-stages">{stages.map((stage,index)=>{const execution=stage==="PROGRAM_EXECUTION"&&job?.status==="COMPLETED"?job.metrics?.execution:null;const skipped=stage==="PROGRAM_EXECUTION"&&job?.status==="COMPLETED"&&(!execution||execution.status==="NOT_RUN");const state=skipped?"pending":execution&&execution.status!=="SUCCEEDED"?"failed":!job?"pending":job.status==="COMPLETED"?"done":index<current?"done":index===current?["FAILED","CANCELLED"].includes(job.status)?"failed":"active":"pending";return <li key={stage} className={`stage-${state}`}><span className="stage-indicator">{state==="done"?"✓":state==="failed"?"!":state==="active"?<span className="spinner"/>:index+1}</span><span><strong>{stage.replaceAll("_"," ")}</strong><small>{skipped?"Execution not performed":execution?.status??(state==="pending"?"Waiting":state==="done"?"Completed":state==="failed"?"Failed":stageDescriptions[stage])}</small></span></li>})}</ol>}
-function ArtifactDownloads({artifacts}:{artifacts:any[]}){const labels:Record<string,string>={SOURCE:"Original source",GENERATED_SOURCE:"Generated source",EXECUTABLE:"Executable",BYTECODE:"Compiled bytecode / Java class",JAR:"Java archive",BUILD_REPORT_JSON:"Build report (JSON)",BUILD_REPORT_PDF:"Build report (PDF)"};return <section><h3>Generated artifacts</h3><ul className="artifact-list">{artifacts.map(artifact=><li key={artifact.id}><span>{labels[artifact.artifactType]??artifact.artifactType}: <code>{artifact.fileName}</code> <small>({Math.ceil(artifact.sizeBytes/1024)} KB)</small></span><a className="download" href={artifact.downloadUrl}>Download</a></li>)}</ul></section>}
-
-function DashboardV2(){
-  const{user,loading}=useUser("USER"),[language,setLanguage]=useState<keyof typeof samples>("c"),[source,setSource]=useState(samples.c),[sourceName,setSourceName]=useState("program.c"),[executionInput,setExecutionInput]=useState(""),[executionMode,setExecutionMode]=useState<ExecutionMode>("CLOUD_ONLY"),[job,setJob]=useState<any>(null),[report,setReport]=useState<any>(null),[submissionError,setSubmissionError]=useState(""),[error,setError]=useState(""),[submitting,setSubmitting]=useState(false),sourceBox=useRef<HTMLTextAreaElement|null>(null);
-  const running=Boolean(job&&!["COMPLETED","FAILED","CANCELLED"].includes(job.status)),extension={c:".c",python:".py",java:".java"}[language];
-  useEffect(()=>{setReport(null);if(!job||!["COMPLETED","FAILED","CANCELLED"].includes(job.status))return;const artifact=job.artifacts?.find((item:any)=>item.artifactType==="BUILD_REPORT_JSON");if(!artifact)return;let cancelled=false;api(artifact.downloadUrl).then(value=>{if(!cancelled)setReport(value);}).catch(()=>{if(!cancelled)setError("The diagnostic report could not be loaded. Retry the report download.");});return()=>{cancelled=true;};},[job?.id,job?.status,job?.artifacts?.length]);
-  useEffect(()=>{if(!job?.id||!needsCompilationUpdate(job))return;let cancelled=false;const deadline=Date.now()+30_000,timer=setInterval(()=>{if(!running&&Date.now()>deadline){clearInterval(timer);setError("The diagnostic report is still being prepared. Refresh to retrieve it.");return;}api(`/api/compilations/${job.id}`).then(value=>{if(!cancelled)setJob(value);}).catch(cause=>{if(!cancelled)setError(cause.message);});},800);return()=>{cancelled=true;clearInterval(timer);};},[job?.id,job?.status,job?.artifacts?.length]);
-  useEffect(()=>{const box=sourceBox.current;if(box){box.style.height="108px";box.style.height=`${Math.min(360,Math.max(108,box.scrollHeight))}px`;}},[source]);
-  function changeLanguage(next:keyof typeof samples){if(running)return;setJob(null);setReport(null);setLanguage(next);setSource(samples[next]);setSourceName(next==="c"?"program.c":next==="python"?"program.py":"Main.java");setError("");setSubmissionError("");}
-  async function readFile(event:React.ChangeEvent<HTMLInputElement>){const file=event.target.files?.[0];if(!file)return;setJob(null);setReport(null);if(!file.name.toLowerCase().endsWith(extension)){setError(`Choose a ${extension} file for the selected language.`);setSubmissionError(`Language mismatch: choose a ${extension} file for ${language.toUpperCase()}.`);event.target.value="";return;}setSourceName(file.name);setSource(await file.text());setError("");setSubmissionError("");}
-  async function submit(){if(running||submitting)return;setJob(null);setReport(null);if(!sourceName.toLowerCase().endsWith(extension)){setError(`The source filename must end in ${extension}.`);setSubmissionError(`Language mismatch: ${language.toUpperCase()} source filenames must end in ${extension}.`);return;}setSubmitting(true);try{setJob(await api("/api/compilations",{method:"POST",body:JSON.stringify({language,sourceName,source,executionInput,executionMode})}));setError("");setSubmissionError("");setReport(null);}catch(cause){setError(cause instanceof Error?cause.message:String(cause));setSubmissionError(cause instanceof Error?cause.message:String(cause));}finally{setSubmitting(false);}}
-  if(loading||!user)return null;
-  return <Shell user={user} title="Compiler workspace" subtitle="Supply source code; OmniCompile Core automatically selects a compatible network using current resources and measured execution history."><Notice error={error}/><div className="grid two"><div className="card compiler-form"><label>Language<select aria-label="Language" value={language} disabled={running} onChange={e=>changeLanguage(e.target.value as keyof typeof samples)}><option value="c">C</option><option value="python">Python</option><option value="java">Java</option></select></label><ExecutionPreference value={executionMode} onChange={setExecutionMode} disabled={running||submitting}/><label>Upload source file<input type="file" accept={extension} disabled={running} onChange={readFile}/></label><label>Source filename<input value={sourceName} disabled={running} onChange={e=>setSourceName(e.target.value)}/></label><label>Source code<textarea ref={sourceBox} value={source} disabled={running} onChange={e=>setSource(e.target.value)} spellCheck={false}/></label><label>Standard input (optional, 16 KB maximum)<textarea rows={3} style={{minHeight:70,height:70}} value={executionInput} maxLength={16384} disabled={running} onChange={e=>setExecutionInput(e.target.value)}/></label><small>Execution uses the isolated Linux environment. Windows artifacts are preserved; C may also provide a separately built Linux executable.</small><button disabled={running||submitting||!source.trim()||!sourceName.trim()} onClick={submit}>{submitting?"Selecting network…":running?"Compilation in progress…":"Compile and optimize"}</button><CompilerMetrics jobId={job?.id} language={language}/></div><div className="card"><h2>Current compilation</h2>{job&&<dl><dt>ID</dt><dd><code>{job.id}</code></dd><dt>Status</dt><dd><span className={statusClass(job.status)}>{job.status==="COMPLETED"?job.metrics?.outcome??"SUCCESS":job.status==="FAILED"?"FAILED":job.status==="CANCELLED"?"CANCELLED":stageDescriptions[job.stage]??job.status}</span></dd></dl>}<ExecutionPlacement job={job}/><CompilationStages job={job} language={language}/><CompilationFeedback job={job} report={report} error={submissionError} onCancel={async()=>{try{setJob(await api(`/api/compilations/${job.id}/cancel`,{method:"POST"}));}catch(cause){setError(cause instanceof Error?cause.message:"Cancellation failed");}}}/> {["COMPLETED","FAILED"].includes(job?.status)&&job.artifacts?.length>0&&<ArtifactDownloads artifacts={job.artifacts}/>}</div></div></Shell>;
-}
-
-function deviceNonce(){const values=new Uint32Array(4);if(globalThis.crypto?.getRandomValues){globalThis.crypto.getRandomValues(values);return Array.from(values,value=>value.toString(16).padStart(8,"0")).join("");}return`${Date.now().toString(36)}-${Math.random().toString(36).slice(2)}-${Math.random().toString(36).slice(2)}`;}
-type JoinNetwork = {
-  id: string; name: string; description: string; status: string; nodeCount: number; maxNodes: number;
-  accepting: boolean; joinLinkStatus?: string; invitationStatus?: string; workerTypes?: JoinWorkerType[];
-};
-
-function Join({token,platform}:{token:string;platform?:JoinPlatform}){
-  const [network,setNetwork]=useState<JoinNetwork|null>(null);
-  const [joined,setJoined]=useState(false);
-  const [joining,setJoining]=useState(false);
-  const [error,setError]=useState("");
-  const [download,setDownload]=useState<{artifact:DistributionPlatform;downloadUrl:string}|null>(null);
-  const [downloadError,setDownloadError]=useState("");
-  const [downloadPending,setDownloadPending]=useState(false);
-  const [downloadRequest,setDownloadRequest]=useState(0);
-  const nativePlatform=platform==="android"?"ANDROID":platform==="windows"?"WINDOWS":undefined;
-  const platformAllowed=!!network&&!!platform&&joinAllowsPlatform(network.workerTypes,platform);
-
-  useEffect(()=>{
-    if(!nativePlatform||!network?.accepting||!platformAllowed)return;
-    let active=true;
-    let expiry:number|undefined;
-    setDownload(null);
-    setDownloadError("");
-    setDownloadPending(true);
-    api("/api/enrollment/download-authorize",{
-      method:"POST",body:JSON.stringify({token,platform:nativePlatform}),
-    }).then(value=>{
-      if(!active)return;
-      setDownload({artifact:value.artifact,downloadUrl:value.downloadUrl});
-      expiry=window.setTimeout(()=>{
-        setDownload(null);
-        setDownloadError("Download authorization expired. Request another download.");
-      },value.expiresInSeconds*1000);
-    }).catch(cause=>{
-      if(active)setDownloadError(cause instanceof Error?cause.message:String(cause));
-    }).finally(()=>{
-      if(active)setDownloadPending(false);
-    });
-    return()=>{
-      active=false;
-      if(expiry!==undefined)window.clearTimeout(expiry);
-    };
-  },[token,nativePlatform,network?.accepting,platformAllowed,downloadRequest]);
-
-  async function load(){
-    try{
-      const result=await api("/api"+joinPath(token));
-      setNetwork(result.network);
-      if(result.network.accepting)setError("");
-      if(platform==="web"){
-        try{
-          const existing=await api("/api/worker/me");
-          if(existing.networkId===result.network.id)setJoined(true);
-        }catch{/* Explicit consent is required without an enrolled browser session. */}
-      }
-    }catch(cause){
-      setNetwork(null);
-      setError(cause instanceof Error?cause.message:String(cause));
-    }
-  }
-
-  useEffect(()=>{
-    if(joined)return;
-    void load();
-    const timer=setInterval(()=>void load(),5000);
-    return()=>clearInterval(timer);
-  },[token,platform,joined]);
-
-  async function accept(){
-    setJoining(true);
-    try{
-      await api("/api"+joinPath(token)+"/accept",{method:"POST",body:JSON.stringify({
-        consent:true,workerType:"BROWSER",deviceIdentity:`${navigator.userAgent}|${deviceNonce()}`
-      })});
-      setJoined(true);
-    }catch(cause){
-      setError(cause instanceof Error?cause.message:String(cause));
-      void load();
-    }finally{
-      setJoining(false);
-    }
-  }
-
-  const expired=network&&[network.joinLinkStatus,network.invitationStatus].some(status=>status==="REVOKED"||status==="EXPIRED");
-  const unavailable=network?.joinLinkStatus==="FULL"?"This network is full. Try again when a worker slot becomes available.":
-    expired?"The administrator has revoked this link, or the network is no longer active. Contact the network administrator.":
-    network?.invitationStatus==="CONSUMED"?"This invitation has already been used. Request a new invitation from the administrator.":
-    "Enrollment is currently unavailable. Contact the network administrator.";
-  const title=joined?"Worker dashboard":expired?"Network link expired":!platform||platform==="web"?"Join distributed network":
-    platform==="android"?"Join as an Android worker":"Join as a Windows worker";
-
-  return <Shell title={title} subtitle="Participation is explicit, scoped to one network, and revocable.">
-    <Notice error={error}/>
-    {!network&&!error&&<p role="status">Checking invitation…</p>}
-    {joined?<BrowserNode {...(network?{networkName:network.name}:{})} onLeave={()=>{setJoined(false);void load();}}/>:network&&<>
-      <div className="card">
-        <h2>{network.name}</h2>
-        <p>{network.description}</p>
-        <dl>
-          <dt>Status</dt><dd><span className={statusClass(network.status)}>{network.status}</span></dd>
-          <dt>Nodes</dt><dd>{network.nodeCount}/{network.maxNodes}</dd>
-          <dt>Coordinator</dt><dd><code>{location.origin}</code></dd>
-        </dl>
-        {!network.accepting&&<p role="status">{unavailable}</p>}
-      </div>
-      {!platform&&<WorkerChoices token={token} accepting={network.accepting} {...(network.workerTypes?{workerTypes:network.workerTypes}:{})}/>}
-      {platform&&<p><a href={joinPath(token)}>Choose another worker platform</a></p>}
-      {platform&&network.accepting&&!platformAllowed&&<p role="status">This invitation does not allow this platform.</p>}
-      {platform==="web"&&network.accepting&&platformAllowed&&<div className="card consent">
-        <h2>Continue in this browser</h2>
-        <p>OmniCompile Core will report browser capability and resource availability, maintain a heartbeat, and run schema-validated browser compute or IR optimization tasks.</p>
-        <button disabled={joining} onClick={accept}>{joining?"Joining…":"Become a Worker"}</button>
-      </div>}
-      {nativePlatform&&network.accepting&&platformAllowed&&<>
-        {downloadPending&&<p role="status">Checking device compatibility and package availability…</p>}
-        {downloadError&&<p role="status">{downloadError}</p>}
-        {!downloadPending&&<WorkerInstallation
-          joinUrl={location.origin+joinPath(token)}
-          platforms={download?[download.artifact]:[]}
-          platform={nativePlatform}
-          {...(download?{authorizedUrl:download.downloadUrl}:{})}
-        />}
-        {!downloadPending&&<button type="button" onClick={()=>setDownloadRequest(value=>value+1)}>Request a new download</button>}
-      </>}
-    </>}
-  </Shell>;
-}
-function WorkerPage(){return <Shell title="Worker console" subtitle="Reconnect a previously enrolled browser worker using its secure HttpOnly enrollment cookie."><BrowserNode/></Shell>}
-
-function App(){const path=location.pathname,join=parseJoinRoute(path);if(join)return <Join {...join}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker")return <WorkerPage/>;return <Home/>}
-createRoot(document.getElementById("root")!).render(<React.StrictMode><App/></React.StrictMode>);
-
-function WorkspaceRedirect(){useEffect(()=>{location.replace("/dashboard");},[]);return null;}
