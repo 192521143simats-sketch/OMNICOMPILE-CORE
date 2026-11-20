@@ -43,3 +43,6 @@ apps/android-worker/**/build-acceptance/
 *.msix
 
 .vercel
+
+# Disposable local agent tournament records.
+.arena/

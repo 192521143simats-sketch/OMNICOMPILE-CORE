@@ -34,3 +34,7 @@ artifacts
 **/artifacts
 **/local.properties
 **/google-services.json
+
+# Local design/review scratch is not an application build input.
+.arena
+.vercel

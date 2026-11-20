@@ -156,3 +156,45 @@ A final read-only Docker listing showed the Docker Desktop Kubernetes control-pl
 - `npm audit --omit=dev --audit-level=high --json` exited 0 with zero reported production vulnerabilities. Independent review found no concrete defect in the landing, ignore-rule or documentation-link changes.
 
 - Replaced the self-overwriting fake scanner installer and supplied the previously missing `scripts/Verify-Release-Security.mjs`. Pinned Trivy download verification, sanitized committed-source secret scanning, immutable-image vulnerability gating and bound CycloneDX generation are implemented. Seven focused Node tests passed, including malformed reports, clean reports omitting Results, checksum rejection and nonzero-exit evidence. Independent review identified the omitted-Results compatibility defect; it was fixed before commit. Actual installer execution, source/image scans and SBOM generation remain NOT VERIFIED, so earlier CI scan gaps are only partially addressed.
+
+
+### 2026-11-20 actual scans and verified cleanup
+
+This checkpoint preserves existing service state; it does not start, stop, rebuild or deploy application services. Oracle/cloud deployment remains held.
+
+**Cleanup performed:** user-run, bounded PowerShell deletion commands removed the legacy duplicate scanner extraction, generated Windows staging, historical UI/Arena/isolated-test scratch, Android acceptance build/cache, crash logs and old command logs. A PowerShell 5.1 long-path failure was explicitly verified as partial; the follow-up used installed PowerShell 7, and all listed targets were then verified absent. Completed, reported removals total **437,523,716 logical file bytes (417.3 MiB)**, excluding unmeasured partial deletions. Normal APK builds, worker installers, toolchains, dependencies, source tests/samples and runtime credentials remain. No backup files were found by the scoped repository/runtime filename inventory; Docker volume contents were not classified as disposable backups.
+
+Trivy's own `clean --all` successfully removed **3,383,984,429 bytes** of measured scanner cache after scanning; retained reports/SBOMs are not runtime dependencies but are current release evidence. The diagnostic Java reproduction report was removed. Docker build-cache inventory fell from 12.92 GB to zero; final prune accounting is recorded below when available. Dangling-image prune with a 24-hour filter reclaimed **0 bytes**. These measurements are separate: Docker's reusable space is inside its existing virtual disk and does not imply that Windows reclaimed the same physical disk space.
+
+**Actual Trivy execution:** installer downloaded Trivy 0.76.2 and verified its pinned SHA-256. `node scripts/Verify-Release-Security.mjs source` exited 0, with zero secret findings on committed revision `11b975badf949b45497ca1c7823a5bc8d225d93b`. The initial image batch was incomplete; it is not called a complete scan. Direct Java reproduction completed with vulnerability exit 1. The rerun `node scripts/Verify-Release-Security.mjs images` completed all **eight** configured images, produced **eight nonempty CycloneDX SBOMs**, and exited 1 because findings block release. All eight current image IDs were independently checked against the summary. These are existing local tagged images, not newly rebuilt/redeployed production images.
+
+| Existing local image | CRITICAL findings | HIGH findings | Findings with a reported fixed version | Release gate |
+| --- | ---: | ---: | ---: | --- |
+| omnicompile-coordinator:local | 1 | 45 | 8 | FAIL |
+| omnicompile-c-worker:local | 3 | 208 | 8 | FAIL |
+| omnicompile-artifacts:local | 0 | 1 | 1 | FAIL |
+| omnicompile-java-worker:local | 4 | 55 | 13 | FAIL |
+| omnicompile-mysql:8.4 | 2 | 64 | 66 | FAIL |
+| omnicompile-frontend:local | 9 | 82 | 91 | FAIL |
+| omnicompile-python-worker:local | 1 | 55 | 9 | FAIL |
+| omnicompile-executor:local | 1 | 45 | 8 | FAIL |
+
+Total: **21 CRITICAL + 555 HIGH = 576 image/package finding instances, representing 254 unique advisory IDs** (including CVE and GHSA identifiers). Repeated dependencies across images count separately. Trivy findings are not individually validated exploit paths; a fixed-version field does not prove a compatible remediation was tested. No findings were suppressed or reclassified to pass the release gate. Remediation requires base/OS/runtime dependency review, controlled image rebuilds and compiler/auth/worker regressions before launch; it is separate from this cleanup checkpoint.
+
+Local, ignored current evidence: `.runtime/security-evidence/source-summary.json`, `images-summary.json`, sanitized per-image reports and `image-0.cdx.json` through `image-7.cdx.json`. No credentials, source excerpts, raw secret findings, generated test artifacts or binaries are staged for Git. `docs/MOTION_DESIGN.md` now summarizes maintained behavior and historical acceptance without links to deleted scratch; `.arena` and `.vercel` scratch are excluded from Docker build contexts, and `.arena/` is ignored by Git.
+
+**Verification:** seven release-scanner regression tests passed; `docker compose config --quiet` passed; independent review found no defect in the documentation/ignore changes; `git diff --check` passed. The same 14 containers, three running containers and eight volumes remain; project MySQL still mounts `OMNICOMPILE-MYSQL`, artifacts still mount `OMNICOMPILE-ARTIFACTS`, and general MYSQL still mounts `mysql`. No database rows or artifact objects were modified or deleted. Older cluster volumes remain because their data has not been proven disposable. This verifies preservation of inventory/mounts and absence of destructive data operations, not a fresh live database-content or full-system acceptance test.
+
+Scanned immutable image identities:
+
+- `omnicompile-coordinator:local` -> `sha256:ba27c1925a6dedb4c3a04287ef2823c55af390190bc6f972b9bdbbacd41c993a`
+- `omnicompile-c-worker:local` -> `sha256:16aca111f0d86d333c2514a2ca153504ed13bd9b446852735fdbd55084ca8891`
+- `omnicompile-artifacts:local` -> `sha256:19c5b5989e21484ba621a834dc77f7c797d33b3087306870fd519548cbc2cd56`
+- `omnicompile-java-worker:local` -> `sha256:d048c766d8811f98f0ac0b74eed6db6ac7f091c394aa1f5ad6d3209b9d4bbcb6`
+- `omnicompile-mysql:8.4` -> `sha256:651c5c50250ce559ad6c0fe3b90988b74a343104578694609d88d5bb63925fe8`
+- `omnicompile-frontend:local` -> `sha256:cd95faadeab4181b73ba038f61b35277713a9835b2f5690944ed27f1c81c9bd0`
+- `omnicompile-python-worker:local` -> `sha256:0824da95c717093f8151c47b16d4f0fc3b6b8002085ba7fe4016f07d376f9452`
+- `omnicompile-executor:local` -> `sha256:813df99873cd074b1df8341586634a9b5e993585bcead2263b8db8c089e70226`
+
+
+Docker cleanup accounting: the first cache-only prune completed and reported **1.025 GB**. A subsequent unused-cache prune reduced the inventory to **0 records / 0 bytes** but did not return final accounting after approximately 15 minutes; only its owned CLI was interrupted (exit 1). This is not reported as a normally completed prune, and its exact reclaimed-byte total is unavailable. Docker Desktop, Kubernetes and containers were not stopped or reset. Returning reusable space inside Docker's VHDX to the host filesystem would require separate maintenance; it was not performed because existing service state must be preserved.
