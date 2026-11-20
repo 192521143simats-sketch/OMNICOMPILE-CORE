@@ -1,3 +1,6 @@
+import {installNavigationMotion,navigateWithMotion} from './navigation-motion.js';
+import {Home} from './landing.js';
+import {PlatformAtmosphere} from './motion.js';
 import {ExecutionPreference,ExecutionPlacement,type ExecutionMode} from './execution-placement.js';
 import {CompilerMetrics} from "./compiler-metrics.js";
 import React,{useEffect,useMemo,useRef,useState} from "react";
@@ -15,75 +18,16 @@ import {WorkerInstallation,type DistributionPlatform} from "./worker-installatio
 import {joinAllowsPlatform,joinPath,parseJoinRoute,WorkerChoices,type JoinPlatform,type JoinWorkerType} from "./worker-onboarding.js";
 import {Login,Signup,Forgot,Reset} from "./auth-pages.js";
 import "./terminal.css";
+import './motion.css';
 
 type User={id:string;name:string;email:string;role:"ADMIN"|"USER"};
 type Page<T>={items:T[];page:number;pageSize:number;totalItems:number;totalPages:number};
-const go=(path:string)=>{location.href=path;};
+const go=navigateWithMotion;
 const statusClass=(status:string)=>`status status-${status.toLowerCase()}`;
 
-function Header({user}:{user?:User|null|undefined}){useEffect(()=>{let active=true;if(user)api("/api/user/settings").then(preferences=>{if(active)document.documentElement.dataset.reducedMotion=String(preferences.reducedMotion);}).catch(()=>{});return()=>{active=false;};},[user?.id]);const[logoutError,setLogoutError]=useState("");async function logout(){try{await api("/api/auth/logout",{method:"POST"});go("/login");}catch(cause){setLogoutError(cause instanceof Error?cause.message:"Unable to sign out.");}}return <><a className="skip-link" href="#main-content">Skip to content</a><header><a href="/" className="brand"><span>OC</span> OmniCompile Core</a><nav>{user?.role==="ADMIN"?<><a href="/admin">Admin</a><button className="link-button" onClick={logout}>Logout</button></>:user?<><a href="/dashboard">Compiler</a><button className="link-button" onClick={logout}>Logout</button></>:<a href="/login">Login</a>}</nav></header>{logoutError&&<Notice error={logoutError}/>}</>}
-function Shell({user,title,subtitle,children}:{user?:User|null|undefined;title:string;subtitle:string;children:React.ReactNode}){return <><Header user={user}/><main id="main-content" tabIndex={-1}><div className="heading"><p className="eyebrow">Distributed compute platform</p><h1>{title}</h1><p>{subtitle}</p></div>{children}</main></>}
+function Header({user}:{user?:User|null|undefined}){useEffect(()=>{let active=true;if(user)api("/api/user/settings").then(preferences=>{if(active)document.documentElement.dataset.reducedMotion=String(preferences.reducedMotion);}).catch(()=>{});return()=>{active=false;};},[user?.id]);const[logoutError,setLogoutError]=useState("");async function logout(){try{await api("/api/auth/logout",{method:"POST"});go("/login");}catch(cause){setLogoutError(cause instanceof Error?cause.message:"Unable to sign out.");}}return <><a className="skip-link" href="#main-content">Skip to content</a><header><a href="/" className="brand"><span>OC</span> OmniCompile Core</a><nav>{user?.role==="ADMIN"?<><a href="/admin" aria-current={location.pathname==="/admin"?"page":undefined}>Admin</a><button className="link-button" onClick={logout}>Logout</button></>:user?<><a href="/dashboard" aria-current={location.pathname==="/dashboard"?"page":undefined}>Compiler</a><button className="link-button" onClick={logout}>Logout</button></>:!["/login","/signup"].includes(location.pathname)&&<a href="/login" aria-current={location.pathname==="/login"?"page":undefined}>Login</a>}</nav></header>{logoutError&&<Notice error={logoutError}/>}</>}
+function Shell({user,title,subtitle,children}:{user?:User|null|undefined;title:string;subtitle:string;children:React.ReactNode}){return <div className="platform-shell"><PlatformAtmosphere/><Header user={user}/><main id="main-content" tabIndex={-1}><div className="heading"><p className="eyebrow">Distributed compute platform</p><h1>{title}</h1><p>{subtitle}</p></div>{children}</main></div>}
 function Metric({name,value}:{name:string;value:React.ReactNode}){return <div className="metric"><span>{name}</span><strong>{value}</strong></div>}
-function Home(){
-  return (
-    <div className="cinematic-landing">
-      {/* Background Cinematic Lighting & Orbital Geometry */}
-      <div className="bg-glow-layer" />
-      <div className="orbital-circle circle-1" />
-      <div className="orbital-circle circle-2" />
-      <div className="orbital-circle circle-3" />
-
-      {/* Top Header Logo */}
-      <header className="cinematic-header">
-        <a href="/" className="brand"><span>OC</span> OmniCompile Core</a>
-        <nav>
-          <a href="/login" style={{color: '#D9D9D9', textDecoration: 'none', fontWeight: 600}}>Sign in</a>
-          <a href="/signup" style={{background: '#FF4D2E', color: '#0C0D10', padding: '8px 16px', borderRadius: '6px', fontWeight: 700, textDecoration: 'none'}}>Register</a>
-        </nav>
-      </header>
-
-      {/* Main Cinematic Hero */}
-      <main className="cinematic-hero">
-        <div className="hero-inner">
-          <p className="eyebrow-cinematic">&gt; ZERO-TRUST DISTRIBUTED COMPILATION</p>
-          <h1 className="hero-headline">Compile Without Limits.</h1>
-          <p className="hero-subtitle">Intelligent compilation. Distributed execution. Secure optimization.</p>
-          <p className="hero-description">
-            A unified compilation platform connecting distributed nodes to compile, optimize and execute code across heterogeneous environments.
-          </p>
-
-          <div className="cta-container">
-            <a href="/login" className="btn-get-started">
-              GET STARTED <span>→</span>
-            </a>
-          </div>
-        </div>
-
-        {/* Thin Horizontal Divider with Animated Highlight */}
-        <div className="cinematic-divider-wrap">
-          <div className="side-label left">
-            <span className="label-title">DISTRIBUTED COMPUTING</span>
-            <span className="label-sub">Cross-platform execution</span>
-          </div>
-          <div className="divider-line">
-            <div className="divider-glow" />
-          </div>
-          <div className="side-label right">
-            <span className="label-title">INTELLIGENT OPTIMIZATION</span>
-            <span className="label-sub">Multi-language compilation</span>
-          </div>
-        </div>
-      </main>
-
-      {/* Bottom Infrastructure Notice */}
-      <footer className="cinematic-footer">
-        <p>OMNICOMPILE CORE &bull; Distributed compiler infrastructure built for Windows, Web, and Android workers.</p>
-      </footer>
-    </div>
-  );
-}
-
-
 function useUser(requiredRole?:"ADMIN"|"USER"){const[user,setUser]=useState<User|null>(null),[loading,setLoading]=useState(true);useEffect(()=>{api("/api/auth/me").then(({user})=>{if(requiredRole&&user.role!==requiredRole)go(user.role==="ADMIN"?"/admin":"/dashboard");else setUser(user)}).catch(()=>go("/login")).finally(()=>setLoading(false))},[]);return{user,loading};}
 function DataTable({columns,items,empty="No records found."}:{columns:Array<{label:string;render:(item:any)=>React.ReactNode}>;items:any[];empty?:string}){return <div className="table-wrap"><table><thead><tr>{columns.map(column=><th key={column.label}>{column.label}</th>)}</tr></thead><tbody>{items.length?items.map((item,index)=><tr key={item.id??index}>{columns.map(column=><td key={column.label}>{column.render(item)}</td>)}</tr>):<tr><td colSpan={columns.length} className="empty">{empty}</td></tr>}</tbody></table></div>}
 
@@ -274,6 +218,8 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
 function WorkerPage(){return <Shell title="Worker console" subtitle="Reconnect a previously enrolled browser worker using its secure HttpOnly enrollment cookie."><BrowserNode/></Shell>}
 
 function App(){const path=location.pathname,join=parseJoinRoute(path);if(join)return <Join {...join}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker")return <WorkerPage/>;return <Home/>}
+const disposeMotion=installNavigationMotion();
+if(import.meta.hot)import.meta.hot.dispose(disposeMotion);
 createRoot(document.getElementById("root")!).render(<React.StrictMode><App/></React.StrictMode>);
 
 function WorkspaceRedirect(){useEffect(()=>{location.replace("/dashboard");},[]);return null;}

@@ -4,6 +4,10 @@ import {createRoot,type Root} from "react-dom/client";
 import {afterEach,describe,expect,it,vi} from "vitest";
 import {Login,Signup,Forgot,Reset,PasswordField,type AuthShellProps} from "./auth-pages.js";
 
+// This suite exercises connected forms with mocked HTTP, independently of the
+// public frontend's intentionally offline default configuration.
+vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));
+
 (globalThis as any).IS_REACT_ACT_ENVIRONMENT=true;
 let root:Root|undefined;
 function Shell({children}:AuthShellProps){return <main>{children}</main>;}

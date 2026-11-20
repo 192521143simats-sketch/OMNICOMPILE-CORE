@@ -65,7 +65,7 @@ try {
   async function control(action,message){
     if(action==="startNativeWorker"){
       if(mode!=="web"||native||typeof message?.credential!=="string"||message.credential.length<20||message.credential.length>2048)throw new Error("Invalid owned native fixture request");
-      native=spawn(process.execPath,['--import','tsx',resolve(root,'apps/worker/src/index.ts')],{cwd:root,env:{...env,COORDINATOR_URL:base,WORKER_CREDENTIAL:message.credential},windowsHide:true,stdio:['ignore','pipe','pipe']});native.stdout.resume();native.stderr.resume();return;
+      native=spawn(process.execPath,['--import','tsx',resolve(root,'apps/worker/src/index.ts')],{cwd:root,env:{...env,COORDINATOR_URL:base,WORKER_CREDENTIAL:message.credential},windowsHide:true,stdio:['ignore','pipe','pipe']});native.stdout.on('data',chunk=>{coordinatorLog+='[owned native] '+chunk.toString().replaceAll(message.credential,'<redacted>');});native.stderr.on('data',chunk=>{coordinatorLog+='[owned native error] '+chunk.toString().replaceAll(message.credential,'<redacted>');});native.on('exit',(code,signal)=>{coordinatorLog+='[owned native exit] '+JSON.stringify({code,signal})+'\n';});return;
     }
     const label=await checked("docker",["inspect","--format",'{{ index .Config.Labels "omnicompile.test.instance" }}',container]);
     if(label!==instance)throw new Error("Fixture ownership changed; refusing fault injection");
@@ -99,7 +99,7 @@ try {
   }
   await waitFor(()=>verifyIsolatedCoordinator(assertIsolatedTarget(env)),'isolated coordinator readiness',60_000);
   if(webPort){
-    web=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1'],{cwd:resolve(root,'apps/web'),env:{...env,OMNICOMPILE_WEB_PORT:String(webPort),OMNICOMPILE_API_TARGET:base},windowsHide:true,stdio:['ignore','pipe','pipe']});
+    web=spawn(process.execPath,[resolve(root,'node_modules/vite/bin/vite.js'),'--host','127.0.0.1'],{cwd:resolve(root,'apps/web'),env:{...env,VITE_BACKEND_MODE:"remote",VITE_API_BASE_URL:`http://127.0.0.1:${webPort}`,VITE_WS_BASE_URL:`ws://127.0.0.1:${webPort}`,OMNICOMPILE_WEB_PORT:String(webPort),OMNICOMPILE_API_TARGET:base},windowsHide:true,stdio:['ignore','pipe','pipe']});
     web.stdout.on('data',chunk=>{coordinatorLog+=chunk.toString();});web.stderr.on('data',chunk=>{coordinatorLog+=chunk.toString();});
     const viteBase=`http://127.0.0.1:${webPort}`;
     await waitFor(async()=>{const response=await fetch(viteBase);if(!response.ok)throw new Error('Web not ready');},'isolated Vite web',30000);

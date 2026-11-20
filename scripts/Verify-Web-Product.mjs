@@ -16,10 +16,12 @@ const failures=[];page.on('pageerror',error=>failures.push(error.message));
 const evidence=resolve(process.env.OMNICOMPILE_TEST_EVIDENCE??'');if(evidence!==resolve(process.env.OMNICOMPILE_TEST_EVIDENCE_ROOT??'.runtime/integration',target.instance))throw new Error('Owned screenshot directory required');
 const screenshot=(subject,name)=>subject.screenshot({path:resolve(evidence,name),fullPage:true});
 try{
-  await page.goto('/');await expect(page.getByRole('heading',{name:'Hardware-adaptive distributed compilation.'})).toBeVisible();
+  await page.goto('/');await expect(page.getByRole('heading',{name:'Compile Without Limits.'})).toBeVisible();
+  await expect(page.getByRole('link',{name:'GET STARTED',exact:true})).toHaveCount(1);await expect(page.getByRole('link',{name:/Sign in|Register|Become a Worker/i})).toHaveCount(0);
   await screenshot(page,'ui-landing-desktop.png');
   await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();await page.keyboard.press('Enter');await expect(page.locator('#main-content')).toBeFocused();
-  await page.goto('/signup');
+  await page.getByRole('link',{name:'GET STARTED',exact:true}).click();await expect(page).toHaveURL(base+"/login");await expect(page.locator('header nav').getByRole('link',{name:'Login',exact:true})).toHaveCount(0);
+  await page.goto('/signup');await expect(page.locator('header nav').getByRole('link',{name:'Login',exact:true})).toHaveCount(0);
   await page.getByLabel('Name',{exact:true}).fill('Web Acceptance');
   await page.getByLabel('Email',{exact:true}).fill('web-acceptance@example.test');
   await page.getByLabel('Password',{exact:true}).fill('WebAcceptance!42');
@@ -94,12 +96,17 @@ try{
         await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE');},{timeout:30000}).toBe(true);
         await mobile.getByRole('button',{name:'Leave network'}).click();await expect(mobile.getByRole('heading',{name:'Join distributed network',exact:true})).toBeVisible();await mobileContext.close();await workerContext.close();
         console.log('Browser/mobile-layout enrollment, reusable link toggle and real portable task verified; native pipeline checks starting.');
+        async function waitNative(language){await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE'&&node.profile.runtimes[language]&&node.resources?.freeMemoryBytes>=536870912);},{timeout:30000}).toBe(true);}
+
         for(const item of [{language:'c',file:'sample-c-easy.c'},{language:'python',file:'sample-python-easy.py'},{language:'java',file:'sample-java-easy.java'}]){
           await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE'&&node.profile.runtimes[item.language]&&node.resources?.freeMemoryBytes>=536870912);},{timeout:30000}).toBe(true);
           await page.goto('/dashboard');await page.getByLabel('Language',{exact:true}).selectOption(item.language);
           await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
           await page.getByLabel('Upload source file').setInputFiles(resolve("samples",item.language,item.file));
+          await waitNative(item.language);
+          const submission=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
+          const admission=await submission;expect(admission.status(),JSON.stringify(await admission.json())).toBe(202);
           await expect(page.getByRole('heading',{name:'Generated artifacts'})).toBeVisible({timeout:120000});
           const liveMetrics=page.getByTestId('compiler-metrics');
           await expect(liveMetrics.getByRole('heading',{name:'Live performance · your jobs'})).toBeVisible();
@@ -123,6 +130,7 @@ try{
           await page.getByLabel('Language',{exact:true}).selectOption(item.language);
           await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
           await page.getByLabel('Upload source file').setInputFiles({name:item.name,mimeType:'text/plain',buffer:Buffer.from(item.source)});
+          await waitNative(item.language);
           const submitted=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
           const response=await submitted;expect(response.status()).toBe(202);const job=await response.json();

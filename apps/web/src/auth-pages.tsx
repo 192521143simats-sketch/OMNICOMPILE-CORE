@@ -1,3 +1,4 @@
+import {navigateWithMotion} from './navigation-motion.js';
 import React,{useEffect,useId,useRef,useState} from "react";
 import {api} from "./api.js";
 import {Notice} from "./notice.js";
@@ -5,7 +6,7 @@ import "./auth.css";
 
 export type AuthShellProps={title:string;subtitle:string;children:React.ReactNode};
 export type AuthPageProps={Shell:React.ComponentType<AuthShellProps>;navigate?:(path:string)=>void};
-const go=(path:string)=>{location.href=path;};
+const go=navigateWithMotion;
 const passwordHelp="Use 12–200 characters with uppercase, lowercase, a number, and a symbol.";
 function passwordError(password:string,confirmation:string){
   if(password.length<12||password.length>200||!/[a-z]/.test(password)||!/[A-Z]/.test(password)||!/[0-9]/.test(password)||!/[^A-Za-z0-9]/.test(password))return passwordHelp;
