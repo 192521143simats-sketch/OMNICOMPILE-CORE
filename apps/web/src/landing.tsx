@@ -1,41 +1,55 @@
-// Landing page redesign with system red/white/black palette and smooth motion designs
+// Cinematic Minimalist Landing Page Redesign
 function Home(){
   return (
-    <div className="landing-container">
-      <header className="landing-header">
+    <div className="cinematic-landing">
+      {/* Background Cinematic Lighting & Orbital Geometry */}
+      <div className="bg-glow-layer" />
+      <div className="orbital-circle circle-1" />
+      <div className="orbital-circle circle-2" />
+      <div className="orbital-circle circle-3" />
+
+      {/* Top Header Logo */}
+      <header className="cinematic-header">
         <a href="/" className="brand"><span>OC</span> OmniCompile Core</a>
-        <nav>
-          <a href="/login" className="nav-link-login">Sign In</a>
-          <a href="/signup" className="nav-link-signup">Get Started</a>
-        </nav>
       </header>
-      <main className="landing-hero">
-        <div className="hero-content">
-          <p className="hero-eyebrow">&gt; ZERO-TRUST DISTRIBUTED COMPILER PIPELINE</p>
-          <h1>Hardware-Adaptive Distributed Compilation for Heterogeneous Edge-to-Cloud Orchestration</h1>
-          <p className="hero-desc">
-            OmniCompile Core seamlessly combines real C, Python, and Java compiler pipelines with intelligent, capability-aware scheduling across decentralized worker nodes and isolated cloud environments.
+
+      {/* Main Cinematic Hero */}
+      <main className="cinematic-hero">
+        <div className="hero-inner">
+          <p className="eyebrow-cinematic">&gt; ZERO-TRUST DISTRIBUTED COMPILATION</p>
+          <h1 className="hero-headline">Compile Without Limits.</h1>
+          <p className="hero-subtitle">Intelligent compilation. Distributed execution. Secure optimization.</p>
+          <p className="hero-description">
+            A unified compilation platform connecting distributed nodes to compile, optimize and execute code across heterogeneous environments.
           </p>
-          <div className="hero-actions">
-            <a href="/signup" className="btn-primary-red">Get Started</a>
-            <a href="/login" className="btn-secondary-outline">Sign In</a>
+
+          <div className="cta-container">
+            <a href="/login" className="btn-get-started">
+              GET STARTED <span>→</span>
+            </a>
           </div>
         </div>
-        <div className="hero-features">
-          <div className="feature-card">
-            <h3>Three Complete Pipelines</h3>
-            <p>Independent processing and optimization for C, Python, and Java source code.</p>
+
+        {/* Thin Horizontal Divider with Animated Highlight */}
+        <div className="cinematic-divider-wrap">
+          <div className="side-label left">
+            <span className="label-title">DISTRIBUTED COMPUTING</span>
+            <span className="label-sub">Cross-platform execution</span>
           </div>
-          <div className="feature-card">
-            <h3>Zero-Trust Worker Network</h3>
-            <p>Consent-based browser, Windows, and Android worker nodes securely enrolled via single admin links.</p>
+          <div className="divider-line">
+            <div className="divider-glow" />
           </div>
-          <div className="feature-card">
-            <h3>Smart Resource Scheduling</h3>
-            <p>Automatically detects local capabilities and routes to local toolchains or isolated cloud toolchains.</p>
+          <div className="side-label right">
+            <span className="label-title">INTELLIGENT OPTIMIZATION</span>
+            <span className="label-sub">Multi-language compilation</span>
           </div>
         </div>
       </main>
+
+      {/* Bottom Infrastructure Notice */}
+      <footer className="cinematic-footer">
+        <p>OMNICOMPILE CORE &bull; Distributed compiler infrastructure built for Windows, Web, and Android workers.</p>
+      </footer>
     </div>
   );
 }
