@@ -50,7 +50,7 @@ export function Home(){
 
       {/* Bottom Infrastructure Notice */}
       <footer className="cinematic-footer">
-        <p className="landing-platforms">Distributed compiler infrastructure built for Windows, Web, and Android workers.</p><div className="landing-signature"><strong>OMNICOMPILE CORE</strong><span>Distributed Compiler Infrastructure</span></div>
+        <div className="landing-signature"><strong>OMNICOMPILE CORE</strong><span>Distributed Compiler Infrastructure</span></div>
       </footer>
     </div>
   );

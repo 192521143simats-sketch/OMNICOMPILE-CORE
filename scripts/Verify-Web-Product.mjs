@@ -20,6 +20,12 @@ try{
   await expect(page.getByRole('link',{name:'GET STARTED',exact:true})).toHaveCount(1);await expect(page.getByRole('link',{name:/Sign in|Register|Become a Worker/i})).toHaveCount(0);
   await screenshot(page,'ui-landing-desktop.png');
   await page.keyboard.press('Tab');await expect(page.getByRole('link',{name:'Skip to content'})).toBeFocused();await page.keyboard.press('Enter');await expect(page.locator('#main-content')).toBeFocused();
+  for(const [width,height] of [[320,568],[390,667],[390,844],[768,1024],[1024,600],[1440,900],[1920,1080]]){
+    await page.setViewportSize({width,height});
+    expect(await page.evaluate(()=>document.documentElement.scrollHeight<=innerHeight && document.documentElement.scrollWidth<=innerWidth)).toBe(true);
+    await expect(page.locator('.landing-signature')).toBeInViewport({ratio:1});
+  }
+  await page.setViewportSize({width:1280,height:720});
   await page.getByRole('link',{name:'GET STARTED',exact:true}).click();await expect(page).toHaveURL(base+"/login");await expect(page.locator('header nav').getByRole('link',{name:'Login',exact:true})).toHaveCount(0);
   await page.goto('/signup');await expect(page.locator('header nav').getByRole('link',{name:'Login',exact:true})).toHaveCount(0);
   await page.getByLabel('Name',{exact:true}).fill('Web Acceptance');

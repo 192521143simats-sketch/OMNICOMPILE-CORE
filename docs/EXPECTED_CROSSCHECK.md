@@ -140,3 +140,17 @@ The final cleanup removed one duplicated active-button rule and three unused mot
 GitHub Actions run44763939825 for f68b817: deployment-manifests succeeded; application failed at Scan the committed release source for secrets; Docker job was cancelled. This is not a green full CI release. The missing release-security runner is independently confirmed in the tree. Later documentation pushes may supersede that run through the existing concurrency policy.
 
 A final read-only Docker listing showed the Docker Desktop Kubernetes control-plane/support containers running, but none of the eight OmniCompile Compose application services running. They were left untouched because this task authorized frontend deployment and an audit, not runtime/data changes. Historical all-eight-healthy evidence does not prove current service health; the next local acceptance must start the stack through the existing script and recheck readiness without resetting storage.
+
+
+### 2026-11-20 landing fit and cleanup checkpoint
+
+- Removed the redundant platform sentence; retained the infrastructure footer and single `/login` CTA. Edge verified full footer visibility and zero document overflow at 320x568, 390x667, 390x844, 768x1024, 1024x600, 1440x900 and 1920x1080. Accessibility zoom retains natural overflow instead of clipping controls.
+- Focused landing/navigation/authentication/notice regression: 47 tests passed; frontend typecheck and production build passed. Existing authenticated flows, backend and database implementation were not changed.
+- Updated the existing web regression with viewport/footer assertions, removed unused landing CSS, repaired the final `.env*` ignore rule hiding `.env.example`, and corrected engineering instructions linking to absent documents.
+- Read-only cleanup identified regenerable Windows packaging stage, Android crash logs/Gradle cache/acceptance outputs, and historical integration/design/Arena evidence. Automatic approval review rejected the combined removal command before execution. No cleanup space is claimed; protected data and volumes remain intact.
+- Docker reported 9.104 GB reclaimable build cache and 1.901 GB reclaimable images. These are estimates, not reclaimed space. Database/artifact volumes and old cluster volumes require ownership/content verification before deletion. General-purpose MYSQL remains untouched.
+- Cloud launch remains held: requires approved OCI tenancy/region/budget, public backend HTTPS/WSS and DNS/TLS, production secrets, signing and release acceptance. No Kubernetes or Vercel deployment was executed in this checkpoint.
+- Codex Security setup was inspected. Its default deep scan permits 40 discovery runs over 96 hours; it was not launched and no completed deep-scan claim is made.
+
+- Removed three superseded, unreferenced `docs/superpowers/plans/` documents (5,486 source bytes); retained current canonical architecture, operations, security and requirements documentation. This is not a measured disk-space recovery figure.
+- `npm audit --omit=dev --audit-level=high --json` exited 0 with zero reported production vulnerabilities. Independent review found no concrete defect in the landing, ignore-rule or documentation-link changes.

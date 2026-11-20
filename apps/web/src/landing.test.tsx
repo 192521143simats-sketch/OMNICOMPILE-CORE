@@ -15,6 +15,7 @@ describe('cinematic public entry',()=>{
     const html=renderToStaticMarkup(<Home/>);
     expect(html).toContain('Skip to content');expect(html).toContain('id="main-content"');
     expect(html).toContain('OmniCompile Core');expect(html).toContain('aria-hidden="true"');
-    expect(html).toContain('Windows, Web, and Android workers.');
+    expect(html).not.toContain('Distributed compiler infrastructure built for Windows, Web, and Android workers.');
+    expect(html).toContain('Distributed Compiler Infrastructure');
   });
 });
