@@ -23,10 +23,15 @@ is enforced by gradle-wrapper.properties.
 
 Use JDK 21 (not Android Studio's JDK 25 with Gradle 8.13), Android SDK platform36
 and build-tools36.0.0. Configure ANDROID_HOME externally or ignored local.properties.
+The SDK root must contain both `platforms/android-36/android.jar` and
+`build-tools/36.0.0`; a platform-tools-only directory is insufficient. If the SDK
+has moved, update ignored `local.properties` (`sdk.dir=...`) to its actual root.
+Do not commit machine-specific SDK paths or change dependency versions to hide a
+missing local SDK.
 
 ```powershell
 $env:JAVA_HOME='C:/Program Files/Java/jdk-21.0.12.1'
-$env:ANDROID_HOME='C:/Android/SDK'
+# Configure ANDROID_HOME to your existing SDK root, or use local.properties.
 ./gradlew.bat :app:testDebugUnitTest :app:assembleDebug :app:assembleRelease :app:bundleRelease --no-daemon
 ```
 

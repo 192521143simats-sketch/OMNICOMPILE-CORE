@@ -8,7 +8,7 @@ class NativeUiTest {
     @get:Rule val compose=createAndroidComposeRule<MainActivity>()
     @Test fun initialScreenRequiresInspectionAndExplicitConsent() {
         org.junit.Assume.assumeFalse("Existing enrollment is preserved. Use -PomnicompileIsolatedAcceptance=true for fresh acceptance.",AndroidRuntime.state.value.hasEnrollment)
-        compose.onNodeWithText("OMNICOMPILE Worker").assertIsDisplayed()
+        compose.onNodeWithText("OmniCompile Core Worker").assertIsDisplayed()
         compose.onNodeWithText("Become a Worker").performScrollTo().assertIsNotEnabled()
     }
 }
