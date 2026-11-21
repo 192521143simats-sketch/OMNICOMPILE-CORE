@@ -1,4 +1,4 @@
-import React from 'react';
+import 'react';
 import {renderToStaticMarkup} from 'react-dom/server';
 import {describe,it,expect} from 'vitest';
 import {ExecutionPreference,ExecutionPlacement} from './execution-placement.js';

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React,{act,useState} from "react";
+import {act,useState} from "react";
 import {createRoot,type Root} from "react-dom/client";
 import {afterEach,describe,expect,it} from "vitest";
 import {Pagination} from "./pagination.js";

@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import {api} from "./api.js";
 import {Notice} from "./notice.js";
 import {Pagination} from "./pagination.js";

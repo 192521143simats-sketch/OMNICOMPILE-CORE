@@ -1,4 +1,4 @@
-import React,{useEffect,useState} from "react";
+import {useEffect,useState} from "react";
 
 function reducedMotion(){
   return typeof document!=="undefined"&&(document.documentElement.dataset.reducedMotion==="true"||window.matchMedia?.("(prefers-reduced-motion: reduce)").matches===true);

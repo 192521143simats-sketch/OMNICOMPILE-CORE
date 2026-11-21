@@ -1,4 +1,4 @@
-import React,{useEffect,useRef,useState} from "react";
+import {useEffect,useRef,useState} from "react";
 import type {CapabilityProfile,ResourceSnapshot} from "@omnicompile/contracts";
 import {BrowserSession,type BrowserState} from "./browser-session.js";
 import {Notice} from "./notice.js";

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React,{act,StrictMode} from "react";
+import {act,StrictMode} from "react";
 import {createRoot,type Root} from "react-dom/client";
 import {afterEach,beforeEach,expect,it,vi} from "vitest";
 import {Notice} from "./notice.js";

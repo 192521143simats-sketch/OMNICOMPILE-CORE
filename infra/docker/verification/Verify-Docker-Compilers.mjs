@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict';
+import {inflateSync} from 'node:zlib';
 import {execFile} from 'node:child_process';
 import {promisify} from 'node:util';
 import {randomBytes} from 'node:crypto';
@@ -87,9 +88,9 @@ try{
   }
   const cases=[
     {language:'c',name:'Ledger.c',source:'#include <stdio.h>\nstruct Item {int amount;}; int main(void){struct Item x={42}; printf("%d\\n",x.amount);return 0;}',type:'EXECUTABLE'},
-    {language:'c',name:'loop.c',source:'int main(){int total=0;for(int i=0;i<4;i=i+1){total=total+i;}return total-6;}',type:'EXECUTABLE'},
-    {language:'python',name:'ledger.py',source:'def total(values):\n    return sum(values)\nprint(total([20+22]))\n',type:'GENERATED_SOURCE'},
-    {language:'java',name:'Ledger.java',source:'public class Ledger { public static void main(String[] args){ System.out.println(20+22); } }',type:'JAR'},
+    {language:'c',name:'loop.c',source:'int main(){int total=0;for(int i=0;i<4;i=i+1){total=total+i;}return total-6;99+1;}',type:'EXECUTABLE'},
+    {language:'python',name:'ledger.py',source:'def total(values):\n    return sum(values)\nif False:\n    print("UNREACHABLE_TEST_MARKER")\nprint(total([20+22]))\n',type:'GENERATED_SOURCE'},
+    {language:'java',name:'Ledger.java',source:'public class Ledger { public static void main(String[] args){ if(false){System.out.println("UNREACHABLE_TEST_MARKER");} System.out.println(20+22); } }',type:'JAR'},
     {language:'c',name:'broken.c',source:'#include <stdio.h>\nint main(void){printf("%d",missing_value);return 0;}',failed:true},
     {language:'python',name:'broken.py',source:'def calculate(:\n    return 1\n',failed:true},
     {language:'java',name:'Broken.java',source:'public class Broken { public static void main(String[] args){ System.out.println(missingValue); } }',failed:true},
@@ -126,6 +127,26 @@ try{
       const evidence=cloudMetrics.optimization.items[0];
       assert.equal(evidence.jobId,job.id);assert.equal(evidence.language,item.language);
       assert.equal(evidence.runtimeSpeedupPercent,null);
+      assert.deepEqual(report.optimizationEvidence.deadCodeElimination,evidence.deadCodeElimination);
+      assert.deepEqual(report.optimizationEvidence.measurement,evidence.measurement);
+      const expectedTarget=item.language==='python'?'Source and Python bytecode':item.language==='java'?'Source and JVM bytecode':evidence.measurement?.unit==='ir-cost'?'Verified IR and native executable':'Native executable';
+      assert.equal(report.output.optimizationTarget,expectedTarget);
+      const pdf=job.artifacts.find(value=>value.artifactType==='BUILD_REPORT_PDF');assert.ok(pdf);
+      const pdfDownload=await user.request(pdf.downloadUrl);assert.equal(pdfDownload.status,200);
+      const pdfText=[...pdfDownload.value.toString('latin1').matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)].flatMap(match=>{try{return [...inflateSync(Buffer.from(match[1],'latin1')).toString('latin1').matchAll(/<([0-9a-f]+)>/gi)].map(token=>Buffer.from(token[1],'hex').toString('latin1'));}catch{return [];}}).join('');
+      assert.ok(pdfText.includes('DCE status: '+evidence.deadCodeElimination.status));
+      assert.ok(pdfText.includes('Runtime speedup: Not measured'));
+      if(item.language==='c'&&evidence.deadCodeElimination.status==='compiler-managed'){
+        assert.equal(evidence.deadCodeElimination.removedStatements,null);
+        assert.equal(evidence.deadCodeElimination.removedInstructions,null);
+        assert.ok(evidence.compiler.options.includes('-fdce')&&evidence.compiler.options.includes('-ftree-dce'));
+      }
+      else{
+        assert.equal(evidence.deadCodeElimination.status,'applied');
+        assert.ok((evidence.deadCodeElimination.removedStatements??0)+(evidence.deadCodeElimination.removedInstructions??0)>0);
+        const generated=job.artifacts.find(value=>value.artifactType==='GENERATED_SOURCE');assert.ok(generated);
+        assert.ok(!(await user.request(generated.downloadUrl)).value.toString('utf8').includes('UNREACHABLE_TEST_MARKER'));
+      }
       if(item.language!=='c'){assert.ok(evidence.transformations>0);assert.ok(evidence.measurement.after<evidence.measurement.before);}
       const windowsMetrics=await user.api(`/api/user/compiler-metrics?jobId=${job.id}&platform=WINDOWS`);
       assert.equal(windowsMetrics.tasks.successful,0,'Linux cloud work must not be counted as Windows work');
@@ -144,6 +165,25 @@ try{
   assert.ok(verified.some(row=>row.outcome==='VERIFIED'&&Number(row.count)>0));
   const serviceProbe=String.raw`const fs=require('node:fs');const token=fs.readFileSync('/run/secrets/compiler-token','utf8').trim();const source='#include "/run/secrets/compiler-token"\nint main(void){return 0;}';fetch('http://omnicompile-c-worker:4101/compile',{method:'POST',headers:{authorization:'Bearer '+token,'content-type':'application/json'},body:JSON.stringify({action:'verify',source:{language:'c',sourceName:'probe.c',sourceText:source},worker:{operation:'c_compile',generatedSource:source}})}).then(async response=>{const body=await response.text();const denied=/permission denied|operation not permitted|no such file/i.test(body);const leaked=body.includes(token);if(response.status!==422||!denied||leaked){console.error(JSON.stringify({status:response.status,denied,leaked}));process.exit(1);}console.log('compiler-service-secret-read-denied');}).catch(()=>process.exit(1));`;
   assert.equal(await docker(['exec',coordinator,'node','-e',serviceProbe]),'compiler-service-secret-read-denied');
+  const legacyProbe=String.raw`
+import assert from 'node:assert/strict';
+import {lowerCToIR} from '@omnicompile/compiler-c';
+import {verifyCompilation,verifyIROptimization} from './apps/coordinator/src/compilation-verification.ts';
+const original=lowerCToIR('int side(void){return 1;} int main(void){return 42;side();}').functions[1];
+const ir=verifyIROptimization(original,{operation:'c_optimize_ir',function:original,report:{deadInstructionsRemoved:999}});
+assert.equal(ir.report.deadInstructionsRemoved,1);assert.ok(!ir.function.instructions.some(i=>i.op==='call'));
+const python={language:'python',sourceName:'legacy.py',sourceText:'if False:\n    print("dead")\nprint(20+22)\n'};
+const p=await verifyCompilation(python,{operation:'python_compile',generatedSource:python.sourceText.replace('20+22','42')});
+assert.equal(p.metrics.optimizationEvidence.deadCodeElimination.removedStatements,1);
+assert.ok(Buffer.from(p.artifactBase64,'base64').length>16);
+await assert.rejects(verifyCompilation(python,{operation:'python_compile',generatedSource:'print("extra effect")\nprint(42)\n'}));
+const java={language:'java',sourceName:'Legacy.java',sourceText:'public class Legacy {public static void main(String[] a){if(false){System.out.print("dead");}System.out.print(20+22);}}'};
+const j=await verifyCompilation(java,{operation:'java_compile',generatedSource:java.sourceText.replace('20+22','(42)')});
+assert.equal(j.metrics.optimizationEvidence.deadCodeElimination.removedStatements,1);
+assert.equal(Buffer.from(j.artifactBase64,'base64').subarray(0,2).toString(),'PK');
+await assert.rejects(verifyCompilation(java,{operation:'java_compile',generatedSource:'public class Legacy {public static void main(String[] a){System.out.print("extra effect");System.out.print(42);}}'}));
+console.log('legacy-worker-normalization-verified');`;
+  assert.equal(await docker(['exec',coordinator,'node','--import','tsx','--input-type=module','-e',legacyProbe]),'legacy-worker-normalization-verified');
   const privateToken=(await readFile(secret,'utf8')).trim();
   assert.ok(!JSON.stringify(outcomes).includes(privateToken));
   console.log(JSON.stringify({instance,coordinatorHasNativeToolchains:false,workerNodes,outcomes,concurrentJobsVerified:concurrentJobs.length,verificationOutcomes:verified,compilerServiceSecretReadDenied:true,developerDataModified:false,executionPerformed:true},null,2));

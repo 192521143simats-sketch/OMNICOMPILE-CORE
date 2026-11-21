@@ -53,23 +53,3 @@ export const backendConfig = getBackendConfig();
 export function isBackendAvailable(): boolean {
   return backendConfig.mode === 'remote';
 }
-
-/**
- * Get connection status message for UI display
- */
-export function getBackendStatus(): {
-  available: boolean;
-  message: string;
-} {
-  if (backendConfig.mode === 'offline') {
-    return {
-      available: false,
-      message: 'Backend offline — Login, compilation, and worker enrollment require a connected backend.',
-    };
-  }
-
-  return {
-    available: true,
-    message: `Connected to ${backendConfig.apiBaseUrl}`,
-  };
-}

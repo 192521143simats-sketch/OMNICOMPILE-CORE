@@ -11,7 +11,7 @@ import mysql, { type Pool, type PoolConnection, type ResultSetHeader, type RowDa
 import { createHash, randomBytes, randomUUID } from "node:crypto";
 import {networkPolicySchema} from "@omnicompile/contracts";
 import {evaluateNode,type TaskRequirements,type ExecutionMode} from "@omnicompile/orchestration";
-import type { CapabilityProfile, NodeStatus, ResourceSnapshot, TaskStatus, WorkPayload } from "@omnicompile/contracts";
+import type { CapabilityProfile, ResourceSnapshot, TaskStatus, WorkPayload } from "@omnicompile/contracts";
 import type {CIntermediateRepresentation,IRFunction} from "@omnicompile/compiler-c";
 import {verifyIROptimization} from "./compilation-verification.js";
 import {verifyPortableResult,StaleTaskResultError} from "./portable-verification.js";

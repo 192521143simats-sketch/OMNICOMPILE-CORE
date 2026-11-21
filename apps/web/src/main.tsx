@@ -3,7 +3,7 @@ import {Home} from './landing.js';
 import {PlatformAtmosphere} from './motion.js';
 import {ExecutionPreference,ExecutionPlacement,type ExecutionMode} from './execution-placement.js';
 import {CompilerMetrics} from "./compiler-metrics.js";
-import React,{useEffect,useMemo,useRef,useState} from "react";
+import React,{useEffect,useRef,useState} from "react";
 import {createRoot} from "react-dom/client";
 import {BrowserNode} from "./browser-node.js";
 import "./styles.css";import "./compiler.css";import "./platform.css";

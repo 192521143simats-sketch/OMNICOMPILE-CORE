@@ -1,4 +1,4 @@
-import React from "react";
+import "react";
 export type DistributionPlatform={platform:"WINDOWS"|"ANDROID";available:boolean;version?:string;fileName?:string;sha256?:string;sizeBytes?:number;localAvailable?:boolean;channel?:string;trust?:string};
 export function WorkerInstallation({joinUrl,platforms,platform,authorizedUrl}:{joinUrl:string;platforms:DistributionPlatform[];platform?:DistributionPlatform["platform"];authorizedUrl?:string}){
   const options = platform ? [platform] : ["WINDOWS", "ANDROID"] as const;

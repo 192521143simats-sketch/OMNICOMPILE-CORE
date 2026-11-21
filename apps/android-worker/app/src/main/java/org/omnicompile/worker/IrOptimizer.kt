@@ -46,8 +46,9 @@ object IrOptimizer {
                 else -> throw IllegalArgumentException("Unsupported IR instruction.")
             }
         }
-        val controlFlow=output.any{it.text("op") in setOf("branch","jump")};val live=mutableSetOf<String>();val kept=mutableListOf<JsonObject>()
-        for(i in output.asReversed()) {
+        val (reachable,unreachableRemoved)=deadCodeElimination(output,checkpoint);removed+=unreachableRemoved
+        val controlFlow=reachable.any{it.text("op") in setOf("branch","jump")};val live=mutableSetOf<String>();val kept=mutableListOf<JsonObject>()
+        for(i in reachable.asReversed()) {
             checkpoint();val op=i.text("op");val dest=if(op in setOf("const","copy","unary","binary","call")&&i["dest"]!=JsonNull)i.text("dest")else null
             if(!controlFlow&&dest?.startsWith("%t")==true&&op in setOf("const","copy","unary","binary")&&dest !in live){removed++;continue}
             if(dest!=null)live.remove(dest)
@@ -55,6 +56,42 @@ object IrOptimizer {
             kept.add(i)
         }
         return buildJsonObject { put("operation","c_optimize_ir");put("function",JsonObject(function+ ("instructions" to JsonArray(kept.asReversed()))));put("report",buildJsonObject{put("constantFolds",folds);put("algebraicSimplifications",simplified);put("deadInstructionsRemoved",removed)}) }
+    }
+    // Match the coordinator's C IR reachability pass before linear temporary liveness.
+    private fun deadCodeElimination(input:List<JsonObject>,checkpoint:()->Unit):Pair<List<JsonObject>,Int> {
+        fun JsonObject.text(key:String)=this[key]!!.jsonPrimitive.content
+        val labels=mutableMapOf<String,Int>();var valid=true
+        for((index,instruction) in input.withIndex()) {
+            checkpoint()
+            if(instruction.text("op")=="label") {
+                val name=instruction.text("name")
+                if(labels.containsKey(name))valid=false
+                labels[name]=index
+            }
+        }
+        for(instruction in input) {
+            checkpoint()
+            when(instruction.text("op")) {
+                "jump"->if(!labels.containsKey(instruction.text("target")))valid=false
+                "branch"->if(!labels.containsKey(instruction.text("thenLabel"))||!labels.containsKey(instruction.text("elseLabel")))valid=false
+            }
+        }
+        if(!valid)return Pair(input,0)
+        val reachable=BooleanArray(input.size);val pending=mutableListOf<Int>()
+        if(input.isNotEmpty())pending.add(0)
+        while(pending.isNotEmpty()) {
+            checkpoint();val index=pending.removeAt(pending.lastIndex)
+            if(index>=input.size||reachable[index])continue
+            reachable[index]=true;val instruction=input[index]
+            when(instruction.text("op")) {
+                "jump"->pending.add(labels.getValue(instruction.text("target")))
+                "branch"->{pending.add(labels.getValue(instruction.text("thenLabel")));pending.add(labels.getValue(instruction.text("elseLabel")))}
+                "return"->Unit
+                else->pending.add(index+1)
+            }
+        }
+        val kept=input.filterIndexed { index,_ -> checkpoint();reachable[index] }
+        return Pair(kept,input.size-kept.size)
     }
     private fun evaluate(op:String,left:Int,right:Int):Int? {
         if(op in setOf("/","%")&&(right==0||left==Int.MIN_VALUE&&right== -1))return null

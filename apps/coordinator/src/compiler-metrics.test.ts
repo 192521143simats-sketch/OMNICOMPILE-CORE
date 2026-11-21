@@ -64,3 +64,26 @@ it('rejects malformed or cross-language units and handles zero baselines explici
  expect(summarizeOptimizationEvidence([{jobId:'zero',language:'java',metrics:JSON.stringify({optimizationEvidence:e})}]).items[0]?.measurement.reductionPercent).toBeNull();
  for(const measurement of [{unit:'ast-nodes',before:10,after:5},{unit:'ast-operators',before:-1,after:0},{unit:'ast-operators',before:10,after:Infinity}])expect(summarizeOptimizationEvidence([{jobId:'bad',language:'java',metrics:{optimizationEvidence:{...e,measurement}}}]).jobsMeasured).toBe(0);
 });
+
+it('preserves measured DCE and fails closed on inconsistent or malformed counts',()=>{
+ const e={version:1,language:'python',method:'Verified AST',transformations:2,measurement:null,compiler:null,artifactBytes:5,runtimeSpeedupPercent:800,deadCodeElimination:{status:'applied',method:'Unreachable statements',removedStatements:2,removedInstructions:null}};
+ const summarize=(value:any)=>summarizeOptimizationEvidence([{jobId:'DCE',language:'python',metrics:{optimizationEvidence:value}}]);
+ expect(summarize(e).items[0]).toMatchObject({deadCodeElimination:e.deadCodeElimination,runtimeSpeedupPercent:null});
+ for(const dce of [{...e.deadCodeElimination,removedStatements:-1},{...e.deadCodeElimination,status:'no-change'},{...e.deadCodeElimination,removedInstructions:Infinity},{...e.deadCodeElimination,status:'not-measured'}])expect(summarize({...e,deadCodeElimination:dce}).jobsMeasured).toBe(0);
+ const {deadCodeElimination,...legacy}=e;expect(summarize(legacy).items[0]?.deadCodeElimination).toMatchObject({status:'not-measured',removedStatements:null,removedInstructions:null});
+});
+
+it('counts C IR DCE only when the selected instructions match authoritative recomputation',async()=>{
+ const {lowerCToIR,optimizeCIR}=await import('@omnicompile/compiler-c');
+ const {verifiedCIRDeadCodeElimination}=await import('./compiler-metrics.js');
+ const original=lowerCToIR('int main(void){2+3;return 1;}'),expected=optimizeCIR(original);
+ expect(verifiedCIRDeadCodeElimination(original,expected.ir)).toMatchObject({status:'applied',removedInstructions:expected.report.deadInstructionsRemoved,removedStatements:null});
+ expect(verifiedCIRDeadCodeElimination(original,original)).toMatchObject({status:'no-change',removedInstructions:0});
+ const forged=structuredClone(expected.ir);forged.functions[0]!.instructions=[];
+ expect(verifiedCIRDeadCodeElimination(original,forged)).toMatchObject({status:'not-measured',removedInstructions:null});
+});
+
+it('does not infer DCE from historical worker reports or cost reductions',()=>{
+ const result=summarizeOptimizationEvidence([{jobId:'legacy',language:'c',metrics:{optimization:{report:{deadInstructionsRemoved:999},evaluations:[{originalCost:10,selectedCost:1,accepted:true,deadInstructionsRemoved:999}]}}}]);
+ expect(result.items[0]?.deadCodeElimination).toMatchObject({status:'not-measured',removedStatements:null,removedInstructions:null});
+});

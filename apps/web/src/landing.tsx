@@ -1,4 +1,4 @@
-import React from 'react';
+import 'react';
 import './landing.css';
 // Cinematic Minimalist Landing Page Redesign
 export function Home(){

@@ -1,6 +1,6 @@
-import {createHash,randomBytes,randomUUID,timingSafeEqual} from "node:crypto";
+import {createHash,randomBytes,randomUUID} from "node:crypto";
 import {hash,verify} from "argon2";
-import type {Pool,ResultSetHeader,RowDataPacket} from "mysql2/promise";
+import type {Pool,RowDataPacket} from "mysql2/promise";
 
 export type Role="ADMIN"|"USER";
 export type AuthUser={id:string;name:string;email:string;role:Role};

@@ -1,4 +1,4 @@
-import React from 'react';
+import 'react';
 
 export type ExecutionMode='CLOUD_ONLY'|'LOCAL_ONLY'|'HYBRID';
 const labels:Record<ExecutionMode,string>={CLOUD_ONLY:'Cloud Only',LOCAL_ONLY:'Local Only',HYBRID:'Hybrid — local preferred, cloud fallback'};

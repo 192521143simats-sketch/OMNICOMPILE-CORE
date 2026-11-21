@@ -35,6 +35,16 @@ while `/ready` and compatibility `/health` require database connectivity.
 
 The private execution broker runs permitted C, Python and Java work in disposable, restricted containers. See the [Docker guide](../infra/docker/README.md) for the service boundaries and verification commands.
 
+## Optimization and dead-code elimination
+
+New compilations run the language's optimization pipeline automatically. The compiler page's third metric card and downloaded JSON/PDF reports include verified before/after measurements, compiler options, DCE status and measured removal counts. Reports also identify the optimization target. Native C optimizes the executable through GCC; its downloadable compiler-input source is not presented as rewritten C. Distributed C IR, Python and Java can produce transformed source as well as compiled output.
+
+C IR removes unreachable instructions and unused pure temporaries where control-flow analysis permits it. Python removes safe literal dead branches and unreachable tails while preserving symbol-table bindings, closures, generator behavior and docstrings. Java removes safe literal boolean branches while preserving scope, checked-exception reachability and class identities. Unsupported or potentially observable transformations stay unchanged. Android's IR implementation follows the same instruction rules as the TypeScript workers.
+
+`applied` means measured removals; `no-change` means the pass ran without eligible removals. Native GCC reports `compiler-managed` with unknown removal counts, rather than inventing zeros. Older or missing evidence is `not-measured`. Different measurement units are kept separate; neither a smaller AST nor a smaller executable proves runtime speedup. Existing stored reports/artifacts are preserved; the new details apply to newly completed jobs. Updated native worker builds are required before those installations use the new optimizer.
+
+Existing workers can submit older optimizer output: the coordinator accepts it only if independent normalization produces exactly the authoritative optimized result. Candidate source is compiled, never executed, during that check. Published artifacts and removal counts always come from the original submitted source, not worker claims.
+
 ## Troubleshooting
 
 - Docker: `docker info`, then `docker compose ps` and `docker compose logs omnicompile-mysql`.

@@ -1,4 +1,4 @@
-import React from "react";
+import "react";
 
 export type JoinPlatform = "web" | "android" | "windows";
 export type JoinWorkerType = "BROWSER" | "ANDROID" | "NATIVE";

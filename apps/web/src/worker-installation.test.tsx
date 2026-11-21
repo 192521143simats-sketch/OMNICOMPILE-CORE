@@ -1,4 +1,4 @@
-import React from "react";
+import "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {expect,it} from "vitest";
 import {WorkerInstallation} from "./worker-installation.js";

@@ -1,3 +1,5 @@
+import {isDeepStrictEqual} from 'node:util';
+import {optimizeCIR,type CIntermediateRepresentation} from '@omnicompile/compiler-c';
 import {randomUUID} from 'node:crypto';
 import type {Pool,RowDataPacket} from 'mysql2/promise';
 import type {ResourceSnapshot} from '@omnicompile/contracts';
@@ -10,6 +12,21 @@ export const metricPlatforms=['WEB','WINDOWS','ANDROID','CLOUD','NATIVE_OTHER'] 
 const number=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
 const average=(values:number[])=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
 const ratio=(n:number,d:number)=>d?n*100/d:null;
+/** Count only transformations independently reproduced from the original IR. */
+export function verifiedCIRDeadCodeElimination(original:CIntermediateRepresentation,selected:CIntermediateRepresentation){
+ const unknown={status:'not-measured',method:'Selected C IR could not be reproduced by the authoritative optimizer.',removedStatements:null,removedInstructions:null};
+ if(original.functions.length!==selected.functions.length)return unknown;
+ let removedInstructions=0;
+ for(let index=0;index<original.functions.length;index++){
+  const source=original.functions[index]!,actual=selected.functions[index]!;
+  const equal=(a:unknown,b:unknown)=>isDeepStrictEqual(JSON.parse(JSON.stringify(a)),JSON.parse(JSON.stringify(b)));
+  if(equal(source,actual))continue;
+  const expected=optimizeCIR({...original,functions:[source]});
+  if(!equal(expected.ir.functions[0],actual)||!Number.isSafeInteger(expected.report.deadInstructionsRemoved)||expected.report.deadInstructionsRemoved<0)return unknown;
+  removedInstructions+=expected.report.deadInstructionsRemoved;
+ }
+ return {status:removedInstructions>0?'applied':'no-change',method:'Independent C IR dead-code elimination reproduced for selected functions.',removedStatements:null,removedInstructions};
+}
 export function summarizeOptimizationEvidence(jobs:Row[]){
  const items:Row[]=[];
  for(const job of jobs){try{
@@ -29,7 +46,16 @@ export function summarizeOptimizationEvidence(jobs:Row[]){
   if(compiler!==null&&(!compiler||typeof compiler.name!=='string'||!compiler.name.trim()||typeof compiler.version!=='string'||!compiler.version.trim()||!Array.isArray(compiler.options)||compiler.options.length>100||!compiler.options.every((v:unknown)=>typeof v==='string'&&v.length<=1000)))continue;
   let measurement=null;
   if(e.measurement!==null){const m=e.measurement,units:Record<string,string[]>={c:['ir-cost','artifact-bytes'],python:['ast-nodes'],java:['ast-operators']};if(!m||!units[e.language]?.includes(m.unit)||!number(m.before)||!number(m.after))continue;const reductionPercent=m.before>0?(m.before-m.after)*100/m.before:null;if(reductionPercent!==null&&!Number.isFinite(reductionPercent))continue;measurement={unit:m.unit,before:m.before,after:m.after,reductionPercent};}
-  items.push({jobId:job.jobId,version:1,language:e.language,method:e.method,transformations:e.transformations,measurement,compiler,artifactBytes:e.artifactBytes,runtimeSpeedupPercent:null});
+  const unknownDce={status:'not-measured',method:'Dead-code elimination was not measured.',removedStatements:null,removedInstructions:null};
+  let deadCodeElimination=unknownDce;
+  if(e.deadCodeElimination!==undefined){
+   const d=e.deadCodeElimination,count=(v:unknown)=>v===null||(Number.isSafeInteger(v)&&Number(v)>=0);
+   if(!d||!['applied','no-change','compiler-managed','not-measured'].includes(d.status)||typeof d.method!=='string'||!d.method.trim()||d.method.length>500||!count(d.removedStatements)||!count(d.removedInstructions))continue;
+   const positive=(d.removedStatements??0)+(d.removedInstructions??0)>0;
+   if(d.status==='applied'&&!positive||d.status==='no-change'&&(positive||(d.removedStatements===null&&d.removedInstructions===null))||['compiler-managed','not-measured'].includes(d.status)&&(d.removedStatements!==null||d.removedInstructions!==null))continue;
+   deadCodeElimination={status:d.status,method:d.method,removedStatements:d.removedStatements,removedInstructions:d.removedInstructions};
+  }
+  items.push({jobId:job.jobId,version:1,language:e.language,method:e.method,transformations:e.transformations,measurement,compiler,artifactBytes:e.artifactBytes,deadCodeElimination,runtimeSpeedupPercent:null});
  }catch{/* Malformed historical records are unmeasured. */}}
  return {jobsMeasured:items.length,items};
 }

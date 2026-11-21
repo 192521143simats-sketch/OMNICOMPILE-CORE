@@ -1,4 +1,4 @@
-import React from "react";
+import "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {describe,it,expect} from "vitest";
 import {CompilationFeedback,needsCompilationUpdate} from "./compilation-feedback.js";

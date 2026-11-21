@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import React,{act} from 'react';
+import {act} from 'react';
 import {createRoot} from 'react-dom/client';
 import {afterEach,expect,it,vi} from 'vitest';
 import {CompilerMetrics} from './compiler-metrics.js';
@@ -57,6 +57,6 @@ it('offers cloud and other-native platform filters and requests server-scoped da
 vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));
 
 it('shows genuine per-job optimization measurements and explicitly unmeasured runtime speedup',async()=>{
- vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,optimization:{jobsMeasured:1,items:[{jobId:'JOB-PY',version:1,language:'python',method:'AST constant folding',transformations:2,measurement:{unit:'ast-nodes',before:10,after:8,reductionPercent:20},compiler:{name:'CPython',version:'3.12',options:['-O']},artifactBytes:80,runtimeSpeedupPercent:null}]}})));const view=await mount();
- try{await act(async()=>view.root.render(<CompilerMetrics/>));const card=view.host.querySelectorAll('article')[2]!;expect(card.textContent).toContain('Optimization evidence');expect(card.textContent).toContain('10 → 8 ast-nodes');expect(card.textContent).toContain('20%');expect(card.textContent).toContain('CPython 3.12');expect(card.textContent).toContain('Not measured');expect(card.textContent).not.toContain('faster');}finally{await view.close();}
+ vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,optimization:{jobsMeasured:1,items:[{jobId:'JOB-PY',version:1,language:'python',method:'AST constant folding',transformations:2,measurement:{unit:'ast-nodes',before:10,after:8,reductionPercent:20},compiler:{name:'CPython',version:'3.12',options:['-O']},artifactBytes:80,runtimeSpeedupPercent:null,deadCodeElimination:{status:'applied',method:'Unreachable statements',removedStatements:2,removedInstructions:null}}]}})));const view=await mount();
+ try{await act(async()=>view.root.render(<CompilerMetrics/>));const card=view.host.querySelectorAll('article')[2]!;expect(card.textContent).toContain('Optimization evidence');expect(card.textContent).toContain('10 → 8 ast-nodes');expect(card.textContent).toContain('20%');expect(card.textContent).toContain('CPython 3.12');expect(card.textContent).toContain('Not measured');expect(card.textContent).not.toContain('faster');expect(card.textContent).toContain('Dead-code eliminationapplied');expect(card.textContent).toContain('Removed statements2');expect(card.textContent).toContain('Removed instructionsNot measured');}finally{await view.close();}
 });

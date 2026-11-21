@@ -1,4 +1,5 @@
 import {describe,it,expect} from "vitest";
+import {inflateSync} from "node:zlib";
 import {buildReports} from "./build-report.js";
 
 describe("program-specific build reports",()=>{
@@ -54,4 +55,33 @@ describe("program-specific build reports",()=>{
     expect(report.resourceUsage.processingTimeSeconds).toBe(1.25);
     expect(report.errors).toBeUndefined();
   });
+});
+
+it('reports verified optimization measurements and DCE without inventing runtime speedup',async()=>{
+ const evidence={version:1,language:'python',method:'Verified AST',transformations:3,measurement:{unit:'ast-nodes',before:20,after:10,reductionPercent:999},compiler:{name:'CPython',version:'3.12',options:['-O']},artifactBytes:80,runtimeSpeedupPercent:999,deadCodeElimination:{status:'applied',method:'Unreachable statements',removedStatements:2,removedInstructions:null}};
+ const artifacts=await buildReports({language:'python',sourceName:'main.py',source:'print(1)',artifacts:[],optimizationEvidence:evidence} as any);
+ const report=JSON.parse(artifacts[0]!.bytes.toString());expect(report.optimizationEvidence).toMatchObject({measurement:{reductionPercent:50},deadCodeElimination:evidence.deadCodeElimination,runtimeSpeedupPercent:null});
+ const pdf=artifacts[1]!.bytes.toString('latin1');
+ const text=[...pdf.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)].flatMap(match=>{try{return [...inflateSync(Buffer.from(match[1]!,'latin1')).toString('latin1').matchAll(/<([0-9a-f]+)>/gi)].map(token=>Buffer.from(token[1]!,'hex').toString('latin1'));}catch{return [];}}).join('');
+ expect(text).toContain('Verified optimization evidence');expect(text).toContain('CPython 3.12');expect(text).toContain('DCE status: applied');expect(text).toContain('Removed statements: 2');expect(text).toContain('Runtime speedup: Not measured');expect(text).not.toContain('999');
+ const unmeasured=JSON.parse((await buildReports({language:'c',sourceName:'main.c',source:'',artifacts:[],status:'FAILED'}))[0]!.bytes.toString());expect(unmeasured.optimizationEvidence).toBeNull();
+});
+
+it.each([
+ ['c','artifact-bytes','Native executable'],
+ ['c','ir-cost','Verified IR and native executable'],
+ ['python','ast-nodes','Source and Python bytecode'],
+ ['java','ast-operators','Source and JVM bytecode'],
+] as const)('identifies the actual optimization target for %s / %s',async(language,unit,target)=>{
+ const evidence={version:1,language,method:'Verified optimization',transformations:0,measurement:{unit,before:10,after:10,reductionPercent:0},compiler:null,artifactBytes:10,runtimeSpeedupPercent:null,deadCodeElimination:{status:'compiler-managed',method:'Compiler pass',removedStatements:null,removedInstructions:null}};
+ const artifacts=await buildReports({language,sourceName:'main',source:'unchanged',artifacts:[{artifactType:'GENERATED_SOURCE',fileName:'compiled.c',mediaType:'text/plain',bytes:Buffer.from('unchanged')}],optimizationEvidence:evidence});
+ const report=JSON.parse(artifacts[0]!.bytes.toString());expect(report.output.optimizationTarget).toBe(target);expect(report.output.optimizedSource).toBe('unchanged');
+ if(language==='c'&&unit==='artifact-bytes')expect(report.output.filePurposes[0].purpose).toBe('Compiler-input source; optimization applies to the native executable');
+ const pdf=artifacts[1]!.bytes.toString('latin1');const text=[...pdf.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)].flatMap(match=>{try{return [...inflateSync(Buffer.from(match[1]!,'latin1')).toString('latin1').matchAll(/<([0-9a-f]+)>/gi)].map(token=>Buffer.from(token[1]!,'hex').toString('latin1'));}catch{return [];}}).join('');expect(text).toContain(`Optimization target: ${target}`);
+ const failed=JSON.parse((await buildReports({language,sourceName:'main',source:'',artifacts:[],status:'FAILED',optimizationEvidence:evidence}))[0]!.bytes.toString());expect(failed.output.optimizationTarget).toBe('Not measured');
+});
+it('does not infer an optimization target from missing or malformed evidence',async()=>{
+ for(const optimizationEvidence of [undefined,{version:1,language:'c',method:'unverified'}]){
+  const report=JSON.parse((await buildReports({language:'c',sourceName:'main.c',source:'',artifacts:[],optimizationEvidence}))[0]!.bytes.toString());expect(report.output.optimizationTarget).toBe('Not measured');
+ }
 });

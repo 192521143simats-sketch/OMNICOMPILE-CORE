@@ -1,4 +1,4 @@
-import React from "react";
+import "react";
 import {renderToStaticMarkup} from "react-dom/server";
 import {describe, expect, it} from "vitest";
 import {joinPath, parseJoinRoute, WorkerChoices} from "./worker-onboarding.js";

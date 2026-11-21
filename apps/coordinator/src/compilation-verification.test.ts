@@ -22,6 +22,14 @@ it("rebuilds final C output from submitted source instead of trusting a worker e
 it("rejects worker Python transformations that differ from the authoritative optimizer",async()=>{
   await expect(verifyCompilation({language:"python",sourceName:"invoice.py",sourceText:"amount=2+3"},{operation:"python_compile",generatedSource:"amount=999",artifactBase64:"ignored"})).rejects.toThrow(/generated source/);
 },30000);
+it("publishes independently recomputed DCE evidence instead of worker removal claims",async()=>{
+ const source={language:'python' as const,sourceName:'dead.py',sourceText:'if False:\n    print("dead")\nprint(42)\n'};
+ const {compilePython}=await import('@omnicompile/compiler-python');
+ const compiled=await compilePython(source.sourceText,undefined,source.sourceName);
+ const verified=await verifyCompilation(source,{operation:'python_compile',generatedSource:compiled.optimizedSource,artifactBase64:'untrusted',metrics:{optimizationEvidence:{deadCodeElimination:{status:'applied',removedStatements:999}}}});
+ expect(verified.metrics.optimizationEvidence.deadCodeElimination).toMatchObject({status:'applied',removedStatements:1});
+ expect(verified.generatedSource).not.toContain('dead');
+});
 
 it("publishes authoritative Java optimized source and evidence rather than worker bytes",async()=>{
  const source={language:"java" as const,sourceName:"Main.java",sourceText:"public class Main {public static void main(String[] a){System.out.print(20+22);}}"};
@@ -33,3 +41,29 @@ it("publishes authoritative Java optimized source and evidence rather than worke
 it("rejects Java source tampering even when a worker claims valid compilation",async()=>{
  await expect(verifyCompilation({language:'java',sourceName:'Main.java',sourceText:'public class Main {int value=20+22;}'},{operation:'java_compile',generatedSource:'public class Main {int value=999;}',artifactBase64:'untrusted'})).rejects.toThrow(/authoritative Java optimizer/);
 },30000);
+
+it('normalizes legacy IR through the trusted optimizer and publishes only original-source evidence',()=>{
+ const original={name:'main',returnType:'int' as const,parameters:[],instructions:[{op:'const' as const,dest:'%t0',value:42},{op:'return' as const,value:'%t0'},{op:'call' as const,callee:'dead',dest:null,arguments:[]}]};
+ const expected=optimizeCIR({kind:'OmniCompileCIR',version:1,functions:[original]});
+ const result=verifyIROptimization(original,{operation:'c_optimize_ir',function:original,report:{deadInstructionsRemoved:999}});
+ expect(result.function).toEqual(expected.ir.functions[0]);expect(result.report).toEqual(expected.report);expect(result.report.deadInstructionsRemoved).toBe(1);
+ const reachable=structuredClone(original);reachable.instructions.unshift({op:'call',callee:'extra',dest:null,arguments:[]});
+ expect(()=>verifyIROptimization(original,{operation:'c_optimize_ir',function:reachable})).toThrow(/authoritative/);
+ for(const candidate of [null,{}, {...original,instructions:[{op:'invalid'}]}])expect(()=>verifyIROptimization(original,{operation:'c_optimize_ir',function:candidate})).toThrow(/authoritative/);
+});
+it('normalizes legacy Python folding and dead branches without accepting reachable effects or worker evidence',async()=>{
+ const source={language:'python' as const,sourceName:'main.py',sourceText:'if False:\n    print("dead")\nprint(20+22)\n'};
+ const legacy='if False:\n    print("dead")\nprint(42)\n';
+ const result=await verifyCompilation(source,{operation:'python_compile',generatedSource:legacy,metrics:{optimizationEvidence:{deadCodeElimination:{removedStatements:999}}}});
+ expect(result.generatedSource).not.toContain('dead');expect(result.metrics.optimizationEvidence.deadCodeElimination.removedStatements).toBe(1);
+ await expect(verifyCompilation(source,{operation:'python_compile',generatedSource:legacy+'print("extra")\n'})).rejects.toThrow(/authoritative Python optimizer/);
+ await expect(verifyCompilation(source,{operation:'python_compile',generatedSource:'def syntax('})).rejects.toThrow(/authoritative Python optimizer/);
+});
+it('normalizes legacy Java folding and dead branches while rejecting reachable effects',async()=>{
+ const source={language:'java' as const,sourceName:'Main.java',sourceText:'public class Main {public static void main(String[] a){if(false){System.out.print("dead");}System.out.print(20+22);}}'};
+ const legacy=source.sourceText.replace('20+22','(42)');
+ const result=await verifyCompilation(source,{operation:'java_compile',generatedSource:legacy,metrics:{optimizationEvidence:{deadCodeElimination:{removedStatements:999}}}});
+ expect(result.generatedSource).not.toContain('dead');expect(result.metrics.optimizationEvidence.deadCodeElimination.removedStatements).toBe(1);
+ await expect(verifyCompilation(source,{operation:'java_compile',generatedSource:legacy.replace('System.out.print((42));','System.out.print((42));System.out.print("extra");')})).rejects.toThrow(/authoritative Java optimizer/);
+ await expect(verifyCompilation(source,{operation:'java_compile',generatedSource:'public class Main { broken'})).rejects.toThrow(/authoritative Java optimizer/);
+},60000);

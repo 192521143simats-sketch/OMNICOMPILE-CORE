@@ -108,7 +108,16 @@ try{
           await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE'&&node.profile.runtimes[item.language]&&node.resources?.freeMemoryBytes>=536870912);},{timeout:30000}).toBe(true);
           await page.goto('/dashboard');await page.getByLabel('Language',{exact:true}).selectOption(item.language);
           await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
-          await page.getByLabel('Upload source file').setInputFiles(resolve("samples",item.language,item.file));
+          let fixtureSource=await readFile(resolve('samples',item.language,item.file),'utf8');
+          if(item.language==='python')fixtureSource+='\nif False:\n    print("UNREACHABLE_TEST_MARKER")\n';
+          else if(item.language==='java'){
+            const entry='public static void main(String[] args) {';expect(fixtureSource).toContain(entry);
+            fixtureSource=fixtureSource.replace(entry,entry+' if(false){System.out.println("UNREACHABLE_TEST_MARKER");}');
+          }else{
+            const returned='return total == 49995000;';expect(fixtureSource).toContain(returned);
+            fixtureSource=fixtureSource.replace(returned,returned+'99+1;');
+          }
+          await page.getByLabel('Upload source file').setInputFiles({name:item.file,mimeType:'text/plain',buffer:Buffer.from(fixtureSource)});
           await waitNative(item.language);
           const submission=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
           await page.getByRole('button',{name:'Compile and optimize',exact:true}).click();
@@ -122,6 +131,8 @@ try{
           await expect(optimizationCard).toContainText('1 completed jobs with evidence',{timeout:15000});
           await expect(optimizationCard).toContainText(item.language==='c'?/artifact-bytes|ir-cost/:item.language==='python'?'ast-nodes':'ast-operators');
           await expect(optimizationCard).toContainText('Runtime speedup');
+          await expect(optimizationCard).toContainText('Dead-code elimination');
+          await expect(optimizationCard).toContainText(item.language==='c'?'compiler-managed':'applied');
           await expect(optimizationCard).toContainText('Not measured');
           await expect(liveMetrics.getByText('1 / 1 completed outcomes successful',{exact:true})).toBeVisible({timeout:15000});
           await expect(liveMetrics.getByText('0 / 0 completed verification attempts verified',{exact:true})).toHaveCount(0);
@@ -131,6 +142,13 @@ try{
           const downloading=page.waitForEvent('download');await reports.getByRole('link',{name:'Download',exact:true}).click();const download=await downloading;
           expect(download.suggestedFilename()).toBe('build-report.json');const report=JSON.parse(await readFile(await download.path(),'utf8'));
           expect(report.compilationSummary.sourceFile).toBe(item.file);expect(report.finalResult.status).toBe('SUCCESS');
+          expect(report.optimizationEvidence.deadCodeElimination.status).toBe(item.language==='c'?'compiler-managed':'applied');
+          if(item.language==='c'){
+            expect(report.optimizationEvidence.compiler.options).toEqual(expect.arrayContaining(['-fdce','-ftree-dce']));
+            expect(report.optimizationEvidence.deadCodeElimination.removedInstructions).toBeNull();
+          }else expect(report.optimizationEvidence.deadCodeElimination.removedStatements).toBeGreaterThan(0);
+          expect(report.optimizationEvidence.runtimeSpeedupPercent).toBeNull();
+          expect(report.output.optimizedSource).not.toContain('UNREACHABLE_TEST_MARKER');
           console.log(`Actual ${item.language} source upload, native compilation, report and download passed.`);
         }
         for(const item of [

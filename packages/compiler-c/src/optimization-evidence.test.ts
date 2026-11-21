@@ -2,6 +2,8 @@ import {it,expect} from 'vitest';
 import {compileCSource} from './codegen.js';
 it('reports actual O2 and O0 binary sizes without asserting runtime speedup',async()=>{
  const result=await compileCSource('int main(void){int x=20+22;return x;}','evidence.c');
+ expect(result.optimizationEvidence?.compiler.options).toEqual(expect.arrayContaining(['-fdce','-ftree-dce']));
+ expect((result.optimizationEvidence as any).deadCodeElimination).toMatchObject({status:'compiler-managed',removedStatements:null,removedInstructions:null});
  const e=result.optimizationEvidence!;expect(e.language).toBe('c');expect(e.compiler.options).toContain('-O2');expect(e.compiler.version).toMatch(/gcc/i);expect(e.artifactBytes).toBe(result.bytes.length);expect(e.runtimeSpeedupPercent).toBeNull();expect(e.transformations).toBeNull();expect(e.measurement?.before).toBeGreaterThan(0);expect(e.measurement?.after).toBe(result.bytes.length);expect(e.measurement?.reductionPercent).toBeCloseTo(100*(e.measurement!.before-result.bytes.length)/e.measurement!.before);
 },30000);
 it('does not reject valid O2 output when a program explicitly forbids an O0 baseline',async()=>{
