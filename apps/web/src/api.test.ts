@@ -1,5 +1,5 @@
 import {createServer, type Server} from "node:http";
-import {afterAll,beforeAll,describe,expect,it} from "vitest";
+import {afterAll,beforeAll,describe,expect,it,vi} from "vitest";
 import {api} from "./api.js";
 
 let server:Server;
@@ -26,3 +26,6 @@ describe("web API failure handling",()=>{
     await expect(api(base+"/invalid")).rejects.toThrow("The service returned an invalid response. Please try again.");
   });
 });
+
+// Exercise connected behavior independently of the public frontend offline default.
+vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));

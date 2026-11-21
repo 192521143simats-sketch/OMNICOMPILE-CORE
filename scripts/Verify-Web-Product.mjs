@@ -116,7 +116,13 @@ try{
           await expect(page.getByRole('heading',{name:'Generated artifacts'})).toBeVisible({timeout:120000});
           const liveMetrics=page.getByTestId('compiler-metrics');
           await expect(liveMetrics.getByRole('heading',{name:'Live performance · your jobs'})).toBeVisible();
-          await expect(liveMetrics.locator('article')).toHaveCount(5);
+          await expect(liveMetrics.locator('article')).toHaveCount(6);
+          const optimizationCard=liveMetrics.locator('article').nth(2);
+          await expect(optimizationCard.getByRole('heading',{name:'3. Optimization evidence',exact:true})).toBeVisible();
+          await expect(optimizationCard).toContainText('1 completed jobs with evidence',{timeout:15000});
+          await expect(optimizationCard).toContainText(item.language==='c'?/artifact-bytes|ir-cost/:item.language==='python'?'ast-nodes':'ast-operators');
+          await expect(optimizationCard).toContainText('Runtime speedup');
+          await expect(optimizationCard).toContainText('Not measured');
           await expect(liveMetrics.getByText('1 / 1 completed outcomes successful',{exact:true})).toBeVisible({timeout:15000});
           await expect(liveMetrics.getByText('0 / 0 completed verification attempts verified',{exact:true})).toHaveCount(0);
           const compileButton=await page.getByRole('button',{name:'Compile and optimize',exact:true}).boundingBox();expect(compileButton?.height).toBeLessThan(80);

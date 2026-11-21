@@ -10,6 +10,29 @@ export const metricPlatforms=['WEB','WINDOWS','ANDROID','CLOUD','NATIVE_OTHER'] 
 const number=(v:unknown):v is number=>typeof v==='number'&&Number.isFinite(v)&&v>=0;
 const average=(values:number[])=>values.length?values.reduce((a,b)=>a+b,0)/values.length:null;
 const ratio=(n:number,d:number)=>d?n*100/d:null;
+export function summarizeOptimizationEvidence(jobs:Row[]){
+ const items:Row[]=[];
+ for(const job of jobs){try{
+  const metrics=typeof job.metrics==='string'?JSON.parse(job.metrics):job.metrics;
+  let e=metrics?.optimizationEvidence;
+  if(!e&&job.language==='c'){
+   const evaluations=metrics?.optimization?.evaluations;
+   if(Array.isArray(evaluations)&&evaluations.length&&evaluations.every(v=>number(v.originalCost)&&number(v.selectedCost)&&typeof v.accepted==='boolean'&&v.selectedCost<=v.originalCost&& (v.accepted||v.selectedCost===v.originalCost))){
+    const before=evaluations.reduce((sum,v)=>sum+v.originalCost,0),after=evaluations.reduce((sum,v)=>sum+v.selectedCost,0);
+    e={version:1,language:'c',method:'Validated distributed C IR cost selection',transformations:null,measurement:{unit:'ir-cost',before,after},compiler:null,artifactBytes:null,runtimeSpeedupPercent:null};
+   }
+  }
+  if(!e||e.version!==1||e.language!==job.language||!['c','python','java'].includes(e.language)||typeof e.method!=='string'||!e.method.trim()||e.method.length>500)continue;
+  if(e.transformations!==null&&(!Number.isSafeInteger(e.transformations)||e.transformations<0))continue;
+  if(e.artifactBytes!==null&&(!Number.isSafeInteger(e.artifactBytes)||e.artifactBytes<0))continue;
+  const compiler=e.compiler;
+  if(compiler!==null&&(!compiler||typeof compiler.name!=='string'||!compiler.name.trim()||typeof compiler.version!=='string'||!compiler.version.trim()||!Array.isArray(compiler.options)||compiler.options.length>100||!compiler.options.every((v:unknown)=>typeof v==='string'&&v.length<=1000)))continue;
+  let measurement=null;
+  if(e.measurement!==null){const m=e.measurement,units:Record<string,string[]>={c:['ir-cost','artifact-bytes'],python:['ast-nodes'],java:['ast-operators']};if(!m||!units[e.language]?.includes(m.unit)||!number(m.before)||!number(m.after))continue;const reductionPercent=m.before>0?(m.before-m.after)*100/m.before:null;if(reductionPercent!==null&&!Number.isFinite(reductionPercent))continue;measurement={unit:m.unit,before:m.before,after:m.after,reductionPercent};}
+  items.push({jobId:job.jobId,version:1,language:e.language,method:e.method,transformations:e.transformations,measurement,compiler,artifactBytes:e.artifactBytes,runtimeSpeedupPercent:null});
+ }catch{/* Malformed historical records are unmeasured. */}}
+ return {jobsMeasured:items.length,items};
+}
 export function qualifyMetricWorkers(rows:Row[]){const workers=new Map<string,Row>();for(const row of rows){let eligible=false;try{const parse=(v:any)=>typeof v==='string'?JSON.parse(v):v,profile=parse(row.profile),resources=parse(row.resources),configuration=parse(row.configuration)??{};eligible=evaluateNode({id:row.id,status:row.status,profile,resources,lastHeartbeat:row.lastHeartbeat,reliability:{sampleCount:Number(row.reliabilitySamples??0),successRate:row.reliabilityRate==null?null:Number(row.reliabilityRate)}},{capability:row.capability as RequiredCapability,taskKind:row.taskKind,operation:row.operation,requireNativeCSource:row.taskKind==='C_COMPILE',minLogicalCores:1,minFreeMemoryBytes:1_048_576,maxDurationMs:Number(row.timeoutMs??process.env.TASK_TIMEOUT_MS??30_000),maxMemoryBytes:row.capability==='ir'?16_777_216:536_870_912},{policy:networkPolicySchema.parse(configuration.policy??{})}).eligible;}catch{/* Unknown profiles cannot advertise availability. */}const prior=workers.get(row.id);workers.set(row.id,{...row,eligible:eligible||prior?.eligible===true});}return [...workers.values()];}
 export function summarizeCompilerMetrics(input:MetricInput,now=Date.now(),offlineMs=30_000){
  const taskCounts=(tasks:Row[])=>{const successful=tasks.filter(t=>t.status==='COMPLETED').length,timedOut=tasks.filter(t=>t.status==='FAILED'&&t.failureReason==='TIMEOUT').length,failed=tasks.filter(t=>t.status==='FAILED'&&t.failureReason!=='TIMEOUT').length,totalCompleted=successful+failed+timedOut;return {successful,failed,timedOut,cancelled:tasks.filter(t=>t.status==='CANCELLED').length,pending:tasks.filter(t=>['QUEUED','REQUEUED','ASSIGNED','VERIFYING'].includes(t.status)).length,running:tasks.filter(t=>t.status==='RUNNING').length,totalCompleted,successRate:ratio(successful,totalCompleted)};};
@@ -63,6 +86,9 @@ export class CompilerMetrics {
    const [verificationGroups]=await connection.execute<RowDataPacket[]>(`SELECT v.outcome,COUNT(*) count ${verificationJoin} GROUP BY v.outcome`,verificationParams);
    const [verifications]=await connection.execute<RowDataPacket[]>(`SELECT v.task_id taskId,v.node_id workerId,v.outcome,v.method,v.received_at receivedAt,v.completed_at completedAt,${platformSql} platform ${verificationJoin} ORDER BY v.received_at DESC LIMIT 50`,verificationParams);
    const [history]=await connection.execute<RowDataPacket[]>(`SELECT h.job_id jobId,h.observed_at at,h.snapshot_json snapshot FROM job_worker_availability h JOIN compilation_jobs j ON j.id=h.job_id WHERE ${where} ORDER BY h.observed_at DESC LIMIT 100`,params);
+   // Bound history to the latest 500 distinct completed owner jobs. Platform selection
+   // requires participation by a persisted task attempt, never a worker assertion.
+   const [optimizationJobs]=await connection.execute<RowDataPacket[]>(`SELECT DISTINCT j.id jobId,j.language,j.metrics_json metrics,j.created_at FROM compilation_jobs j WHERE ${where} AND j.status='COMPLETED' ${filter.platform?`AND EXISTS(SELECT 1 FROM tasks t LEFT JOIN task_attempts a ON a.task_id=t.id LEFT JOIN nodes n ON n.id=a.node_id WHERE (t.job_id=j.id OR EXISTS(SELECT 1 FROM optimization_batch_tasks b WHERE b.task_id=t.id AND b.batch_id=j.batch_id)) AND (${platformSql})=?)`:''} ORDER BY j.created_at DESC,j.id DESC LIMIT 500`,[...params,...(filter.platform?[filter.platform]:[])]);
    await connection.commit();const selected=(rows:Row[])=>filter.platform?rows.filter(row=>row.platform===filter.platform):rows;
    const availability=history.flatMap(h=>{const snapshot=typeof h.snapshot==='string'?JSON.parse(h.snapshot):h.snapshot;const measurement=filter.platform?snapshot.platforms?.find((platform:Row)=>platform.platform===filter.platform):snapshot;return measurement?[{at:h.at,jobId:h.jobId,...measurement}]:[];});
    const base=summarizeCompilerMetrics({tasks:[],workers:selected(this.workersWithConnections(workers)),telemetry:[],verifications,availability},Date.now(),this.offlineMs);
@@ -70,7 +96,7 @@ export class CompilerMetrics {
    const timing=(rows:Row[])=>{const count=rows.reduce((s,r)=>s+Number(r.durationCount),0);return {count,averageMs:count?rows.reduce((s,r)=>s+Number(r.durationSum),0)/count:null};};
    const resource=(rows:Row[])=>{const cpuReadings=rows.reduce((s,r)=>s+Number(r.cpuReadings),0),ramReadings=rows.reduce((s,r)=>s+Number(r.ramReadings),0);return {cpuReadings,ramReadings,cpuPercent:cpuReadings?rows.reduce((s,r)=>s+Number(r.cpuPercent)*Number(r.cpuReadings),0)/cpuReadings:null,ramPercent:ramReadings?rows.reduce((s,r)=>s+Number(r.ramPercent)*Number(r.ramReadings),0)/ramReadings:null,lastUpdatedAt:rows.map(r=>r.lastUpdatedAt).filter(Boolean).sort().at(-1)??null};};
    const outcomes=(outcome:string)=>Number(verificationGroups.find(r=>r.outcome===outcome)?.count??0),verified=outcomes('VERIFIED'),rejected=outcomes('REJECTED'),failed=outcomes('FAILED'),completed=verified+rejected+failed;
-   return {...base,tasks:{...counts(groups),trend:[...new Set(groups.map(r=>r.date).filter(Boolean))].sort().map(date=>({date,...counts(groups.filter(r=>r.date===date))}))},completion:{...timing(groups),platforms:metricPlatforms.map(platform=>({platform,...timing(groups.filter(r=>r.platform===platform))}))},resources:{...resource(resourceGroups),platforms:metricPlatforms.map(platform=>({platform,...resource(resourceGroups.filter(r=>r.platform===platform))}))},verification:{verified,rejected,failed,pending:outcomes('PENDING'),completed,rate:ratio(verified,completed),history:verifications}};
+   return {...base,optimization:summarizeOptimizationEvidence(optimizationJobs),tasks:{...counts(groups),trend:[...new Set(groups.map(r=>r.date).filter(Boolean))].sort().map(date=>({date,...counts(groups.filter(r=>r.date===date))}))},completion:{...timing(groups),platforms:metricPlatforms.map(platform=>({platform,...timing(groups.filter(r=>r.platform===platform))}))},resources:{...resource(resourceGroups),platforms:metricPlatforms.map(platform=>({platform,...resource(resourceGroups.filter(r=>r.platform===platform))}))},verification:{verified,rejected,failed,pending:outcomes('PENDING'),completed,rate:ratio(verified,completed),history:verifications}};
   }catch(error){await connection.rollback();throw error;}finally{connection.release();}
  }
  async sampleForTask(taskId:string){const [jobs]=await this.pool.execute<RowDataPacket[]>(`SELECT DISTINCT j.id,j.user_id userId FROM tasks t ${parentJoin} WHERE t.id=?`,[taskId]);for(const job of jobs)await this.sampleJob(job.id,job.userId);}

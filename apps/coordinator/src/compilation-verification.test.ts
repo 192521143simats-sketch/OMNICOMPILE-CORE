@@ -22,3 +22,14 @@ it("rebuilds final C output from submitted source instead of trusting a worker e
 it("rejects worker Python transformations that differ from the authoritative optimizer",async()=>{
   await expect(verifyCompilation({language:"python",sourceName:"invoice.py",sourceText:"amount=2+3"},{operation:"python_compile",generatedSource:"amount=999",artifactBase64:"ignored"})).rejects.toThrow(/generated source/);
 },30000);
+
+it("publishes authoritative Java optimized source and evidence rather than worker bytes",async()=>{
+ const source={language:"java" as const,sourceName:"Main.java",sourceText:"public class Main {public static void main(String[] a){System.out.print(20+22);}}"};
+ const {compileJava}=await import('@omnicompile/compiler-java');const compiled=await compileJava(source.sourceText,source.sourceName);
+ expect(compiled.generatedSource).toContain('(42)');
+ const verified=await verifyCompilation(source,{operation:'java_compile',generatedSource:compiled.generatedSource,artifactBase64:'untrusted'});
+ expect(verified.generatedSource).toBe(compiled.generatedSource);expect(verified.metrics.optimizationEvidence.language).toBe('java');expect(verified.metrics.optimizationEvidence.transformations).toBeGreaterThan(0);expect(Buffer.from(verified.artifactBase64,'base64').length).toBeGreaterThan(0);
+},30000);
+it("rejects Java source tampering even when a worker claims valid compilation",async()=>{
+ await expect(verifyCompilation({language:'java',sourceName:'Main.java',sourceText:'public class Main {int value=20+22;}'},{operation:'java_compile',generatedSource:'public class Main {int value=999;}',artifactBase64:'untrusted'})).rejects.toThrow(/authoritative Java optimizer/);
+},30000);

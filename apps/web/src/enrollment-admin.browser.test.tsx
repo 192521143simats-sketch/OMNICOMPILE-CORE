@@ -86,3 +86,6 @@ it("creates a one-use link, confirms copying, refreshes status and revokes only 
     else Reflect.deleteProperty(navigator, "clipboard");
   }
 });
+
+// Exercise connected behavior independently of the public frontend offline default.
+vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));

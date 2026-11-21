@@ -1,3 +1,4 @@
+import {optimizerJava} from "./optimizer.js";
 import {mkdtemp,mkdir,readFile,readdir,rm,writeFile} from "node:fs/promises";
 import {existsSync} from "node:fs";
 import {tmpdir} from "node:os";
@@ -5,7 +6,7 @@ import {delimiter,join} from "node:path";
 import {spawn} from "node:child_process";
 import {pathToFileURL} from "node:url";
 export type JavaDiagnostic={severity:"error"|"warning";message:string;line?:number|null;column?:number|null;code?:string};
-export type JavaCompilation={language:"java";representation:"JVM bytecode";jdkVersion:string;primaryClass:string;bytecodeIR:string;generatedSource:string;sourceName:string;classes:Record<string,Buffer>;jar:{fileName:string;bytes:Buffer;runnable:boolean;mainClass?:string};diagnostics:JavaDiagnostic[];metrics:{classCount:number;classBytes:number;jarBytes:number}};
+export type JavaCompilation={language:"java";representation:"JVM bytecode";jdkVersion:string;primaryClass:string;bytecodeIR:string;generatedSource:string;sourceName:string;classes:Record<string,Buffer>;jar:{fileName:string;bytes:Buffer;runnable:boolean;mainClass?:string};diagnostics:JavaDiagnostic[];metrics:{classCount:number;classBytes:number;jarBytes:number;optimizationEvidence:{version:1;language:"java";method:string;transformations:number;measurement:{unit:string;before:number;after:number;reductionPercent:number|null};compiler:{name:string;version:string;options:string[]};artifactBytes:number;runtimeSpeedupPercent:null}}};
 export class JavaFrontendError extends Error{constructor(readonly diagnostics:JavaDiagnostic[]){super(diagnostics.map(d=>`${d.severity}: ${d.message}`).join("\n"));this.name="JavaFrontendError";}}
 export async function compileJava(source:string, sourceName?:string):Promise<JavaCompilation>{
  const fail=(message:string):never=>{throw new JavaFrontendError([{severity:"error",message}]);};
@@ -37,6 +38,20 @@ export async function compileJava(source:string, sourceName?:string):Promise<Jav
   const compiled=await run(jdk.javac,["-J-Xmx256m","-proc:none","-encoding","UTF-8","-g:none","-Xlint:all","-classpath",classesDir,"-sourcepath",sourceDir,"-d",classesDir,sourcePath]);
   const diagnostics=parseDiagnostics(compiled.stderr||compiled.stdout,workspace);
   if(compiled.code!==0)throw new JavaFrontendError(diagnostics.length?diagnostics:[{severity:"error",message:"Java compilation failed"}]);
+  const helperPath=join(workspace,"OmniIntFold.java"), optimizedPath=join(workspace,"optimized.txt");
+  await writeFile(helperPath,optimizerJava,"utf8");
+  // The helper parses source using javac; only our trusted helper is executed.
+  const optimized=await command(jdk.java,["-Xmx256m","-Dfile.encoding=UTF-8",helperPath,pathToFileURL(sourcePath).href,pathToFileURL(optimizedPath).href],Math.max(1,deadline-Date.now())).catch(()=>fail("Java AST optimization tool failed or exceeded its deadline"));
+  if(optimized.code!==0)fail("Java AST optimization failed");
+  const evidenceCounts=optimized.stdout.trim().split(",").map(Number);
+  if(evidenceCounts.length!==3||evidenceCounts.some(n=>!Number.isSafeInteger(n)||n<0))fail("Invalid Java optimizer evidence");
+  const [transformations,before,after]=evidenceCounts as [number,number,number];
+  const generatedSource=await readFile(optimizedPath,"utf8");
+  if(transformations>0){
+   await writeFile(sourcePath,generatedSource,"utf8");
+   const finalCompile=await run(jdk.javac,["-J-Xmx256m","-proc:none","-encoding","UTF-8","-g:none","-Xlint:all","-classpath",classesDir,"-sourcepath",sourceDir,"-d",classesDir,sourcePath]);
+   if(finalCompile.code!==0)fail("Java optimized source verification failed");
+  }
   const files=(await readdir(classesDir,{recursive:true})).map(String).filter(name=>name.endsWith(".class")).sort();
   const classes:Record<string,Buffer>={},signatures=new Map<string,string>();let classBytes=0;
   if(files.length>256)fail("Java compilation exceeds 256 classes");
@@ -59,7 +74,7 @@ export async function compileJava(source:string, sourceName?:string):Promise<Jav
   if(packed.code!==0)fail("Java JAR packaging failed");
   const jarBytes=await readFile(jarPath);if(jarBytes.length>8_000_000)fail("Java JAR output exceeds 8 MB");
   const version=await run(jdk.javac,["-version"]);
-  return{language:"java",representation:"JVM bytecode",jdkVersion:(version.stderr||version.stdout).trim(),primaryClass,bytecodeIR:inspected.stdout,generatedSource:source,sourceName,classes,jar:{fileName:`${primaryClass.split(".").at(-1)}.jar`,bytes:jarBytes,runnable:!!mainClass,...(mainClass?{mainClass}:{})},diagnostics,metrics:{classCount:files.length,classBytes,jarBytes:jarBytes.length}};
+  return{language:"java",representation:"JVM bytecode",jdkVersion:(version.stderr||version.stdout).trim(),primaryClass,bytecodeIR:inspected.stdout,generatedSource,sourceName,classes,jar:{fileName:`${primaryClass.split(".").at(-1)}.jar`,bytes:jarBytes,runnable:!!mainClass,...(mainClass?{mainClass}:{})},diagnostics,metrics:{classCount:files.length,classBytes,jarBytes:jarBytes.length,optimizationEvidence:{version:1,language:"java",method:"javac AST literal int constant folding",transformations,measurement:{unit:"ast-operators",before,after,reductionPercent:before===0?null:100*(before-after)/before},compiler:{name:"javac",version:(version.stderr||version.stdout).trim(),options:["-proc:none","-encoding","UTF-8","-g:none","-Xlint:all"]},artifactBytes:classBytes,runtimeSpeedupPercent:null}}};
  }finally{await rm(workspace,{recursive:true,force:true});}
 }
 

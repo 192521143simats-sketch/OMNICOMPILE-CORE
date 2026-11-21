@@ -102,3 +102,6 @@ it("shows database prewarm reservations and clears stale observations on errors"
     expect(host.textContent).not.toContain("RETIRING");
   }finally{await act(async()=>root.unmount());vi.unstubAllGlobals();}
 });
+
+// Exercise connected behavior independently of the public frontend offline default.
+vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));

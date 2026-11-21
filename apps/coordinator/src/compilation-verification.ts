@@ -18,15 +18,15 @@ export async function verifyCompilation(source:Source,worker:any,signal?:AbortSi
   if(source.language==="c"){
     if(worker.generatedSource!==source.sourceText)throw new Error("Worker generated source does not match submitted C source");
     const compiled=await compileCSource(source.sourceText,source.sourceName);
-    return{operation:"c_compile",artifactBase64:compiled.bytes.toString("base64"),fileName:compiled.fileName,generatedSource:compiled.generatedSource,diagnostics:compiled.diagnostics,verification,metrics:{compiler:compiled.compiler,artifactBytes:compiled.bytes.length,verification}};
+    return{operation:"c_compile",artifactBase64:compiled.bytes.toString("base64"),fileName:compiled.fileName,generatedSource:compiled.generatedSource,diagnostics:compiled.diagnostics,verification,metrics:{compiler:compiled.compiler,artifactBytes:compiled.bytes.length,optimizationEvidence:compiled.optimizationEvidence,verification}};
   }
   if(source.language==="python"){
     const compiled=await compilePython(source.sourceText,undefined,source.sourceName);
     if(worker.generatedSource!==compiled.optimizedSource)throw new Error("Worker generated source does not match the authoritative Python optimizer");
     return{operation:"python_compile",artifactBase64:compiled.bytecode.toString("base64"),fileName:compiled.artifactName,generatedSource:compiled.optimizedSource,diagnostics:compiled.diagnostics,optimizations:compiled.optimizations,verification,metrics:{pythonVersion:compiled.pythonVersion,...compiled.metrics,verification}};
   }
-  if(worker.generatedSource!==source.sourceText)throw new Error("Worker generated source does not match submitted Java source");
   const compiled=await compileJava(source.sourceText,source.sourceName);
+  if(worker.generatedSource!==compiled.generatedSource)throw new Error("Worker generated source does not match the authoritative Java optimizer");
   return{operation:"java_compile",artifactBase64:compiled.jar.bytes.toString("base64"),fileName:compiled.jar.fileName,generatedSource:compiled.generatedSource,runnableJar:compiled.jar.runnable,classes:Object.entries(compiled.classes).map(([fileName,bytes])=>({fileName,contentBase64:bytes.toString("base64")})),diagnostics:compiled.diagnostics,verification,metrics:{jdkVersion:compiled.jdkVersion,...compiled.metrics,verification}};
 }
 export function verifyIROptimization(original:IRFunction,worker:any){

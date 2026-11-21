@@ -6,7 +6,7 @@ import {expect,it} from 'vitest';
 const source=readFileSync(new URL('./main.tsx',import.meta.url),'utf8');
 it('keeps normal-user navigation focused on compilation without dormant extra pages',()=>{
   const header=source.slice(source.indexOf('function Header('),source.indexOf('function Shell('));
-  expect(header).toContain('href="/dashboard">Compiler');
+  expect(header).toMatch(/<a\s+href="\/dashboard"[^>]*>Compiler<\/a>/);
   expect(header).not.toMatch(/href="\/(compute|settings)"/);
   expect(source).not.toMatch(/import.*\{(?:ComputeTasks|Settings)\}/);
   for(const name of ['compute-tasks.tsx','settings.tsx'])expect(existsSync(new URL(name,import.meta.url))).toBe(false);

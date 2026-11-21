@@ -8,9 +8,9 @@ const empty={scope:'OWN_JOBS',observedAt:'2026-11-01T10:00:00Z',tasks:{successfu
 const response=(body:any)=>new Response(JSON.stringify(body),{headers:{'content-type':'application/json'}});
 afterEach(()=>{vi.unstubAllGlobals();vi.useRealTimers();});
 async function mount(){const host=document.createElement('div');document.body.append(host);const root=createRoot(host);return{host,root,close:async()=>{await act(async()=>root.unmount());host.remove();}};}
-it('renders five live indicators without manufacturing percentages or unavailable telemetry',async()=>{
+it('renders six live indicators without manufacturing percentages or unavailable telemetry',async()=>{
   const fetcher=vi.fn(async(_path:string)=>response(empty));vi.stubGlobal('fetch',fetcher);const view=await mount();
-  try{await act(async()=>view.root.render(<CompilerMetrics language="c"/>));expect(view.host.querySelectorAll('article')).toHaveLength(5);expect(view.host.textContent).toContain('Not available');expect(view.host.textContent).not.toContain('0.0%');expect(view.host.textContent).toContain('End-to-end');expect(view.host.textContent).toContain('your jobs');expect(fetcher.mock.calls[0]?.[0]).toContain('/api/user/compiler-metrics?language=c');}finally{await view.close();}
+  try{await act(async()=>view.root.render(<CompilerMetrics language="c"/>));expect(view.host.querySelectorAll('article')).toHaveLength(6);expect(view.host.textContent).toContain('Not available');expect(view.host.textContent).not.toContain('0.0%');expect(view.host.textContent).toContain('End-to-end');expect(view.host.textContent).toContain('your jobs');expect(fetcher.mock.calls[0]?.[0]).toContain('/api/user/compiler-metrics?language=c');}finally{await view.close();}
 });
 it('displays actual counts, separate CPU and RAM, method-labelled verification and trends',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,tasks:{...empty.tasks,successful:2,failed:1,totalCompleted:3,successRate:66.666,trend:[{date:'2026-11-01',successful:2,failed:1,timedOut:0,totalCompleted:3,successRate:66.666}]},completion:{averageMs:153.5,count:2,platforms:[{platform:'WINDOWS',count:2,averageMs:153.5}]},resources:{...empty.resources,cpuPercent:23.5,cpuReadings:4},verification:{...empty.verification,verified:2,rejected:1,completed:3,rate:66.666,history:[{taskId:'TASK-1',workerId:'NODE-A001',outcome:'VERIFIED',method:'independent-recomputation',receivedAt:'2026-11-01T10:00:00Z',completedAt:'2026-11-01T10:00:01Z'}]}})));const view=await mount();
@@ -51,4 +51,12 @@ it('offers cloud and other-native platform filters and requests server-scoped da
   expect(fetcher.mock.calls.at(-1)?.[0]).toContain('platform=CLOUD');
   expect(fetcher.mock.calls.at(-1)?.[0]).toContain('jobId=JOB-ABCDE');
  }finally{await view.close();}
+});
+
+// Exercise connected behavior independently of the public frontend offline default.
+vi.mock('./backend-config.js',()=>({backendConfig:{mode:'remote',apiBaseUrl:null,wsBaseUrl:null},isBackendAvailable:()=>true}));
+
+it('shows genuine per-job optimization measurements and explicitly unmeasured runtime speedup',async()=>{
+ vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,optimization:{jobsMeasured:1,items:[{jobId:'JOB-PY',version:1,language:'python',method:'AST constant folding',transformations:2,measurement:{unit:'ast-nodes',before:10,after:8,reductionPercent:20},compiler:{name:'CPython',version:'3.12',options:['-O']},artifactBytes:80,runtimeSpeedupPercent:null}]}})));const view=await mount();
+ try{await act(async()=>view.root.render(<CompilerMetrics/>));const card=view.host.querySelectorAll('article')[2]!;expect(card.textContent).toContain('Optimization evidence');expect(card.textContent).toContain('10 → 8 ast-nodes');expect(card.textContent).toContain('20%');expect(card.textContent).toContain('CPython 3.12');expect(card.textContent).toContain('Not measured');expect(card.textContent).not.toContain('faster');}finally{await view.close();}
 });
