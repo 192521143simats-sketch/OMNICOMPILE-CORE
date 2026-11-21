@@ -8,6 +8,7 @@ import {compileCSource} from '@omnicompile/compiler-c';
 import {dockerJobSchema,programExecutionSchema,type DockerJob} from './docker-executor-schema.js';
 import type {ExecutionEvidence} from './execution-evidence.js';
 import {readPrewarmedJob} from './prewarmed-input.js';
+import {assertLinuxExecutableArchitecture} from './executable-architecture.js';
 
 const outputLimit=65536;
 
@@ -34,6 +35,7 @@ export async function executeProgram(payload:unknown){
         extraArtifact={fileName:artifactName,contentBase64:binary.toString('base64')};
       }
       if(binary.length>8_000_000)throw new Error('The C execution artifact exceeds its size limit.');
+      assertLinuxExecutableArchitecture(binary);
       executable=join(workspace,'program');await writeFile(executable,binary);await chmod(executable,0o700);args=[];
     }
     const sandbox=process.env.OMNICOMPILE_COMPILER_SANDBOX_EXECUTABLE;

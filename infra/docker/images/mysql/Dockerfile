@@ -1,8 +1,16 @@
 # Project-specific configuration; the general-purpose MYSQL container uses the
 # upstream mysql:8.4 image independently of this build.
-FROM golang:1.27.4@sha256:205c7636d74e0ffbe3d007162df7d74f859f5a8c8322dfb9f907977686c126cf AS gosu-build
+FROM --platform=$BUILDPLATFORM golang:1.27.4@sha256:205c7636d74e0ffbe3d007162df7d74f859f5a8c8322dfb9f907977686c126cf AS gosu-build
+ARG TARGETOS
+ARG TARGETARCH
 ENV CGO_ENABLED=0 GOTOOLCHAIN=local
-RUN go install github.com/tianon/gosu@1.19
+# Build Go natively and cross-compile only the output, avoiding an emulated Go
+# compiler/TLS stack. Both native and cross installs have a deterministic path.
+RUN GOOS="$TARGETOS" GOARCH="$TARGETARCH" go install github.com/tianon/gosu@1.19 \
+    && mkdir -p /out \
+    && if [ -f "/go/bin/${TARGETOS}_${TARGETARCH}/gosu" ]; then \
+         cp "/go/bin/${TARGETOS}_${TARGETARCH}/gosu" /out/gosu; \
+       else cp /go/bin/gosu /out/gosu; fi
 
 FROM mysql:8.4@sha256:a81d043930e51745522bd5c430961cf8286f0a23f0a9a2a6e0108f7ea71b0902
 # OmniCompile uses the server and mysql CLI, never the optional mysqlsh/Python
@@ -11,7 +19,7 @@ RUN microdnf remove -y mysql-shell \
     && microdnf upgrade -y \
     && microdnf clean all \
     && mysql --version && mysqld --version
-COPY --from=gosu-build /go/bin/gosu /usr/local/bin/gosu
+COPY --from=gosu-build /out/gosu /usr/local/bin/gosu
 RUN gosu nobody true
 LABEL com.omnicompile.project="omnicompile" \
       com.omnicompile.role="database" \

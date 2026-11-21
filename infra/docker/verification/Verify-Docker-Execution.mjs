@@ -28,7 +28,7 @@ if(request.compileJava){
 const controller=new AbortController();
 const timer=request.cancel?setTimeout(()=>controller.abort(),6000):undefined;
 try{console.log(JSON.stringify(await requestDockerJob({kind:'execute',language:request.payload.language,payload:request.payload},controller.signal)));}
-catch(error){if(request.cancel&&controller.signal.aborted)console.log(JSON.stringify({cancelled:true}));else throw error;}
+catch(error){if(request.rejectArchitecture&&/architecture does not match/.test(error.message))console.log(JSON.stringify({architectureRejected:true}));else if(request.cancel&&controller.signal.aborted)console.log(JSON.stringify({cancelled:true}));else throw error;}
 finally{clearTimeout(timer);}
 `;
 async function request(payload,options={}){
@@ -50,6 +50,7 @@ const cases=[
   {name:'Network isolation',payload:{language:'python',sourceName:'network.py',generatedSource:'import errno,socket\ntry:\n socket.socket(socket.AF_INET,socket.SOCK_STREAM).close()\n raise AssertionError("network socket creation allowed")\nexcept OSError as error:\n assert error.errno==errno.EPERM\nprint("network denied")'},status:'SUCCEEDED',output:'network denied\n'}
 ];
 const evidence=[];
+let nativeCArtifact;
 for(const item of cases){
   const result=await request(item.payload,{compileJava:item.compileJava===true});
   assert.equal(result.execution.status,item.status,item.name+': '+result.execution.stderr);
@@ -58,11 +59,25 @@ for(const item of cases){
   assert.ok(result.execution.durationMs>0,item.name+' measured time missing');
   assert.equal(result.execution.peakMemoryBytes,null,'Unavailable memory must not be invented');
   assert.ok(Buffer.byteLength(result.execution.stdout)+Buffer.byteLength(result.execution.stderr)<=65536);
-  if(item.payload.language==='c')assert.equal(Buffer.from(result.artifact.contentBase64,'base64').subarray(0,4).toString(),'\x7fELF');
+  if(item.payload.language==='c'){
+    nativeCArtifact=result.artifact;
+    assert.equal(Buffer.from(nativeCArtifact.contentBase64,'base64').subarray(0,4).toString(),'\x7fELF');
+  }
   assert.deepEqual(await jobs(),[],item.name+' left an owned container');
   evidence.push({test:item.name,status:item.status,durationMs:result.execution.durationMs});
   console.log(item.name+': PASS');
 }
+const foreign=Buffer.from(nativeCArtifact.contentBase64,'base64');
+assert.ok([62,183].includes(foreign.readUInt16LE(18)),'Expected a supported native ELF architecture');
+foreign.writeUInt16LE(foreign.readUInt16LE(18)===62?183:62,18);
+const nativePayload={language:'c',sourceName:'invoice.c',generatedSource:cases[0].payload.generatedSource,artifactName:nativeCArtifact.fileName};
+assert.equal((await request({...nativePayload,artifactBase64:foreign.toString('base64')},{rejectArchitecture:true})).architectureRejected,true);
+assert.deepEqual(await jobs(),[],'Rejected ELF left an owned container');
+const native=await request({...nativePayload,artifactBase64:nativeCArtifact.contentBase64});
+assert.equal(native.execution.status,'SUCCEEDED');assert.equal(native.execution.stdout,'42\n');
+assert.deepEqual(await jobs(),[],'Matching ELF left an owned container');
+evidence.push({test:'Foreign ELF rejection and matching native execution',status:'PASS'});
+console.log('Foreign ELF rejection and matching native execution: PASS');
 const cancellation=request({language:'python',sourceName:'cancel.py',generatedSource:'while True: pass'},{cancel:true}).then(value=>({value,error:null}),error=>({value:null,error}));
 const running=await until(async()=>{
   for(const name of await jobs()){

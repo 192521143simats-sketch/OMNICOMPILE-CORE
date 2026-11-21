@@ -51,3 +51,18 @@ node scripts/Verify-Release-Security.mjs images
 The Compose verifier checks project SQL readiness, actual persistence after restart, service networking and frontend/API connectivity. Language job acceptance results are recorded in the engineering evidence report. These checks cover the local Docker Compose deployment.
 
 `Verify-Remediated-Images.mjs` runs the compiler, sandbox and image acceptance against the eight local images using random credentials, a dedicated network, loopback-only ports and temporary in-memory database/object storage. It does not load the developer environment or mount project data volumes. Run it serially after existing compilation jobs finish. It removes only resources bearing its exact instance labels, including execution children after a failed assertion. The image scan records immutable image IDs and CycloneDX SBOMs under ignored `.runtime/security-evidence`; scan the same image IDs that passed runtime acceptance.
+
+## ARM64 validation
+
+Build separate validation tags without replacing the local runtime tags:
+
+```powershell
+$names=@('coordinator','frontend','c-worker','python-worker','java-worker','executor','mysql','artifacts')
+$buildArgs=@('buildx','bake','-f','docker-compose.yml','--set','*.platform=linux/arm64','--load')
+foreach($name in $names){$buildArgs+=@('--set',"omnicompile-$name.tags=omnicompile-${name}:arm64-validation")}
+docker @buildArgs
+```
+
+The MySQL build uses the host Go toolchain to cross-compile its pinned gosu helper. Runtime binaries still target the requested image architecture. Native executables must be ELF64, little-endian, and match the runner's x86-64 or AArch64 machine field; supplied foreign ELF is rejected, not silently recompiled or executed through binfmt. The same check applies to newly compiled output. Non-ELF artifacts retain the existing native recompilation path.
+
+An ARM image build or successful CPU emulation is not sandbox acceptance. The local ARM emulator returned ENOSYS for Landlock, while native x86-64 reported ABI 1. The mandatory wrapper remains enabled and fails closed; gVisor's missing Landlock interface is not bypassed. Run real C/Python/Java jobs and isolation tests on a compatible ARM Linux kernel/runtime before promoting ARM images for public execution. Registry publication alone is not deployment or an ARM safety certification. Prewarming remains disabled in the default deployment.
