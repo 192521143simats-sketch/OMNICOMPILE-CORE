@@ -88,8 +88,8 @@ try{
   const cases=[
     {language:'c',name:'Ledger.c',source:'#include <stdio.h>\nstruct Item {int amount;}; int main(void){struct Item x={42}; printf("%d\\n",x.amount);return 0;}',type:'EXECUTABLE'},
     {language:'c',name:'loop.c',source:'int main(){int total=0;for(int i=0;i<4;i=i+1){total=total+i;}return total-6;}',type:'EXECUTABLE'},
-    {language:'python',name:'ledger.py',source:'def total(values):\n    return sum(values)\nprint(total([20,22]))\n',type:'GENERATED_SOURCE'},
-    {language:'java',name:'Ledger.java',source:'public class Ledger { public static void main(String[] args){ System.out.println(42); } }',type:'JAR'},
+    {language:'python',name:'ledger.py',source:'def total(values):\n    return sum(values)\nprint(total([20+22]))\n',type:'GENERATED_SOURCE'},
+    {language:'java',name:'Ledger.java',source:'public class Ledger { public static void main(String[] args){ System.out.println(20+22); } }',type:'JAR'},
     {language:'c',name:'broken.c',source:'#include <stdio.h>\nint main(void){printf("%d",missing_value);return 0;}',failed:true},
     {language:'python',name:'broken.py',source:'def calculate(:\n    return 1\n',failed:true},
     {language:'java',name:'Broken.java',source:'public class Broken { public static void main(String[] args){ System.out.println(missingValue); } }',failed:true},
@@ -122,6 +122,11 @@ try{
       for(const object of objects){assert.match(object.storage_key,/^databases\/[a-f0-9]{64}\/jobs\//);assert.equal(Number(object.contentBytes),0);}
       const cloudMetrics=await user.api(`/api/user/compiler-metrics?jobId=${job.id}&platform=CLOUD`);
       assert.ok(cloudMetrics.tasks.successful>0,'Accepted cloud results must appear in owner metrics');
+      assert.equal(cloudMetrics.optimization.jobsMeasured,1);
+      const evidence=cloudMetrics.optimization.items[0];
+      assert.equal(evidence.jobId,job.id);assert.equal(evidence.language,item.language);
+      assert.equal(evidence.runtimeSpeedupPercent,null);
+      if(item.language!=='c'){assert.ok(evidence.transformations>0);assert.ok(evidence.measurement.after<evidence.measurement.before);}
       const windowsMetrics=await user.api(`/api/user/compiler-metrics?jobId=${job.id}&platform=WINDOWS`);
       assert.equal(windowsMetrics.tasks.successful,0,'Linux cloud work must not be counted as Windows work');
       const [rows]=await connection.execute(`SELECT t.kind,t.assigned_node_id,t.status,r.task_id FROM \`${schema}\`.tasks t JOIN \`${schema}\`.results r ON r.task_id=t.id WHERE t.job_id=? OR t.id IN (SELECT bt.task_id FROM \`${schema}\`.optimization_batch_tasks bt JOIN \`${schema}\`.compilation_jobs j ON j.batch_id=bt.batch_id WHERE j.id=?)`,[job.id,job.id]);
@@ -142,7 +147,18 @@ try{
   const privateToken=(await readFile(secret,'utf8')).trim();
   assert.ok(!JSON.stringify(outcomes).includes(privateToken));
   console.log(JSON.stringify({instance,coordinatorHasNativeToolchains:false,workerNodes,outcomes,concurrentJobsVerified:concurrentJobs.length,verificationOutcomes:verified,compilerServiceSecretReadDenied:true,developerDataModified:false,executionPerformed:true},null,2));
-}catch(error){primaryFailure=error;throw error;}finally{
+}catch(error){
+  primaryFailure=error;
+  // Diagnose the owned fixture before cleanup; never print its credentials.
+  const redacted=[adminPassword,password,process.env.MYSQL_ROOT_PASSWORD].filter(Boolean);
+  if(temporary)for(const language of ['c','python','java'])try{redacted.push(await readFile(join(temporary,`${language}.credential`),'utf8'));}catch{}
+  for(const name of owned)try{
+    let log=await docker(['logs','--tail','20',name]);
+    for(const secret of redacted)log=log.replaceAll(secret,'[REDACTED]');
+    console.error(`${name}: ${log}`);
+  }catch{}
+  throw error;
+}finally{
   const failures=[];
   for(const name of owned.reverse()){
     try{const label=await docker(['inspect','--format','{{index .Config.Labels "omnicompile.test.instance"}}',name]);assert.equal(label,instance);await docker(['rm','--force',name]);}catch(error){failures.push(error.message);}

@@ -43,6 +43,11 @@ node infra/docker/verification/Verify-Compose.mjs
 node infra/docker/verification/Verify-Docker-Compilers.mjs
 node infra/docker/verification/Verify-Docker-Execution.mjs
 npm run verify
+node --test infra/docker/verification/Verify-Remediated-Images.test.mjs
+node infra/docker/verification/Verify-Remediated-Images.mjs
+node scripts/Verify-Release-Security.mjs images
 ```
 
 The Compose verifier checks project SQL readiness, actual persistence after restart, service networking and frontend/API connectivity. Language job acceptance results are recorded in the engineering evidence report. These checks cover the local Docker Compose deployment.
+
+`Verify-Remediated-Images.mjs` runs the compiler, sandbox and image acceptance against the eight local images using random credentials, a dedicated network, loopback-only ports and temporary in-memory database/object storage. It does not load the developer environment or mount project data volumes. Run it serially after existing compilation jobs finish. It removes only resources bearing its exact instance labels, including execution children after a failed assertion. The image scan records immutable image IDs and CycloneDX SBOMs under ignored `.runtime/security-evidence`; scan the same image IDs that passed runtime acceptance.

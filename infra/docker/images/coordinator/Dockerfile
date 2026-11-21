@@ -1,5 +1,6 @@
 # Workspace packages export TypeScript source; retain tsx deliberately.
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
+FROM node:24-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS build
+RUN apk upgrade --no-cache
 WORKDIR /app
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 COPY package.json package-lock.json tsconfig.base.json ./
@@ -21,8 +22,11 @@ RUN npm ci --omit=dev --workspace=@omnicompile/coordinator --include-workspace-r
     && test ! -d node_modules/electron && test ! -d node_modules/vitest \
     && node --import tsx -e "Promise.all(['@omnicompile/compiler-c','@omnicompile/compiler-python','@omnicompile/compiler-java','@omnicompile/contracts','@omnicompile/orchestration','argon2'].map(name=>import(name)))"
 
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c
+FROM node:24-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5
 # Native compilers are isolated in the language services.
+RUN apk upgrade --no-cache
+RUN rm -rf /usr/local/lib/node_modules/npm /usr/local/bin/npm /usr/local/bin/npx
+# Runtime starts node/tsx directly; npm remains only in the build stage.
 WORKDIR /app
 COPY --from=build --chown=node:node /app /app
 COPY --chmod=755 infra/docker/images/coordinator/coordinator-entrypoint.sh /usr/local/bin/omnicompile-start

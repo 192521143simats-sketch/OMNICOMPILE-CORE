@@ -1,5 +1,5 @@
 # The coordinator service context supplies the identical audited application layer.
-FROM docker:29-cli@sha256:2357639ad1ea7d0194134bf3292622fd4e562483966ed674e5d7c945b5f3b28d AS docker-cli
+FROM docker:29-cli@sha256:34507eb5069d8be82c95dd3b6987d4250fd5fee49b82e2509b7d7a7030740d6d AS docker-cli
 FROM coordinator
 USER root
 COPY --from=docker-cli /usr/local/bin/docker /usr/local/bin/docker

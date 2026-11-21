@@ -48,11 +48,17 @@ export const dockerCommand:Command=(args,input,signal)=>new Promise((resolve,rej
   child.stdin.end(input);
 });
 
-export async function runDockerJob(job:DockerJob,signal:AbortSignal,command:Command=dockerCommand,images:ToolchainImages=localToolchainImages){
+export function resolveExecutorInstance(value: string = randomUUID()): string {
+  if (!/^[a-f0-9]{16,64}$/.test(value) && !/^[a-f0-9]{8}(?:-[a-f0-9]{4}){3}-[a-f0-9]{12}$/.test(value)) throw new Error('Invalid executor instance identifier.');
+  return value;
+}
+
+export async function runDockerJob(job:DockerJob,signal:AbortSignal,command:Command=dockerCommand,images:ToolchainImages=localToolchainImages,instance=resolveExecutorInstance()){
+  resolveExecutorInstance(instance);
   const owner=randomUUID(),name=`omnicompile-job-${owner}`;
   let created=false;
   try{
-    const create=await command(['create','--pull','never','--name',name,'--label',`omnicompile.execution.owner=${owner}`,
+    const create=await command(['create','--pull','never','--name',name,'--label',`omnicompile.execution.owner=${owner}`,'--label',`omnicompile.execution.instance=${instance}`,
       '--network','none','--read-only','--cap-drop','ALL','--security-opt','no-new-privileges:true','--user','1000:1000',
       '--memory','512m','--memory-swap','512m','--cpus','1','--pids-limit','64','--ulimit','nofile=128:128',
       '--init','--interactive','--tmpfs','/tmp:rw,exec,nosuid,nodev,size=128m,mode=1777',
@@ -78,9 +84,10 @@ type Run=(job:DockerJob,signal:AbortSignal)=>Promise<unknown>;
 export function createDockerExecutor(
   token: string,
   run?: Run,
-  {images = localToolchainImages, command = dockerCommand, kubernetes}: {images?: ToolchainImages; command?: Command; kubernetes?: KubernetesExecutionProvider} = {}
+  {images = localToolchainImages, command = dockerCommand, kubernetes, instance = resolveExecutorInstance()}: {images?: ToolchainImages; command?: Command; kubernetes?: KubernetesExecutionProvider; instance?: string} = {}
 ) {
-  const execute: Run = run ?? ((job, signal) => runDockerJob(job, signal, command, images));
+  resolveExecutorInstance(instance);
+  const execute: Run = run ?? ((job, signal) => runDockerJob(job, signal, command, images, instance));
   if(token.length<32)throw new Error('The execution service requires a scoped credential.');
   const app=Fastify({bodyLimit:24_000_000,logger:false});
   const active=new Set<AbortController>();
@@ -190,7 +197,7 @@ async function main(){
     process.env.OMNICOMPILE_EXECUTION_NAMESPACE??'omnicompile-execution',
     process.env.OMNICOMPILE_SANDBOX_RUNTIME_CLASS??'',images,process.env.OMNICOMPILE_PREWARM_ENABLED==='1',
     process.env.OMNICOMPILE_PREWARM_POLICY==='demand'?'demand':'fixed'):undefined;
-  const app=createDockerExecutor(token,undefined,{images,...(kubernetes?{kubernetes}:{})});
+  const app=createDockerExecutor(token,undefined,{images,instance:resolveExecutorInstance(process.env.OMNICOMPILE_EXECUTOR_INSTANCE_ID),...(kubernetes?{kubernetes}:{})});
   if(kubernetes){
     const timer=setInterval(()=>void kubernetes.reconcile().catch(()=>console.error('Execution reconciliation failed.')),5000);
     timer.unref();

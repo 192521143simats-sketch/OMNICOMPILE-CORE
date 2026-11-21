@@ -29,7 +29,7 @@ export function nativeArtifacts(source:Source,result:any):StoredArtifact[]{
     const classBytes=decodeCompilerOutput(item.contentBase64);if(classBytes.length<10||classBytes.readUInt32BE(0)!==0xcafebabe)throw new Error("Java class bytecode is invalid");
     return{artifactType:"BYTECODE",fileName:item.fileName,mediaType:"application/java-vm",bytes:classBytes};
   });
-  // javac does not rewrite source. Preserve the actual source once, without a duplicate.
-  if(result.generatedSource!==source.sourceText)throw new Error("Java generated source differs from the submitted compilation source");
-  return[original,...classes,{artifactType:"JAR",fileName:result.fileName,mediaType:"application/java-archive",bytes}];
+  // This checks structure only. Independent recompilation validates optimized
+  // source before publication; preserve it when the optimizer changed the input.
+  return[original,...(result.generatedSource===source.sourceText?[]:[generated]),...classes,{artifactType:"JAR",fileName:result.fileName,mediaType:"application/java-archive",bytes}];
 }

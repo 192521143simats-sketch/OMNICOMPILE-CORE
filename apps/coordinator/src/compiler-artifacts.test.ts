@@ -1,6 +1,14 @@
 import {describe,it,expect} from "vitest";
 import {nativeArtifacts,artifactDisposition,decodeCompilerOutput} from "./compiler-artifacts.js";
 describe("native compiler artifacts",()=>{
+  it("accepts structurally valid optimized Java source for subsequent independent verification",()=>{
+    const source="class Main { int value=20+22; }",optimized="class Main { int value=42; }";
+    const bytes=Buffer.concat([Buffer.from("cafebabe","hex"),Buffer.alloc(12)]),jar=Buffer.concat([Buffer.from([80,75,3,4]),Buffer.alloc(22)]);
+    const artifacts=nativeArtifacts({language:"java",sourceName:"Main.java",sourceText:source},{operation:"java_compile",generatedSource:optimized,fileName:"Main.jar",artifactBase64:jar.toString("base64"),classes:[{fileName:"Main.class",contentBase64:bytes.toString("base64")}]});
+    expect(artifacts.map(item=>item.artifactType)).toEqual(["SOURCE","GENERATED_SOURCE","BYTECODE","JAR"]);
+    expect(artifacts[0]!.bytes.toString()).toBe(source);
+    expect(artifacts[1]!.bytes.toString()).toBe(optimized);
+  });
   it("decodes bounded large artifacts without regex-stack failures and rejects malformed padding",()=>{
     const bytes=Buffer.alloc(4000000,65);expect(decodeCompilerOutput(bytes.toString("base64")).equals(bytes)).toBe(true);
     for(const encoded of ["A","AA=A","AAAA====","AB==","AA==\n"]){expect(()=>decodeCompilerOutput(encoded)).toThrow(/encoding/);}

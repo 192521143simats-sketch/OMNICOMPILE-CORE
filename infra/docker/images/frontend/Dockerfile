@@ -1,4 +1,4 @@
-FROM node:24-bookworm-slim@sha256:c86ecead9e55a5210ac1727de38a4ca840bf03dcaf34dc9749addbf383b1920c AS build
+FROM node:24-alpine3.24@sha256:116b800c3754b440ee0aa3ed2f20f5bf3d99a554bfd9adeea09ea8017f6e85f5 AS build
 WORKDIR /app
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 COPY package.json package-lock.json tsconfig.base.json ./
@@ -13,7 +13,16 @@ COPY packages ./packages
 COPY apps/web ./apps/web
 RUN npm run build -w @omnicompile/web
 
-FROM nginxinc/nginx-unprivileged:1.28-alpine@sha256:7377697a821c131a924a7105fafbe7414db4e9fcc77a6f08f776f33f141ec3f8
+FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03
+USER root
+# Upstream optional modules pin the old nginx ABI; our proxy uses none of them.
+# Preserve the unprivileged paths while replacing the actual server package.
+RUN cp /etc/nginx/nginx.conf /tmp/omnicompile-nginx.conf \
+    && apk del nginx-module-geoip nginx-module-image-filter nginx-module-njs nginx-module-xslt nginx \
+    && apk add --no-cache 'nginx>=1.30.7-r0' \
+    && cp /tmp/omnicompile-nginx.conf /etc/nginx/nginx.conf \
+    && rm /tmp/omnicompile-nginx.conf \
+    && apk upgrade --no-cache
 COPY infra/docker/images/frontend/nginx.conf /etc/nginx/templates/default.conf.template
 COPY --chmod=755 infra/docker/images/frontend/15-omnicompile-dns.envsh /docker-entrypoint.d/15-omnicompile-dns.envsh
 COPY --from=build /app/apps/web/dist /usr/share/nginx/html

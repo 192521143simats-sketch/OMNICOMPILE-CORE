@@ -1,13 +1,35 @@
 import {describe,it,expect,vi} from 'vitest';
 import type {Pool} from 'mysql2/promise';
 import {KubernetesExecutionProvider} from './kubernetes-execution.js';
-import {createDockerExecutor,resolveToolchainImages,runDockerJob} from './docker-executor.js';
+import {createDockerExecutor,resolveExecutorInstance,resolveToolchainImages,runDockerJob} from './docker-executor.js';
 import {dockerJobSchema,prewarmStatusSchema,type DockerJob} from './docker-executor-schema.js';
 
 const token='x'.repeat(64);
 const job:DockerJob={kind:'task',language:'c',payload:{operation:'c_compile',sourceName:'main.c',source:'int main(void){return 0;}'}};
 
 describe('Docker execution broker boundary',()=>{
+  it('scopes child labels to a trusted server instance and preserves per-job ownership',async()=>{
+    const instances=['a'.repeat(16),'b'.repeat(16)];
+    const creates:string[][]=[];
+    for(const instance of instances){
+      let owner='';
+      const app=createDockerExecutor(token,undefined,{instance,command:async args=>{
+        if(args[0]==='create'){creates.push(args);owner=args[args.indexOf('--label')+1]!.split('=')[1]!;}
+        return {code:0,stdout:args[0]==='start'?JSON.stringify({ok:true,result:{}}):owner};
+      }});
+      try{
+        const headers={authorization:`Bearer ${token}`};
+        expect((await app.inject({method:'POST',url:'/jobs',headers,payload:{...job,instance:instances[1]}})).statusCode).toBe(400);
+        expect((await app.inject({method:'POST',url:'/jobs',headers,payload:job})).statusCode).toBe(200);
+      }finally{await app.close();}
+    }
+    expect(creates).toHaveLength(2);
+    for(const [index,args] of creates.entries())expect(args.filter((_,i)=>args[i-1]==='--label')).toEqual([
+      expect.stringMatching(/^omnicompile.execution.owner=[a-f0-9-]+$/),`omnicompile.execution.instance=${instances[index]}`]);
+    for(const invalid of ['', 'other=value', '--all', 'A'.repeat(16)])expect(()=>resolveExecutorInstance(invalid)).toThrow('instance');
+    expect(resolveExecutorInstance()).toMatch(/^[a-f0-9-]{36}$/);
+  });
+
   it('requires broker authentication before inspecting configured toolchain images', async () => {
     const inspected: string[][] = [];
     const imageId = `sha256:${'a'.repeat(64)}`;
