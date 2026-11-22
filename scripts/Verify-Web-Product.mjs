@@ -39,6 +39,8 @@ try{
   await page.getByRole('button',{name:'Sign in',exact:true}).click();
   await expect(page).toHaveURL(/\/dashboard$/);
   await expect(page.getByRole('heading',{name:'Compiler workspace',exact:true})).toBeVisible();
+  await expect(page.getByLabel('Source code',{exact:true})).toHaveValue('');
+  for(const language of ['python','java','c']){await page.getByLabel('Language',{exact:true}).selectOption(language);await expect(page.getByLabel('Source code',{exact:true})).toHaveValue('');}
   await expect(page.locator('header nav a')).toHaveCount(1);
   await expect(page.locator('header nav a')).toHaveText('Compiler');
   await expect(page.getByRole('link',{name:'Compute Tasks',exact:true})).toHaveCount(0);

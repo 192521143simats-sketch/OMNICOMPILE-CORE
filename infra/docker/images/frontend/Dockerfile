@@ -11,6 +11,7 @@ COPY apps/web/package.json ./apps/web/package.json
 RUN npm ci --workspace=@omnicompile/web --include-workspace-root=true
 COPY packages ./packages
 COPY apps/web ./apps/web
+ENV VITE_BACKEND_MODE=remote VITE_API_BASE_URL=same-origin
 RUN npm run build -w @omnicompile/web
 
 FROM nginxinc/nginx-unprivileged:stable-alpine@sha256:f5116ed4606f3eb015dd4a8e28cb9b351476dc0ad4bc6e9f93b19cec130cdf03

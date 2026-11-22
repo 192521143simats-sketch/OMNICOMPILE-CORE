@@ -29,6 +29,10 @@ export function getBackendConfig(): BackendConfig {
   const apiBaseUrl = import.meta.env.VITE_API_BASE_URL;
   const wsBaseUrl = import.meta.env.VITE_WS_BASE_URL;
 
+  if (apiBaseUrl === 'same-origin') {
+    return {mode: 'remote', apiBaseUrl: null, wsBaseUrl: null};
+  }
+
   if (!apiBaseUrl) {
     console.warn('VITE_BACKEND_MODE=remote but VITE_API_BASE_URL not set. Falling back to offline mode.');
     return {

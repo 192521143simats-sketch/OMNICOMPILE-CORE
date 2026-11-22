@@ -25,6 +25,10 @@ writeFileSync('vercel.json',JSON.stringify(config,null,2)+'\n');
 mkdirSync('.vercel/output/static',{recursive:true});
 cpSync('apps/web/dist','.vercel/output/static',{recursive:true});
 writeFileSync('.vercel/output/config.json',JSON.stringify({version:3,routes},null,2));
+if(process.argv.includes('--prepare-only')){
+  console.log('Vercel launch assets and routes prepared; no deployment submitted.');
+  process.exit(0);
+}
 const result=process.platform==='win32'
   ?spawnSync('cmd.exe',['/d','/s','/c','vercel deploy --prebuilt --prod --yes'],{stdio:'inherit'})
   :spawnSync('vercel',['deploy','--prebuilt','--prod','--yes'],{stdio:'inherit'});

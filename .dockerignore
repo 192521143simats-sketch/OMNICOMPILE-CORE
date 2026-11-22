@@ -38,3 +38,8 @@ artifacts
 # Local design/review scratch is not an application build input.
 .arena
 .vercel
+
+# Regression fixtures remain in Git for development, never in launch images.
+samples
+**/*.test.*
+**/*.integration.*

@@ -47,3 +47,7 @@ apps/android-worker/**/build-acceptance/
 # Disposable local agent tournament records.
 .arena/
 .env*
+
+# Local OCI authentication files must never enter source control.
+ssh-key-*.key
+ssh-key-*.key.pub

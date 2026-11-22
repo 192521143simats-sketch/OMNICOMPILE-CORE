@@ -11,3 +11,11 @@ The existing MySQL-backed workspace is authoritative. Read `docs/EXPECTED_CROSSC
 - Update the granular requirement ledger and evidence after each milestone. Historical `docs/MILESTONES.md` is not acceptance evidence for the new master specification.
 - Release requires actual signed Windows/Android packages, clean Windows installation and physical Android/heterogeneous evidence. Missing hardware/credentials are blocked gates, not successes.
 - Persist exact next actionable work at session boundaries; never label the platform complete while required gates remain open.
+
+## Current data baseline
+
+The user-authorized fresh launch on 22 November 2026 permanently replaced old
+OmniCompile database/artifact volumes and removed historical acceptance resources.
+See `docs/FRESH_LAUNCH.md`. Preserve the new application data going forward; do not
+restore old test records or repeat the reset during routine startup. The separate
+`MYSQL` container and `mysql` volume were explicitly preserved by the user.

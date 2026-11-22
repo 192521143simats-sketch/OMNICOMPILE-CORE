@@ -24,7 +24,7 @@ try{
   await api('/api/auth/login',{identifier:process.env.ADMIN_USERNAME??'admin',password});
   if(!cookie)throw new Error('Administrator session was not created.');
   if(!metadata){
-    const network=await api('/api/admin/networks',{name:'OmniCompile Docker compiler network',description:'Administrator-enrolled language compiler containers.',maxNodes:100,requireAdminApproval:true});
+    const network=await api('/api/admin/networks',{name:'OmniCompile compiler pool',description:'Managed compiler workers for C, Python, and Java.',maxNodes:100,requireAdminApproval:true});
     metadata={networkId:network.id,joinUrl:network.joinUrl,enrollments:{},devices:{}};
     await save();
   }
