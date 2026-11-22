@@ -6,7 +6,7 @@ android {
     namespace = "org.omnicompile.worker"
     compileSdk = 36
     buildToolsVersion = "36.0.0"
-    defaultConfig { applicationId = if (isolatedAcceptance) "org.omnicompile.worker.acceptance" else "org.omnicompile.worker"; minSdk = 25; targetSdk = 36; versionCode = 1; versionName = "0.1.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = if (isolatedAcceptance) "org.omnicompile.worker.acceptance" else "org.omnicompile.worker"; minSdk = 25; targetSdk = 36; versionCode = 2; versionName = "0.1.2"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true; buildConfig = true }
     compileOptions { isCoreLibraryDesugaringEnabled = true; sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     kotlinOptions { jvmTarget = "17" }

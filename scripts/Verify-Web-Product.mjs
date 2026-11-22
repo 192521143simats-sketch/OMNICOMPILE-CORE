@@ -65,8 +65,12 @@ try{
     await expect(admin).toHaveURL(/\/admin$/);
     expect((await context.request.get('/api/admin/overview')).status()).toBe(403);
     await admin.getByLabel('Name',{exact:true}).fill('Browser Acceptance Alpha');
-    await admin.getByRole('button',{name:'Create network',exact:true}).click();
-    await expect(admin.getByText('Default network join link',{exact:true})).toBeVisible();
+    await admin.getByRole('button',{name:'Create network and master link',exact:true}).click();
+    await expect(admin.getByText('Master network link',{exact:true})).toBeVisible();
+    const headings=await admin.locator('h2').allTextContents();
+    expect(headings.indexOf('Create network and master link')).toBeLessThan(headings.indexOf('Execution toolchains'));
+    expect(headings.indexOf('Execution toolchains')).toBeLessThan(headings.indexOf('Networks and worker nodes'));
+    await expect(admin.getByRole('heading',{name:'Scoped invitations'})).toHaveCount(0);
     await admin.getByRole('button',{name:'Copy',exact:true}).click();
     await expect(admin.getByRole('button',{name:'✓ Copied',exact:true})).toBeVisible();
     const network=(await (await adminContext.request.get('/api/admin/networks?page=1&pageSize=10')).json()).items[0];

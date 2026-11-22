@@ -111,3 +111,8 @@ infra/
 - `apps/web`: route shells for admin, join/consent, and user interfaces.
 - Tests covering state transitions and the first vertical slice.
 
+
+
+## 23 November 2026 user override: one master link
+
+Scoped invitation generation is superseded by network creation plus one reusable master link. Device consent, individual credentials, administrator approval policy, revocation and capacity limits remain enforced. Native HTTPS transport discovery and resilient public startup are described in [MASTER_LINK_REPAIR.md](MASTER_LINK_REPAIR.md). This update preserves current data and does not certify unsigned/debug packages as signed releases.

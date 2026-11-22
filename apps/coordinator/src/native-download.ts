@@ -16,7 +16,6 @@ const cookieName = "omnicompile_native_download";
 const lifetimeSeconds = 300;
 const downloadPath = (platform: Platform) => "/api/distribution/" + platform + "/download";
 const digest = (value: string) => createHash("sha256").update(value).digest("hex");
-const workerType = (platform: Platform) => platform === "ANDROID" ? "ANDROID" : "NATIVE";
 
 /** Compatibility hint only. A user agent is not native identity or attestation. */
 export function compatibleBrowserPlatform(userAgent: string | undefined): Platform | null {
@@ -32,9 +31,9 @@ export function compatibleBrowserPlatform(userAgent: string | undefined): Platfo
 
 function invitationAllows(
   network: Awaited<ReturnType<NetworkService["inspectJoinToken"]>>,
-  platform: Platform,
+  _platform: Platform,
 ): network is NonNullable<typeof network> {
-  return !!network?.accepting && (!("workerTypes" in network) || !network.workerTypes || network.workerTypes.includes(workerType(platform)));
+  return !!network?.accepting;
 }
 
 export function registerNativeDownloadRoutes(app: FastifyInstance, {

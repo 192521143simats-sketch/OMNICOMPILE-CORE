@@ -15,7 +15,7 @@
     },
     {
       "src": "/api(?:/(.*))?",
-      "dest": "https://2eed-2406-7400-ce-abd9-d959-a50d-76cc-4167.ngrok-free.app/api/$1",
+      "dest": "https://a2c0-2406-7400-ce-abd9-2417-533d-d902-93bc.ngrok-free.app/api/$1",
       "headers": {
         "Cache-Control": "private, no-store",
         "CDN-Cache-Control": "no-store",
@@ -34,7 +34,7 @@
     },
     {
       "src": "/ws(?:/(.*))?",
-      "dest": "https://2eed-2406-7400-ce-abd9-d959-a50d-76cc-4167.ngrok-free.app/ws/$1"
+      "dest": "https://a2c0-2406-7400-ce-abd9-2417-533d-d902-93bc.ngrok-free.app/ws/$1"
     },
     {
       "handle": "filesystem"

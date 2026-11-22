@@ -15,6 +15,7 @@ if (!credential || credential.length > 4096) throw new Error('A valid scoped enr
 const detected = await cloudProfile(language as WorkerLanguage);
 let previous = '';
 const session = new NativeWorkerSession({
+  internalCoordinator: true,
   coordinator,
   credential,
   profile: async () => detected,

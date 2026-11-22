@@ -1,0 +1,36 @@
+/* Shared workspace controls, loaded after the terminal palette and motion rules. */
+.platform-shell main > :is(.card,section,.metrics,.tabs,.toolbar){margin-block:24px}
+.platform-shell main > :is(.card,section):first-child{margin-top:0}
+.platform-shell .card{padding:24px;overflow:visible}
+.platform-shell .card > h2:first-child{margin:0 0 12px}
+.platform-shell .card > p{margin:0 0 20px}
+.platform-shell .card > :is(.actions,.table-wrap){margin-top:20px}
+.platform-shell label{display:grid;gap:8px;min-width:0}
+.platform-shell label > input{margin-top:0}
+.platform-shell :is(input,select,textarea){max-width:100%;min-width:0}
+.platform-shell .inline-form{gap:20px;align-items:end}
+.platform-shell .inline-form > :is(h2,.form-description,.notice){grid-column:1/-1;margin:0}
+.platform-shell label.checkbox-label{display:flex;align-items:center;gap:12px;min-height:44px}
+.platform-shell input[type=checkbox]{display:inline-block;flex:0 0 18px;width:18px;min-height:18px;height:18px;margin:0}
+.platform-shell :is(button,.download){border:1px solid var(--coral);border-radius:8px;min-height:44px;padding:10px 16px;line-height:1.4;white-space:normal}
+.platform-shell :is(button.secondary,button.danger,.link-button){background:var(--carbon);border-color:var(--surface-edge);color:var(--satellite)}
+.platform-shell button.danger{color:var(--coral)}
+.platform-shell :is(button,.download):hover:not(:disabled){border-color:var(--coral);background:#FF4D2E18;color:var(--orbit);box-shadow:0 0 0 1px #FF4D2E33;transform:none}
+.platform-shell :is(button,input,select,textarea,.download):focus-visible{outline:2px solid var(--coral);outline-offset:3px}
+.platform-shell :is(.card,.metric):hover:not(:focus-within){transform:none;box-shadow:none;border-color:var(--surface-edge)}
+.platform-shell .card.action:hover:not(:focus-within){border-color:var(--coral)}
+.platform-shell .actions{gap:12px;row-gap:12px}
+.platform-shell td > button{margin:0 8px 8px 0}
+.platform-shell .pagination{padding:16px 20px;margin:0;gap:12px}
+.platform-shell .network-inventory > h3{margin:0;padding:20px;border-top:1px solid var(--surface-edge)}
+.platform-shell .section-title{gap:20px;flex-wrap:wrap}
+.platform-shell .section-title .muted{border:0;padding:0}
+.platform-shell .copy{flex-wrap:wrap;gap:12px}
+.platform-shell .copy code{overflow-wrap:anywhere;min-width:220px}
+.platform-shell .notice{margin-block:20px;padding:20px}
+.platform-shell .card .table-wrap{max-width:100%}
+@media(max-width:760px){.platform-shell .inline-form{grid-template-columns:1fr}.platform-shell .card{padding:20px}.platform-shell .copy code{flex-basis:100%;min-width:0}.platform-shell .actions>button{flex:1 1 160px}}
+
+/* Keep identifiers and actions readable; narrow screens scroll inside the table. */
+.platform-shell .table-wrap table{min-width:760px}
+.platform-shell .table-wrap code{white-space:nowrap;word-break:normal}

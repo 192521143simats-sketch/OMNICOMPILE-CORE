@@ -47,7 +47,27 @@ class WorkerConnection(
         if(block!=null) { update(state.copy(status="POLICY_PAUSED",error=block)); retry=transport.schedule({connect()},5,TimeUnit.SECONDS); return }
         val epoch=++generation
         update(state.copy(status="CONNECTING",error=""))
-        val endpoint=origin.replaceFirst(Regex("^http"),"ws")+"/ws/worker"
+        val endpoint=try {
+            WorkerEndpoint.localEndpoint(origin) ?: run {
+                val call=http.newBuilder().connectTimeout(4,TimeUnit.SECONDS).readTimeout(4,TimeUnit.SECONDS).callTimeout(4,TimeUnit.SECONDS).build()
+                    .newCall(Request.Builder().url(origin.trimEnd('/')+"/api/worker/connection").header("Authorization","Bearer $credential").build())
+                call.execute().use { response ->
+                    check(response.isSuccessful) { "Worker discovery unavailable (${response.code})." }
+                    val body=response.body ?: error("Missing transport response.")
+                    require(body.contentLength()<=16384)
+                    val reader=body.charStream(); val buffer=CharArray(16385); var length=0
+                    while(length<buffer.size) { val count=reader.read(buffer,length,buffer.size-length); if(count<0)break; length+=count }
+                    val text=String(buffer,0,length)
+                    require(text.length<=16384)
+                    WorkerEndpoint.validate(Json.parseToJsonElement(text).jsonObject["websocketUrl"]!!.jsonPrimitive.content)
+                }
+            }
+        } catch(_:Exception) {
+            update(state.copy(status="RECONNECTING",error="Coordinator connection discovery unavailable; retrying with backoff."))
+            val delay=(1000L shl failures.coerceAtMost(5)).coerceAtMost(30000); failures++
+            retry=transport.schedule({connect()},delay,TimeUnit.MILLISECONDS)
+            return
+        }
         socket=http.newWebSocket(Request.Builder().url(endpoint).header("Authorization","Bearer $credential").build(),object:WebSocketListener() {
             override fun onOpen(ws:WebSocket,response:Response) { enqueue { if(epoch==generation&&desired)send(ws,"register",buildJsonObject { put("profile",profile()) }) } }
             override fun onMessage(ws:WebSocket,text:String) { enqueue {
@@ -65,7 +85,7 @@ class WorkerConnection(
         if(socket!==ws||epoch!=generation)return
         release(); generation++
         if(fatal) { desired=false; update(state.copy(status="REVOKED",currentTask=null,error="Enrollment revoked, expired, or connected elsewhere. Explicit action is required.")); return }
-        if(desired) { update(state.copy(status="RECONNECTING",currentTask=null,error="Coordinator unavailable; retrying with backoff.")); val delay=(1000L shl failures.coerceAtMost(5)).coerceAtMost(30000); failures++; retry=transport.schedule({connect()},delay,TimeUnit.MILLISECONDS) }
+        if(desired) { val pending=state.status=="PENDING_APPROVAL"; update(state.copy(status=if(pending) "PENDING_APPROVAL" else "RECONNECTING",currentTask=null,error=if(pending) "Waiting for administrator approval. Retrying automatically." else "Coordinator unavailable; retrying with backoff.")); val delay=(1000L shl failures.coerceAtMost(5)).coerceAtMost(30000); failures++; retry=transport.schedule({connect()},delay,TimeUnit.MILLISECONDS) }
     }
     private fun receive(ws:WebSocket,text:String) {
         require(text.length<=2_000_000)

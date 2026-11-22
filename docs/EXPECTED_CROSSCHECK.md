@@ -398,3 +398,8 @@ Final routing acceptance: clean isolated web fixture `8dbcf806ec5b65e1` passed a
 ### Fresh product launch reset — explicit user override, 22 November 2026
 
 The user authorized removal of old OmniCompile application records and artifacts after a source checkpoint, while explicitly preserving the unrelated MYSQL3306 database. `docs/FRESH_LAUNCH.md` defines the new baseline: only the configured administrator, one real managed compiler pool and three workers; zero customer accounts/jobs/tasks/results/artifacts and zero object bytes. Containers/images were rebuilt and current validation/scans passed. Historical acceptance resources and generated output were removed; source regression fixtures remain for future development and are excluded from runtime images. Future tests must remain isolated and must not repopulate this fresh product with samples. OCI/native ARM and package-signing gates remain distinct from this laptop-hosted faculty launch.
+
+
+## 23 November 2026 user override: one master link
+
+Scoped invitation generation is superseded by network creation plus one reusable master link. Device consent, individual credentials, administrator approval policy, revocation and capacity limits remain enforced. Native HTTPS transport discovery and resilient public startup are described in [MASTER_LINK_REPAIR.md](MASTER_LINK_REPAIR.md). This update preserves current data and does not certify unsigned/debug packages as signed releases.

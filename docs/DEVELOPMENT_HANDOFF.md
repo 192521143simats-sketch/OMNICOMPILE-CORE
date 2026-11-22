@@ -1,5 +1,22 @@
 # OmniCompile Core — development and OCI launch handoff
 
+
+## Current override — 23 November 2026
+
+The current laptop-backed Vercel deployment is running with eight healthy services
+and three online compiler workers. The existing user master link remains valid.
+One network/master-link creation flow replaces scoped invitations; device consent,
+individual protected credentials, admission approval and revocation remain.
+Windows and Android v0.1.2 fix canonical-origin connection discovery. Windows
+package acceptance and 36 Android JVM tests passed; a current physical Android
+phone and release signing remain unverified. Users must install the new packages.
+The repaired batch launcher preserves data, refreshes public transport, checks real
+worker registration, logs errors and pauses on failure. A disabled old managed pool
+was replaced by explicit repair; old records and unrelated MYSQL were preserved.
+Full repair, test evidence and operating instructions: [MASTER_LINK_REPAIR.md](MASTER_LINK_REPAIR.md).
+The historical handoff below remains context, not the current public deployment status.
+
+
 Updated 2026-11-22, Asia/Calcutta. This is a consolidated engineering handoff reconstructed from the accessible conversation, actual repository, verification ledger and local/remote checks. It is **not a verbatim export of the entire chat**. Historical results are identified as such; no credentials are included. Read this before resuming development in another chat.
 
 ## 1. Current status in five quotes

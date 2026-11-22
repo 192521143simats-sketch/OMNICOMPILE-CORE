@@ -19,3 +19,13 @@ it('unconfirmed child termination never acknowledges pause or shutdown',async()=
 it('sends scoped credentials only in the authenticated header and reconnects after transport loss',async()=>{const f=await fixture();f.session.start();await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');expect(f.headers).toEqual(['Bearer private-fixture-credential']);f.peer().terminate();await expect.poll(()=>f.headers.length,{timeout:5000}).toBe(2);await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');expect(f.session.snapshot().nodeId).toBe('NODE-A001');},10000);
 it('refuses local admission above the configured host CPU threshold',async()=>{const f=await fixture(undefined,{cpuAdmissionPercent:80,resources:()=>({cpuUtilizationPercent:90,freeMemoryBytes:1024**3,memoryUtilizationPercent:0,observedAt:new Date().toISOString()})});f.session.start();await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');f.peer().send(encodeProtocolMessage({type:'task_assignment',taskId:'TASK-cpu',attempt:1,taskKind:'TEST_COMPUTE',payload:{operation:'prime_count',limit:20}}));await expect.poll(()=>f.messages.find(m=>m.type==='task_state')?.error).toContain('CPU');expect(f.session.snapshot().submitted).toBe(0);});
 it('a rejected stale profiler cannot overwrite the replacement connection',async()=>{let calls=0,rejectFirst!:(error:Error)=>void;const f=await fixture(undefined,{profile:()=>++calls===1?new Promise((_resolve,reject)=>{rejectFirst=reject;}):Promise.resolve(capabilities)});f.session.start();await expect.poll(()=>calls).toBe(1);await f.session.pause();f.session.start();await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');rejectFirst(new Error('old failure'));await new Promise(resolve=>setTimeout(resolve,20));expect(f.session.snapshot().error).toBe('');});
+
+it('shows administrator approval separately from transport failure and retries automatically',async()=>{
+ const f=await fixture();f.session.start();await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');
+ f.peer().send(encodeProtocolMessage({type:'error',code:'WORKER_APPROVAL_PENDING',message:'Waiting for approval'}));
+ f.peer().close(1013,'Waiting for administrator approval');
+ await expect.poll(()=>f.session.snapshot().status).toBe('PENDING_APPROVAL');
+ expect(f.session.snapshot().error).toContain('administrator approval');
+ await expect.poll(()=>f.headers.length,{timeout:5000}).toBe(2);
+ await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');
+});

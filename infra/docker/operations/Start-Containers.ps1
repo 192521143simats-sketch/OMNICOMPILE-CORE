@@ -1,7 +1,10 @@
-param([string]$ProjectRoot = (Join-Path $PSScriptRoot '../../..'), [switch]$SkipBuild)
+param([string]$ProjectRoot = (Join-Path $PSScriptRoot '../../..'), [switch]$SkipBuild, [string]$ComposeOverride, [string]$PublicOrigin)
 $ErrorActionPreference = 'Stop'
 $ProjectRoot = [IO.Path]::GetFullPath($ProjectRoot)
 Set-Location -LiteralPath $ProjectRoot
+$composeArgs = @('--file','docker-compose.yml')
+if ($ComposeOverride) { $composeArgs += @('--file', [IO.Path]::GetFullPath($ComposeOverride)) }
+if ($PublicOrigin) { $env:PUBLIC_BASE_URL = $PublicOrigin }
 function Invoke-Docker {
     param([string[]]$Arguments)
     & docker @Arguments
@@ -64,9 +67,9 @@ foreach ($language in @('c','python','java')) {
     $credentialPath = Join-Path $credentialDirectory ($language + '.credential')
     if (-not (Test-Path -LiteralPath $credentialPath)) { [IO.File]::WriteAllText($credentialPath, '') }
 }
-Invoke-Docker -Arguments @('compose','--file','docker-compose.yml','config','--quiet')
-if (-not $SkipBuild) { Invoke-Docker -Arguments @('compose','--file','docker-compose.yml','build') }
-Invoke-Docker -Arguments @('compose','--file','docker-compose.yml','up','--detach','--wait','--wait-timeout','240')
+Invoke-Docker -Arguments (@('compose') + $composeArgs + @('config','--quiet'))
+if (-not $SkipBuild) { Invoke-Docker -Arguments (@('compose') + $composeArgs + @('build')) }
+Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--wait','--wait-timeout','240'))
 if (-not $hostNode) { throw 'Node.js is required for secure cloud-worker enrollment. Install the supported pinned Node runtime, then restart.' }
 $credentialHashes = @{}
 foreach ($language in @('c','python','java')) {
@@ -77,7 +80,7 @@ if ($LASTEXITCODE -ne 0) { throw 'Cloud worker enrollment failed. Existing proje
 foreach ($language in @('c','python','java')) {
     $after = Get-Sha256 (Join-Path $credentialDirectory ($language + '.credential'))
     if ($after -ne $credentialHashes[$language]) {
-        Invoke-Docker -Arguments @('compose','--file','docker-compose.yml','restart',('omnicompile-' + $language + '-worker'))
+        Invoke-Docker -Arguments (@('compose') + $composeArgs + @('restart',('omnicompile-' + $language + '-worker')))
     }
     Wait-Healthy -Name ('omnicompile-' + $language + '-worker')
 }
@@ -86,8 +89,10 @@ $manifestAfter = if (Test-Path -LiteralPath $manifestPath) { Get-Sha256 $manifes
 $backendAfter = & docker container ls --all --filter 'name=^/omnicompile-coordinator$' --format '{{.ID}}'
 if ($backendBefore -and $backendBefore -eq $backendAfter -and $manifestBefore -ne $manifestAfter) {
     Write-Host 'Reloading the backend because actual worker package metadata changed.'
-    Invoke-Docker -Arguments @('compose','--file','docker-compose.yml','restart','omnicompile-coordinator')
+    Invoke-Docker -Arguments (@('compose') + $composeArgs + @('restart','omnicompile-coordinator'))
 }
+& $hostNode.Source (Join-Path $ProjectRoot 'infra/docker/operations/Verify-Managed-Workers.mjs')
+if ($LASTEXITCODE -ne 0) { throw 'Managed compiler workers are not online. Startup is incomplete; inspect worker connection diagnostics.' }
 Write-Host '[5/6] Verifying application database, API and frontend...'
 Wait-Healthy -Name 'omnicompile-mysql'
 Wait-Healthy -Name 'omnicompile-executor'

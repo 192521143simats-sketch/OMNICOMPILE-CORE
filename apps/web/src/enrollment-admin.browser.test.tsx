@@ -11,80 +11,17 @@ it("loads pending enrollments and approves only through the administrator endpoi
 });
 
 
-it("creates a one-use link, confirms copying, refreshes status and revokes only unused invitations", async () => {
-  const createdAt = "2026-10-16T00:00:00Z";
-  const expiresAt = "2026-10-16T00:15:00Z";
-  const invitationPath = "/api/admin/networks/n1/invitations";
-  const joinUrl = "https://example.test/join/fixture-invitation";
-  const consumed = {
-    id: "used",
-    status: "EXHAUSTED",
-    expiresAt,
-    createdAt,
-    workerTypes: ["ANDROID"],
-    maxUses: 1,
-    usedCount: 1,
-    enrollmentId: "ENROLLMENT-1",
-    nodeId: "NODE-A001",
-  };
-  let status = "";
-  const request = vi.fn(async (path: string, options?: RequestInit) => {
-    if (path === invitationPath && options?.method === "POST") {
-      status = "ACTIVE";
-      return Response.json({id: "created", joinUrl, expiresAt}, {status: 201});
-    }
-    if (path === "/api/admin/invitations/created/revoke") {
-      status = "REVOKED";
-      return new Response(null, {status: 204});
-    }
-    if (path === invitationPath + "/used/redemptions") {
-      return Response.json({items: [{enrollmentId: "ENROLLMENT-1", nodeId: "NODE-A001", workerType: "ANDROID", redeemedAt: createdAt, status: "ACTIVE", approvalStatus: "APPROVED"}]});
-    }
-    if (path === invitationPath) {
-      const created = {id: "created", status, expiresAt, createdAt, maxUses: 1, usedCount: 0, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]};
-      return Response.json({items: status ? [consumed, created] : [consumed]});
-    }
-    if (path.endsWith("/admission")) return Response.json({requireAdminApproval: true});
-    return Response.json({items: [], totalPages: 1});
-  });
-  const clipboard = vi.fn(async () => {});
-  const savedClipboard = Object.getOwnPropertyDescriptor(navigator, "clipboard");
-  Object.defineProperty(navigator, "clipboard", {configurable: true, value: {writeText: clipboard}});
-  vi.stubGlobal("fetch", request);
-  const host = document.createElement("div");
-  document.body.append(host);
-  const root = createRoot(host);
-  const button = (name: string) => Array.from(host.querySelectorAll("button"))
-    .find(element => element.textContent?.trim() === name);
+it("reviews devices without generating a second invitation or exposing credentials", async () => {
+  const request=vi.fn(async(path:string)=>Response.json(path.endsWith('/admission')?{requireAdminApproval:true}:{items:[],totalPages:1}));
+  vi.stubGlobal('fetch',request);
+  const host=document.createElement('div'),root=createRoot(host);
   try {
-    await act(async () => root.render(<EnrollmentAdmin networks={[{id: "n1", name: "Lab"}]}/>));
-    expect(host.textContent).toContain("EXHAUSTED");
-    expect(host.textContent).toContain("ENROLLMENT-1");
-    expect(host.textContent).toContain("NODE-A001");
-    expect(button("Revoke invitation")).toBeUndefined();
-    expect(host.textContent).toContain("1 / 1");
-    await act(async () => button("View redemptions")!.click());
-    expect(host.textContent).toContain("Redemptions for used");
-    expect(host.textContent).toContain("APPROVED");
-    await act(async () => button("Generate invitation")!.click());
-    expect(request.mock.calls).toEqual(expect.arrayContaining([[invitationPath, expect.objectContaining({
-      method: "POST",
-      body: JSON.stringify({ttlMinutes: 15, maxUses: 1, workerTypes: ["BROWSER", "ANDROID", "NATIVE"]}),
-    })]]));
-    expect(host.querySelector<HTMLInputElement>("input[readonly]")?.value).toBe(joinUrl);
-    await act(async () => button("Copy invitation link")!.click());
-    expect(clipboard).toHaveBeenCalledWith(joinUrl);
-    expect(host.textContent).toContain("Invitation link copied.");
-    await act(async () => button("Revoke invitation")!.click());
-    expect(host.textContent).toContain("REVOKED");
-    expect(host.querySelector("input[readonly]")).toBeNull();
-  } finally {
-    await act(async () => root.unmount());
-    host.remove();
-    vi.unstubAllGlobals();
-    if (savedClipboard) Object.defineProperty(navigator, "clipboard", savedClipboard);
-    else Reflect.deleteProperty(navigator, "clipboard");
-  }
+    await act(async()=>root.render(<EnrollmentAdmin networks={[{id:'n1',name:'Lab'}]}/>));
+    expect(host.textContent).not.toContain('Scoped invitations');
+    expect(host.textContent).not.toContain('Replace join link');
+    expect(host.textContent).toContain('Device approvals');
+    expect(request.mock.calls.some(([path])=>path.includes('/invitations'))).toBe(false);
+  } finally {await act(async()=>root.unmount());vi.unstubAllGlobals();}
 });
 
 // Exercise connected behavior independently of the public frontend offline default.

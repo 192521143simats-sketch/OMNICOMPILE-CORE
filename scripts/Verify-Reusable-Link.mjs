@@ -22,12 +22,11 @@ const service=new NetworkService(pool),credentials=devices.map(device=>device.co
 const profile={workerType:'BROWSER',deviceType:'DESKTOP',cpuModel:'Reusable registration fixture',logicalCores:1,totalMemoryBytes:0,operatingSystem:'Test',architecture:'browser',runtimes:{c:false,python:false,java:false},toolchains:{c:{available:false},python:{available:false},java:{available:false}},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:false}};
 const nodes=await Promise.all(credentials.map(credential=>service.register(credential,profile)));assert.ok(nodes[0]);assert.ok(nodes[1]);assert.notEqual(nodes[0].nodeId,nodes[1].nodeId,'Same default link must yield independently registered nodes');
 assert.equal((await request(control)).status,401,'Only admin may retrieve the persisted default link');
-const legacy=await request(`/api/admin/networks/${created.value.id}/invitations`,{},login.cookie);
+assert.equal((await request(`/api/admin/networks/${created.value.id}/invitations`,{},login.cookie)).status,404,'Retired scoped invitation API must not issue another link');
 assert.equal((await request(control,{enabled:false})).status,401,'Only admin may change admission');
 assert.equal((await request(control,{enabled:false},login.cookie)).status,200);
 const blocked=await request(linkPath);assert.equal(blocked.value.network.accepting,false);assert.equal(blocked.value.network.joinLinkStatus,'REVOKED');
 assert.equal((await request(linkPath+'/accept',{...body,deviceIdentity:'revoked-link-device'})).status,410);
-assert.equal((await request(`/api${new URL(legacy.value.joinUrl).pathname}/accept`,body)).status,410,'Legacy invitation cannot bypass revoked network admission');
 assert.ok(await service.authenticateCredential(credentials[1]),'Closing admission must not revoke registered nodes');
 // Leaving remains authenticated after admission closes: revoking the public link
 // must not invalidate an already enrolled device's private credential.

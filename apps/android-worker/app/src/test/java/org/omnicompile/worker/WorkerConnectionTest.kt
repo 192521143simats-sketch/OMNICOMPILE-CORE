@@ -22,7 +22,7 @@ class WorkerConnectionTest {
             }
             override fun onClosing(webSocket:WebSocket,code:Int,reason:String){webSocket.close(code,null)}
         }))
-        val connection=WorkerConnection(server.url("/").toString().trimEnd('/'),"test-token",{buildJsonObject{}},{
+        val connection=WorkerConnection(server.url("/").newBuilder().host("127.0.0.1").build().toString().trimEnd('/'),"test-token",{buildJsonObject{}},{
             if(first.compareAndSet(true,false)){sampling.countDown();check(resume.await(5,TimeUnit.SECONDS))}
             buildJsonObject{}
         },{null}){}
@@ -45,7 +45,7 @@ class WorkerConnectionTest {
             override fun onClosing(webSocket:WebSocket,code:Int,reason:String){webSocket.close(code,null)}
         }
         server.enqueue(MockResponse().withWebSocketUpgrade(peer(true)));server.enqueue(MockResponse().withWebSocketUpgrade(peer(false)))
-        val connection=WorkerConnection(server.url("/").toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}){if(it.status=="AVAILABLE")available.countDown();if(it.status=="REVOKED")revoked=true}
+        val connection=WorkerConnection(server.url("/").newBuilder().host("127.0.0.1").build().toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}){if(it.status=="AVAILABLE")available.countDown();if(it.status=="REVOKED")revoked=true}
         try {connection.start();assertTrue("Cancellation must reconnect",available.await(8,TimeUnit.SECONDS));assertFalse(revoked)}finally{connection.close();server.shutdown()}
     }
     @Test fun rejectsStringProtocolVersionRatherThanCoercingIt() {
@@ -54,7 +54,7 @@ class WorkerConnectionTest {
             override fun onMessage(webSocket:WebSocket,text:String){webSocket.send("""{"protocolVersion":"2","type":"registered","nodeId":"NODE-A001","heartbeatIntervalMs":1000}""")}
             override fun onClosing(webSocket:WebSocket,code:Int,reason:String){webSocket.close(code,null)}
         }))
-        val connection=WorkerConnection(server.url("/").toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}) {if(it.status=="ERROR")rejected.countDown()}
+        val connection=WorkerConnection(server.url("/").newBuilder().host("127.0.0.1").build().toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}) {if(it.status=="ERROR")rejected.countDown()}
         try{connection.start();assertTrue("Non-integer protocol versions must be rejected",rejected.await(5,TimeUnit.SECONDS))}finally{connection.close();server.shutdown()}
     }
     @Test fun rejectsLegacyNumericProtocolRatherThanReusingOldEnrollment() {
@@ -63,7 +63,7 @@ class WorkerConnectionTest {
             override fun onMessage(webSocket:WebSocket,text:String){webSocket.send("""{"protocolVersion":1,"type":"registered","nodeId":"NODE-A001","heartbeatIntervalMs":1000}""")}
             override fun onClosing(webSocket:WebSocket,code:Int,reason:String){webSocket.close(code,null)}
         }))
-        val connection=WorkerConnection(server.url("/").toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}){if(it.status=="ERROR")rejected.countDown()}
+        val connection=WorkerConnection(server.url("/").newBuilder().host("127.0.0.1").build().toString().trimEnd('/'),"test-token",{buildJsonObject{}},{buildJsonObject{}},{null}){if(it.status=="ERROR")rejected.countDown()}
         try{connection.start();assertTrue("Legacy protocol must be rejected",rejected.await(5,TimeUnit.SECONDS))}finally{connection.close();server.shutdown()}
     }
     @Test fun authenticatesAndReturnsRealAssignedResult() {
@@ -81,7 +81,7 @@ class WorkerConnectionTest {
                 if(message["type"]?.jsonPrimitive?.content=="task_result") { received=message; complete.countDown() }
             }
         }))
-        val connection=WorkerConnection(server.url("/").toString().trimEnd('/'),"scoped-private-test-token",{buildJsonObject{put("workerType","ANDROID")}}, {buildJsonObject{}}, {null}) {}
+        val connection=WorkerConnection(server.url("/").newBuilder().host("127.0.0.1").build().toString().trimEnd('/'),"scoped-private-test-token",{buildJsonObject{put("workerType","ANDROID")}}, {buildJsonObject{}}, {null}) {}
         try {
             connection.start()
             assertTrue(complete.await(15,TimeUnit.SECONDS))
