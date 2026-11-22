@@ -94,6 +94,37 @@ carry the maximum broker response without truncation. Then exercise real C,
 Python and Java jobs, concurrent admission, cancellation, and cleanup after
 broker and node interruption. The overlay has no live-cluster acceptance yet.
 
+### Native ARM target preparation (render only, no deployment)
+
+Render the existing restricted runner policy as three ARM64 wrapper probes:
+
+```powershell
+node scripts/Render-Arm64-Runtime-Probes.mjs REVIEWED_RUNTIME .runtime/security-evidence/arm64-publication.json REGISTRY_READ_SECRET
+```
+
+This prints JSON only. It never invokes kubectl, contacts OCI, pulls images or
+reads credentials. Replace the RuntimeClass and optional namespaced read-only
+pull Secret name with reviewed existing names. The publication record supplies
+the pinned GHCR C/Python/Java digests. Keep the resulting manifest private until
+the target configuration and cost scope are approved; do not pipe it to kubectl
+as part of rendering. Create and run probes sequentially on an idle, approved
+target to respect the two-Job quota, not all three simultaneously.
+
+Before execution, verify an ARM64 Ready node, the selected RuntimeClass, the
+existing omnicompile-execution namespace's deny-all ingress/egress policy and
+actual CNI enforcement. The probes retain non-root, readonly root, dropped
+capabilities, seccomp, deadlines, memory/CPU/temp limits and mandatory Landlock.
+They mount no service credentials and select only kubernetes.io/arch=arm64.
+Do not copy a socket, change host privileges or bypass the wrapper to pass.
+
+A completed probe establishes launcher compatibility only. Record node/kernel,
+runtime handler, actual pulled imageID, exit code and sanitized logs; then run
+positive C/Python/Java jobs and negative filesystem/network/process/ELF tests.
+Native A1 execution cannot be certified from a local render or emulated build.
+Track exact owned Job names for cleanup, and verify Job/Pod removal even on
+failure. Do not delete application namespaces or PVCs. The existing local
+runtime runner below keeps its loopback-only safety guard unchanged.
+
 ### Local sandbox compatibility check
 
 On an idle Docker Desktop cluster with the `execution-images` ConfigMap
