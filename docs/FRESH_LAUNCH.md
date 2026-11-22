@@ -1,5 +1,32 @@
 # Fresh launch baseline — 22 November 2026
 
+
+## Pending fresh reset — 23 November 2026
+
+The user requested another complete fresh baseline, explicitly including network
+lettering. `scripts/Reset-Fresh-Application.ps1 -FactoryReset` now prepares only
+OmniCompile storage for reinitialization, clears old managed identities, rotates
+internal service credentials, removes generated clutter, starts the product, clears
+the bootstrap login session, and runs read-only factory verification. The separate
+MYSQL container/mysql volume, configured administrator password, source, OCI keys,
+toolchains and current worker downloads are preserved.
+
+Required proof: exactly one pool with network_code A, nodes NODE-A001/A002/A003,
+network sequence next_value 2 (the next network is B), next_node_number 4, one
+administrator, three approved active workers, and zero ordinary users/jobs/results/
+artifacts/old invitations/legacy or authentication sessions. Stored artifact bytes
+must be empty. Normal startup does not reset allocation or erase data.
+
+**Not executed:** automatic approval review rejected the factory volume deletion
+and filesystem cleanup command with "blocked by policy" before execution. The
+current database remains intact. PowerShell/JavaScript syntax checks passed; the
+read-only pre-reset check correctly failed because old authentication sessions
+remain. User execution and a passing new factory report are still required.
+
+The 22 November measurements below are historical and do not prove this pending
+reset has happened.
+
+
 The user explicitly authorized a permanent reset of OmniCompile's old application
 records and artifacts, after first saving the deployment work to GitHub. The
 pre-cleanup source checkpoint is `0af10c0` on `engineering/vercel-backend-demo`.

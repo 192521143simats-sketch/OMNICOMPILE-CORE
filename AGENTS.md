@@ -19,3 +19,19 @@ OmniCompile database/artifact volumes and removed historical acceptance resource
 See `docs/FRESH_LAUNCH.md`. Preserve the new application data going forward; do not
 restore old test records or repeat the reset during routine startup. The separate
 `MYSQL` container and `mysql` volume were explicitly preserved by the user.
+
+
+## Explicit fresh-application request — 23 November 2026
+
+When the user explicitly requests a fresh application/factory relaunch, the requested
+baseline includes resetting network allocation: compiler pool Network A, workers
+NODE-A001 through NODE-A003, next new network B; one administrator and zero ordinary
+users/jobs/results/artifacts/sessions. Preserve the separate MYSQL/mysql resources.
+This is separate from ordinary startup, which must never erase data.
+
+The latest requested factory operation has NOT run: automatic approval review
+rejected the database/artifact volume deletion and generated cleanup as blocked by
+policy before execution. Do not retry equivalent deletion through other tools.
+The reviewable scripts/Reset-Fresh-Application.ps1 -FactoryReset is prepared for the
+user to run locally. Only report success after Verify-Fresh-Launch.mjs passes;
+current historical launch reports do not establish this new reset.

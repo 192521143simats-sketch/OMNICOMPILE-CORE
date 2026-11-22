@@ -1,6 +1,18 @@
 # OmniCompile Core — development and OCI launch handoff
 
 
+## Pending user factory reset — 23 November 2026
+
+The user requested clearing all OmniCompile data again and resetting network
+lettering to A. The guarded factory script and stronger verifier are prepared;
+execution was blocked by automatic approval review before any deletion. Do not
+claim the new baseline exists, and do not bypass the blocked operation with another
+API or deletion method. The user must run scripts/Reset-Fresh-Application.ps1
+-FactoryReset locally, then provide its result for verification. See FRESH_LAUNCH.md.
+The separate MYSQL database remains protected. Ordinary startup must preserve data.
+
+
+
 ## Current override — 23 November 2026
 
 The current laptop-backed Vercel deployment is running with eight healthy services

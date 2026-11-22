@@ -4,10 +4,17 @@
 param()
 $ErrorActionPreference='Stop'
 $cleanupRoot=[IO.Path]::GetFullPath((Join-Path $PSScriptRoot '..'))
-$relativeTargets=@('.runtime/integration','.runtime/windows-worker/releases/win-unpacked','.runtime/windows-worker/releases/builder-debug.yml','apps/android-worker/app/build-acceptance','.vercel/output')
+$relativeTargets=@('.runtime/integration','.runtime/startup','.runtime/windows-worker/stage','.runtime/windows-worker/releases/win-unpacked','.runtime/windows-worker/releases/builder-debug.yml','apps/android-worker/app/build-acceptance','.vercel/output')
 $targets=@($relativeTargets | ForEach-Object {Join-Path $cleanupRoot $_})
 $targets+=@(Get-ChildItem -LiteralPath (Join-Path $cleanupRoot '.runtime') -File -Filter '*.log' | Select-Object -ExpandProperty FullName)
-$targets+=@(Get-ChildItem -LiteralPath (Join-Path $cleanupRoot '.runtime/online-demo') -File | Where-Object {$_.Name -notin @('compose.json','url.txt','ngrok.log','ngrok-error.log','agent.pid')} | Select-Object -ExpandProperty FullName)
+$targets+=@(Get-ChildItem -LiteralPath (Join-Path $cleanupRoot '.runtime/online-demo') -File | Where-Object {$_.Name -notin @('compose.json','url.txt','ngrok.log','ngrok-error.log','agent.pid','admin-password.hash')} | Select-Object -ExpandProperty FullName)
+$version=(Get-Content -LiteralPath (Join-Path $cleanupRoot 'apps/windows-worker/package.json') -Raw | ConvertFrom-Json).version
+$releaseDirectory=Join-Path $cleanupRoot '.runtime/windows-worker/releases'
+$targets+=@(Get-ChildItem -LiteralPath $releaseDirectory -File -Filter 'OMNICOMPILE-Worker-*' | Where-Object {$_.Name -notlike "OMNICOMPILE-Worker-$version-Windows-x64-Setup.exe*"} | Select-Object -ExpandProperty FullName)
+$distributionDirectory=Join-Path $cleanupRoot '.runtime/docker/distribution'
+$manifest=Get-Content -LiteralPath (Join-Path $distributionDirectory 'manifest.json') -Raw | ConvertFrom-Json
+$keep=@('manifest.json')+@($manifest | ForEach-Object {$_.fileName})
+$targets+=@(Get-ChildItem -LiteralPath $distributionDirectory -File | Where-Object {$_.Name -notin $keep} | Select-Object -ExpandProperty FullName)
 $removedBytes=0L;$removedTargets=0
 foreach($candidate in $targets){
   $absolute=[IO.Path]::GetFullPath($candidate)
