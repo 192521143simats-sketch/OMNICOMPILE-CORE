@@ -15,6 +15,8 @@ const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 async function wait(work,label){for(let i=0;i<90;i++){try{return await work();}catch{await pause(1000);}}throw new Error(`Timed out: ${label}`);}
 function create(name,args){docker(['create','--init','--name',name,'--network',network,'--label',`omnicompile.image-test=${instance}`,...args]);owned.push(name);docker(['start',name]);}
 try{
+ assert.equal(docker(['image','inspect','--format','{{ index .Config.Labels "org.opencontainers.image.source" }}',webImage]),'https://github.com/192521143simats-sketch/OMNICOMPILE-CORE','Frontend must link its own repository rather than the upstream base-image repository');
+ assert.equal(docker(['image','inspect','--format','{{ index .Config.Labels "org.opencontainers.image.source" }}','omnicompile-artifacts:local']),'https://github.com/192521143simats-sketch/OMNICOMPILE-CORE','Artifact image must link its own repository rather than the upstream base-image repository');
  console.log(`Creating isolated image fixture ${prefix} (no developer volume).`);
  docker(['network','create','--label',`omnicompile.image-test=${instance}`,network]);networkCreated=true;
  create(db,['--memory','768m','--tmpfs','/var/lib/mysql:rw','--env','MYSQL_ROOT_PASSWORD','--env','MYSQL_DATABASE','--env','MYSQL_USER','--env','MYSQL_PASSWORD','omnicompile-mysql:8.4','mysqld','--port=3307','--innodb-buffer-pool-size=64M','--performance-schema=OFF','--max-connections=80','--table-open-cache=256']);

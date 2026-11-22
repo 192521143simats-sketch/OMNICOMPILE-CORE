@@ -51,12 +51,17 @@ try{
   finally{store.pool.getConnection=originalGet;}
   const [rolledBack]=await store.pool.execute('SELECT id FROM artifacts WHERE job_id=?',[rollbackJob.id]);assert.equal(rolledBack.length,0);assert.equal((await store.getCompilationJob(rollbackJob.id)).status,'SUBMITTED');
   await networks.register(enroll.credential,profile);await store.heartbeat(node.nodeId,resources());
-  const cancelJob=await store.createCompilationJob(admins[0].id,network.id,'python','outage-cancel.py','print(3)'),cancelTask=await store.createJobWorkTask(cancelJob.id,network.id,'PYTHON_COMPILE',{operation:'python_compile',source:'print(3)',sourceName:'outage-cancel.py'},'python');
+  const cancelJob=await store.createCompilationJob(admins[0].id,network.id,'python','outage-cancel.py','print(3)'),compilerTask=await store.createJobWorkTask(cancelJob.id,network.id,'PYTHON_COMPILE',{operation:'python_compile',source:'print(3)',sourceName:'outage-cancel.py'},'python');
+  await assert.rejects(()=>store.assignTask(compilerTask.id,node.nodeId,1,'Browser must not compile Python'),/Node no longer satisfies task\/network policy/);
+  // Exercise durable cancellation with a task this browser fixture can perform;
+  // leave the unsupported compiler child queued to verify both states cancel.
+  const cancelTask={id:store.id('TASK')};await store.pool.execute("INSERT INTO tasks(id,network_id,kind,payload_json,required_capability,status,created_at,job_id) VALUES(?,?,'TEST_COMPUTE',?,'base','QUEUED',?,?)",[cancelTask.id,network.id,JSON.stringify({operation:'prime_count',limit:10}),store.now(),cancelJob.id]);
   await store.assignTask(cancelTask.id,node.nodeId,1,'Cancellation during DB pause');await store.setTaskRunning(cancelTask.id,node.nodeId,1);
   console.log('Phase4: cancellation intersects actual MySQL pause');await fault('pauseMySQL');
   let settled=false;const cancellation=store.cancelCompilationJob(cancelJob.id,admins[0].id,false).then(value=>{settled=true;return value;});
   try{await pause(1200);assert.equal(settled,false,'Paused database cannot acknowledge a durable cancellation');}finally{await fault('resumeMySQL');}
   assert.equal((await cancellation).status,'CANCELLED');assert.equal((await store.getTask(cancelTask.id)).status,'CANCELLED');
+  assert.equal((await store.getTask(compilerTask.id)).status,'CANCELLED');
   await assert.rejects(()=>store.completeTask(cancelTask.id,node.nodeId,1,{},1,resources()),error=>error.code==='STALE_TASK_RESULT');
   const [cancelHistory]=await store.pool.execute('SELECT status FROM task_attempts WHERE task_id=?',[cancelTask.id]);assert.equal(cancelHistory[0].status,'CANCELLED');
   // Server-caused interruptions are persisted independently from worker error text.
