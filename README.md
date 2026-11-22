@@ -42,7 +42,7 @@ OmniCompile Core/
 2. **Resource-Aware Scheduling:** Workers advertise supported operations, capabilities, and system resources via a versioned WebSocket protocol. Heartbeats maintain live node availability.
 3. **Language-Specific Compilation:** Users select a language and submit source (pasted or uploaded). The dedicated compiler frontend analyzes the program and decomposes independent work into bounded tasks.
 4. **Distributed Execution:** Workers execute authorized tasks. The coordinator verifies task, worker, and attempt identity before aggregating results. Interrupted attempts are automatically retried.
-5. **Artifact Delivery:** The platform generates language-appropriate artifacts (`.exe`, bytecode, `.jar`) accompanied by structured diagnostics and operational metrics.
+5. **Artifact Delivery:** The platform generates language-appropriate artifacts (native executables, Python bytecode and Java JARs) accompanied by structured diagnostics and operational metrics. Cloud C outputs are Linux ELF executables; Windows executables require a compatible Windows toolchain and are not relabelled Linux binaries.
 
 ---
 

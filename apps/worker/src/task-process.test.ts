@@ -8,6 +8,24 @@ import {join} from 'node:path';
 // Cross-application fixture entry stays outside the worker production rootDir.
 const {verifyCompilation}=await import(new URL('../../coordinator/src/compilation-verification.ts',import.meta.url).href);
 
+// A killed Linux descendant can retain its PID while awaiting reaping. Such
+// zombies cannot run; PID existence alone is not evidence of a surviving task.
+async function processIsRunning(pid:number):Promise<boolean>{
+  const exists=()=>{try{process.kill(pid,0);return true;}catch(error){if((error as NodeJS.ErrnoException).code==='ESRCH')return false;throw error;}};
+  if(!exists())return false;
+  if(process.platform!=='linux')return true;
+  let stat:string;
+  try{stat=await readFile(`/proc/${pid}/stat`,'utf8');}
+  catch(error){if((error as NodeJS.ErrnoException).code==='ENOENT'&&!exists())return false;throw error;}
+  const state=stat.slice(stat.lastIndexOf(')')+2).split(' ')[0];
+  if(!state||!/^[A-Za-z]$/.test(state))throw new Error('Cannot establish compiler descendant state');
+  return state!=='Z'&&state!=='X';
+}
+async function expectProcessStopped(pid:number){
+  const end=Date.now()+3000;
+  while(await processIsRunning(pid)){if(Date.now()>=end)throw new Error(`Compiler descendant ${pid} remained running after termination`);await new Promise(resolve=>setTimeout(resolve,25));}
+}
+
 describe('owned native task process',()=>{
   it.skipIf(process.platform!=='win32')('fails closed if the Windows tree-termination command cannot run',async()=>{
     const original=process.env.SystemRoot,controller=new AbortController();
@@ -30,8 +48,8 @@ describe('owned native task process',()=>{
       if(!work)throw new Error('Owned process fixture did not start');
       const observed=work.catch(error=>error);
       const end=Date.now()+10000;while(Date.now()<end){try{parentPid=Number(await readFile(parentFile,'utf8'));childPid=Number(await readFile(childFile,'utf8'));if(parentPid&&childPid)break;}catch{}await new Promise(resolve=>setTimeout(resolve,50));}
-      expect(parentPid).toBeGreaterThan(0);expect(childPid).toBeGreaterThan(0);if(owned)owned.disconnect();else controller.abort();expect(await observed).toMatchObject({name:'AbortError'});
-      expect(()=>process.kill(parentPid,0)).toThrow();expect(()=>process.kill(childPid,0)).toThrow();
+      expect(parentPid).toBeGreaterThan(0);expect(childPid).toBeGreaterThan(0);expect(await processIsRunning(parentPid)).toBe(true);expect(await processIsRunning(childPid)).toBe(true);if(owned)owned.disconnect();else controller.abort();expect(await observed).toMatchObject({name:'AbortError'});
+      await Promise.all([expectProcessStopped(parentPid),expectProcessStopped(childPid)]);
     }finally{
       controller.abort();if(owned?.connected)owned.disconnect();await work?.catch(()=>{});for(const pid of [parentPid,childPid])if(pid)try{process.kill(pid,'SIGKILL');}catch{}
       if(oldCompiler===undefined)delete process.env.GCC_EXECUTABLE;else process.env.GCC_EXECUTABLE=oldCompiler;if(oldPath===undefined)delete process.env.PATH;else process.env.PATH=oldPath;await rm(directory,{recursive:true,force:true});

@@ -24,13 +24,15 @@ Password reset tokens are random, short-lived, single-use, and hash-only in MySQ
 
 `BROWSER_WORKER` runs inside a Web Worker. It advertises IR optimization, static analysis, and browser-safe computation. It never claims or attempts GCC, CPython, Java, shell, or operating-system execution. Mobile browsers can suspend tabs, so lost heartbeats cause attempt interruption and requeue.
 
-`NATIVE_WORKER` retains real local C/Python/Java toolchain profiling and compiler execution. It connects with a network/enrollment-scoped bearer credential in the WebSocket handshake header—not a URL. Development can request a native enrollment credential; a signed cross-platform installer is not bundled, so production native deployment still requires packaging/signing work.
+`NATIVE_WORKER` retains real local C/Python/Java toolchain profiling and compiler execution. It connects with a network/enrollment-scoped bearer credential in the WebSocket handshake header—not a URL. Windows packaging produces local installer/application outputs rather than committed binaries. The inspected Windows setup is currently unsigned; release signing and clean-machine installation remain acceptance gates. Local host execution does not automatically have the broker's container isolation and requires additional protection before handling hostile public submissions.
+
+The Android application is native Kotlin/Jetpack Compose with minSdk 25. It contributes supported portable tasks and does not claim local GCC, CPython or JDK execution. The API-25 physical device has passed actual mixed-network enrollment, concurrent task execution, verification and restart recovery; that does not establish fresh API-26+ device coverage or production release signing.
 
 ## Compiler truthfulness
 
-C uses the custom lexer/parser/semantic model, lowers functions into OmniCompile Core IR, distributes meaningful per-function optimization, validates and aggregates candidates, emits C, and invokes GCC for the final native artifact. Browser workers may perform the IR stage; GCC remains native coordinator tooling.
+C uses the custom lexer/parser/semantic model, lowers supported functions into OmniCompile Core IR, distributes eligible optimization work, validates and aggregates candidates, emits C, and invokes GCC for the final native artifact. Browser workers may perform supported IR operations. Cloud GCC runs through the isolated execution broker, not inside the coordinator; explicitly enabled native workers may use discovered local toolchains.
 
-Python uses CPython AST/compiler machinery and produces genuine `.pyc`; Java uses JDK `javac`, `javap`, and `jar` and produces genuine JARs. These require compatible native workers and are not assigned to browser nodes.
+Python uses CPython AST/compiler machinery and produces genuine `.pyc`; Java uses JDK `javac`, `javap`, and `jar` and produces genuine JARs. Cloud operations use their separate isolated toolchain images; local operations require compatible native workers. Browser/Android portable participation does not imply local CPython/JDK compilation.
 
 ## Database migration
 

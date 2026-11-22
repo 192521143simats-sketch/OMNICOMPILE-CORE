@@ -108,6 +108,8 @@ jobs:
           ADMIN_PASSWORD: ci-ephemeral-placeholder
         run: docker compose config --quiet
       - run: npm ci
+      - name: Verify private fixture identity and cleanup guards
+        run: node --test infra/docker/verification/*.test.mjs
       - name: Prepare ephemeral container secrets
         run: |
           mkdir -p .runtime/docker/cloud-workers .runtime/docker/distribution .runtime/docker/secrets

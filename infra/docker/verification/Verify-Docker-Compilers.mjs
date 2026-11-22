@@ -8,6 +8,7 @@ import {resolve,join} from 'node:path';
 import {tmpdir} from 'node:os';
 import dotenv from 'dotenv';
 import mysql from 'mysql2/promise';
+import {fixtureWorkerUser} from './Fixture-Identity.mjs';
 
 dotenv.config({quiet:true});
 const exec=promisify(execFile);
@@ -21,7 +22,7 @@ const password=`User!${randomBytes(20).toString('hex')}`;
 let temporary,connection,databaseCreated=false,base,primaryFailure;
 
 async function docker(args,env={}){
-  try{return (await exec('docker',args,{env:{...process.env,...env},windowsHide:true,timeout:180_000,maxBuffer:3_000_000})).stdout.trim();}
+  try{const result=await exec('docker',args,{env:{...process.env,...env},windowsHide:true,timeout:180_000,maxBuffer:3_000_000});return (args[0]==='logs'?result.stdout+'\n'+result.stderr:result.stdout).trim();}
   catch(error){throw new Error(`Docker ${args[0]} operation failed: ${String(error.stderr??error.message).slice(-1500)}`);}
 }
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
@@ -71,7 +72,7 @@ try{
     const credential=join(temporary,`${language}.credential`);await writeFile(credential,enrollment.workerCredential,{mode:0o600});
     workerSecrets.push(enrollment.workerCredential);
     const name=`omnicompile-test-${language}-${instance}`;
-    await docker(['create','--name',name,'--label',`omnicompile.test.instance=${instance}`,'--network','omnicompile-network','--init','--read-only','--tmpfs','/tmp:rw,nosuid,size=512m,mode=1777','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','768m','--pids-limit','128','--mount',`type=bind,source=${credential},target=/run/secrets/worker,readonly`,'--env',`COORDINATOR_URL=http://${coordinator}:4100`,'--env',`OMNICOMPILE_WORKER_LANGUAGE=${language}`,'--env','WORKER_CREDENTIAL_FILE=/run/secrets/worker','--env','OMNICOMPILE_EXECUTOR_URL=http://omnicompile-executor:4102','--env','OMNICOMPILE_EXECUTOR_TOKEN_FILE=/run/secrets/executor-token','--mount',`type=bind,source=${resolve('.runtime/docker/secrets/executor.token')},target=/run/secrets/executor-token,readonly`,`omnicompile-${language}-worker:local`,'node','--import','tsx','apps/worker/src/cloud.ts']);
+    await docker(['create','--name',name,...fixtureWorkerUser(),'--label',`omnicompile.test.instance=${instance}`,'--network','omnicompile-network','--init','--read-only','--tmpfs','/tmp:rw,nosuid,size=512m,mode=1777','--cap-drop','ALL','--security-opt','no-new-privileges:true','--memory','768m','--pids-limit','128','--mount',`type=bind,source=${credential},target=/run/secrets/worker,readonly`,'--env',`COORDINATOR_URL=http://${coordinator}:4100`,'--env',`OMNICOMPILE_WORKER_LANGUAGE=${language}`,'--env','WORKER_CREDENTIAL_FILE=/run/secrets/worker','--env','OMNICOMPILE_EXECUTOR_URL=http://omnicompile-executor:4102','--env','OMNICOMPILE_EXECUTOR_TOKEN_FILE=/run/secrets/executor-token','--mount',`type=bind,source=${resolve('.runtime/docker/secrets/executor.token')},target=/run/secrets/executor-token,readonly`,`omnicompile-${language}-worker:local`,'node','--import','tsx','apps/worker/src/cloud.ts']);
     owned.push(name);await docker(['start',name]);
     workerNodes[language]=await wait(async()=>{
       const [rows]=await connection.execute(`SELECT id,profile_json FROM \`${schema}\`.nodes WHERE enrollment_id=? AND status='AVAILABLE'`,[enrollment.enrollmentId]);
