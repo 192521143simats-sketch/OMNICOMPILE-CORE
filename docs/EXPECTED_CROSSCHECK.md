@@ -316,3 +316,20 @@ Fresh standalone image acceptance passed migration apply/check, coordinator read
 The serial persistence/recovery fixture reached database and coordinator restart recovery but exposed an obsolete cancellation test: it assigned PYTHON_COMPILE to a browser profile with no Python/native-compilation capability. Production policy correctly rejected it at Store.assignTask; no production guard was changed. The test now explicitly requires that rejection, leaves the compiler child queued, and assigns a supported portable child on the same parent job. It verifies that an actual database pause delays durable cancellation, then both queued and running children cancel and stale completion remains rejected. The final isolated phase4 run passed with exit 0, including artifact integrity, publication rollback, restart persistence, backup/restore and worker/policy checks. The owned test database/container/evidence were removed. Independent review found no confirmed defects in the label changes or recovery-test correction.
 
 The user has now registered for OCI. This does not establish tenancy limits, regional A1 capacity, OKE eligibility or native ARM sandbox compatibility. Cloud deployment remains on hold; no OCI resource was created. The native ARM/A1 secure-execution and Kubernetes-runtime launch gates remain open.
+
+### 2026-11-22 verified ARM registry publication and protected-data inventory
+
+All eight ARM64 images were published under `be1f901-arm64-validation` in the approved GHCR namespace. Docker Buildx inspected each remote manifest and verified its digest after push. Frontend and artifact publication both succeeded after correcting inherited source metadata. These are validation images, not a public-deployment or native-A1 secure-execution acceptance claim. Package visibility/access controls were not changed. Code commits are a3130dd and be1f901; no cloud deployment was performed.
+
+- `ghcr.io/192521143simats-sketch/omnicompile-coordinator@sha256:92edb22ab2700cb876c56e7c2ce59bce2dcb55d49888663c22b92eeae86c0be0`
+- `ghcr.io/192521143simats-sketch/omnicompile-frontend@sha256:f94f22ee3ad5c9bc68efe9a863d3226dfa21423d4df410ee8e3d0456e8d78e93`
+- `ghcr.io/192521143simats-sketch/omnicompile-c-worker@sha256:30cb1defd7f7648665dc12431bc55ded7c5d3ed17d1418362c4e2e0c6afd2253`
+- `ghcr.io/192521143simats-sketch/omnicompile-python-worker@sha256:38b458ea66023eaa1466bfc17c8c069afc242c2340d239180c156ed8adcd28b7`
+- `ghcr.io/192521143simats-sketch/omnicompile-java-worker@sha256:8e25185e83ac135733f0b3acf7aab35f3e8409e2c9bdd0028458f46bb047204b`
+- `ghcr.io/192521143simats-sketch/omnicompile-executor@sha256:bc8a4035a1db4952282bd3709d6d75efa03cb92aefa3036cc2887f891d661bd2`
+- `ghcr.io/192521143simats-sketch/omnicompile-artifacts@sha256:1af77c376e2e55fea16308b60c9c7e9de3c8aa711e012647a61b567ae16f32a9`
+- `ghcr.io/192521143simats-sketch/omnicompile-mysql@sha256:69970b1dbf2eda96d5c8295ead966163ebae5d3e9796dcf998a755ea4b2c89b5`
+
+Fresh script regression: 65 passed, zero failed/skipped. Final committed-source Trivy secret scan passed. Existing project MySQL was briefly started solely for a read-only inventory: 27 tables, 3 accounts, 1 administrator with a nonempty hash and 57 artifact records. Its original stopped state was restored; general MYSQL was untouched. Protected artifact inventory remains 295 files / 3,162,870 bytes. After cleanup started, all sixteen local image references still exactly matched their final passing scan IDs; all three protected project/general data volumes remained present. The local Docker engine responded and the existing desktop-control-plane Kubernetes node was Ready.
+
+Cleanup removed five never-started, Compose-owned stale containers without volume deletion and removed two superseded local validation aliases. Historical Kind nodes and anonymous volumes containing Kubernetes PVC data were retained because their contents have not been proven disposable. No broad volume/system prune was used. Unused-image and build-cache reclamation totals are recorded after the cleanup process finishes.
