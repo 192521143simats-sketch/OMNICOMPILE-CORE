@@ -31,8 +31,8 @@ foreach($pair in @(@('OMNICOMPILE-MYSQL','omnicompile-mysql'),@('OMNICOMPILE-ART
     if($LASTEXITCODE -ne 0 -or $project -ne 'omnicompile'){throw 'Unexpected Docker project; nothing has been cleared.'}
 }
 Write-Host 'Factory reset: clearing only OmniCompile database/artifact storage and old managed credentials.'
-Invoke-Docker @('compose','-f','docker-compose.yml','-f','.runtime/online-demo/compose.json','down')
-Invoke-Docker @('volume','rm','OMNICOMPILE-MYSQL','OMNICOMPILE-ARTIFACTS')
+Invoke-Docker -Arguments @('compose','-f','docker-compose.yml','-f','.runtime/online-demo/compose.json','down')
+Invoke-Docker -Arguments @('volume','rm','OMNICOMPILE-MYSQL','OMNICOMPILE-ARTIFACTS')
 foreach($name in @('enrollment.json','c.credential','python.credential','java.credential')){
     Remove-FactoryFile ".runtime/docker/cloud-workers/$name"
 }
