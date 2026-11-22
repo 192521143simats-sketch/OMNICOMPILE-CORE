@@ -25,7 +25,7 @@ describe("worker onboarding", () => {
       <WorkerChoices token="shared" accepting workerTypes={["ANDROID"]} />
     );
     expect(android.match(/href=/g)).toHaveLength(1);
-    expect(android).toContain('href="/join/shared/android"');
+    expect(android).toContain('href="/android-worker?token=shared"');
 
     const closed = renderToStaticMarkup(<WorkerChoices token="shared" accepting={false} />);
     expect(closed).not.toContain("href=");

@@ -2,9 +2,9 @@ import {afterEach,expect,it,vi} from "vitest";
 import {BrowserSession} from "./browser-session.js";
 import {encodeProtocolMessage} from "@omnicompile/contracts";
 
-function fixture(){
+function fixture(resolveUrl?:()=>Promise<string>){
   vi.useFakeTimers();const sockets:any[]=[],workers:any[]=[],states:any[]=[];
-  const session=new BrowserSession({url:"ws://test/ws/worker",profile:()=>({workerType:"BROWSER",operations:{browserCompute:true}} as any),resources:()=>({cpuUtilizationPercent:0,cpuMeasurementAvailable:false,freeMemoryBytes:0,memoryUtilizationPercent:0,memoryMeasurementAvailable:false,observedAt:new Date().toISOString()}),onChange:s=>states.push(s),socket:()=>{const ws={readyState:0,send:(text:string)=>ws.sent.push(JSON.parse(text)),sent:[] as any[],close:vi.fn(()=>{ws.readyState=3;}),onopen:null as any,onmessage:null as any,onclose:null as any,onerror:null as any};sockets.push(ws);return ws as any;},worker:()=>{const worker={postMessage:vi.fn(),terminate:vi.fn(),onmessage:null as any,onerror:null as any,onmessageerror:null as any};workers.push(worker);return worker as any;}});
+  const session=new BrowserSession({url:"ws://test/ws/worker",...(resolveUrl?{resolveUrl}:{}),profile:()=>({workerType:"BROWSER",operations:{browserCompute:true}} as any),resources:()=>({cpuUtilizationPercent:0,cpuMeasurementAvailable:false,freeMemoryBytes:0,memoryUtilizationPercent:0,memoryMeasurementAvailable:false,observedAt:new Date().toISOString()}),onChange:s=>states.push(s),socket:()=>{const ws={readyState:0,send:(text:string)=>ws.sent.push(JSON.parse(text)),sent:[] as any[],close:vi.fn(()=>{ws.readyState=3;}),onopen:null as any,onmessage:null as any,onclose:null as any,onerror:null as any};sockets.push(ws);return ws as any;},worker:()=>{const worker={postMessage:vi.fn(),terminate:vi.fn(),onmessage:null as any,onerror:null as any,onmessageerror:null as any};workers.push(worker);return worker as any;}});
   session.start();const open=()=>{const ws=sockets.at(-1);ws.readyState=1;ws.onopen();ws.onmessage({data:encodeProtocolMessage({type:"registered",nodeId:"NODE-A001",heartbeatIntervalMs:1000})});return ws;};
   const assign=(ws:any,attempt=1)=>ws.onmessage({data:encodeProtocolMessage({type:"task_assignment",taskKind:"TEST_COMPUTE",taskId:"TASK-1",attempt,payload:{operation:"sha256_chain",input:"abc",iterations:100000}})});
   return{session,sockets,workers,states,open,assign};
@@ -19,3 +19,17 @@ it("reconnects after coordinator cancellation closes the connection with service
 it("bounds registration waiting and cancels all reconnect timers on teardown",()=>{const f=fixture();vi.advanceTimersByTime(10001);expect(f.sockets[0].close).toHaveBeenCalled();expect(f.states.at(-1).status).toBe("DISCONNECTED");f.session.stop();vi.advanceTimersByTime(120000);expect(f.sockets).toHaveLength(1);});
 it("rejects native assignment and reports worker crashes instead of hanging busy",()=>{const f=fixture(),ws=f.open();ws.onmessage({data:encodeProtocolMessage({type:"task_assignment",taskId:"native",attempt:1,taskKind:"C_COMPILE",payload:{operation:"c_compile",source:"int main(){return 0;}"}})});expect(ws.sent.some((m:any)=>m.type==="task_state"&&m.status==="FAILED")).toBe(true);expect(f.workers).toHaveLength(0);f.assign(ws);f.workers[0].onerror({preventDefault(){}});expect(f.states.at(-1).status).toBe("AVAILABLE");expect(ws.sent.at(-1).error).toMatch(/browser worker/i);f.session.stop();});
 it("cancels only matching attempts, reports progress and ignores duplicate assignments",()=>{const f=fixture(),ws=f.open();f.assign(ws);f.assign(ws);expect(f.workers[0].postMessage).toHaveBeenCalledTimes(1);f.workers[0].onmessage({data:{type:"progress",taskId:"TASK-1",attempt:1,percent:25}});expect(f.states.at(-1).progress).toBe(25);ws.onmessage({data:encodeProtocolMessage({type:"task_cancel",taskId:"TASK-1",attempt:2})});expect(f.states.at(-1).status).toBe("BUSY");ws.onmessage({data:encodeProtocolMessage({type:"task_cancel",taskId:"TASK-1",attempt:1})});expect(f.states.at(-1).status).toBe("AVAILABLE");expect(f.workers[0].terminate).toHaveBeenCalled();f.session.stop();});
+
+it("discards a pending socket authorization after pause and obtains a fresh ticket on resume",async()=>{
+  const pending:Array<(url:string)=>void>=[];
+  const f=fixture(()=>new Promise(resolve=>pending.push(resolve)));
+  expect(f.sockets).toHaveLength(0);
+  f.session.pause();pending[0]!("wss://backend.example/ws/worker?ticket=old");
+  await Promise.resolve();await Promise.resolve();
+  expect(f.sockets).toHaveLength(0);
+  f.session.resume();expect(pending).toHaveLength(2);
+  pending[1]!("wss://backend.example/ws/worker?ticket=fresh");
+  await Promise.resolve();await Promise.resolve();
+  expect(f.sockets).toHaveLength(1);
+  f.open();expect(f.states.at(-1).status).toBe("AVAILABLE");f.session.stop();
+});

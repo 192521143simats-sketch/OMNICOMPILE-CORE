@@ -1,4 +1,5 @@
 import "react";
+import {workerEntryPath} from "./worker-routes.js";
 
 export type JoinPlatform = "web" | "android" | "windows";
 export type JoinWorkerType = "BROWSER" | "ANDROID" | "NATIVE";
@@ -38,7 +39,7 @@ export function WorkerChoices({token, accepting, workerTypes}: {
       {platforms.map(({route, title, description}) => {
         const label = "Continue as " + title + " Worker";
         return accepting && joinAllowsPlatform(workerTypes, route) ? (
-          <a key={route} className="card action" href={joinPath(token, route)}>
+          <a key={route} className="card action" href={workerEntryPath(route, token)}>
             <h2>{label}</h2>
             <p>{description}</p>
           </a>

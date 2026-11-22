@@ -1,6 +1,6 @@
 import {encodeProtocolMessage,parseCoordinatorMessage,portableWorkloadCatalogue,type CapabilityProfile,type ResourceSnapshot} from "@omnicompile/contracts";
 export type BrowserState={status:string;nodeId:string;error:string;taskId?:string|undefined;progress?:number|undefined};
-type Options={url:string;profile:()=>CapabilityProfile;resources:()=>ResourceSnapshot;onChange:(state:BrowserState)=>void;socket:(url:string)=>WebSocket;worker:()=>Worker};
+type Options={url:string;resolveUrl?:()=>Promise<string>;profile:()=>CapabilityProfile;resources:()=>ResourceSnapshot;onChange:(state:BrowserState)=>void;socket:(url:string)=>WebSocket;worker:()=>Worker};
 export class BrowserSession{
   private state:BrowserState={status:"CONNECTING",nodeId:"",error:""};
   private ws:WebSocket|undefined;
@@ -8,6 +8,7 @@ export class BrowserSession{
   private retry:ReturnType<typeof setTimeout>|undefined;
   private registration?:ReturnType<typeof setTimeout>;
   private heartbeat?:ReturnType<typeof setInterval>;
+  private connectionEpoch=0;private resolving=false;
   private active=false;private paused=false;private hidden=false;private connected=true;private rejected=false;private failures=0;
   constructor(private readonly options:Options){}
   start(){this.active=true;this.connect();}
@@ -20,11 +21,18 @@ export class BrowserSession{
   private canConnect(){return this.active&&!this.paused&&!this.hidden&&this.connected&&!this.rejected;}
   private send(message:object){if(this.ws?.readyState===1)this.ws.send(encodeProtocolMessage(message));}
   private stopTask(){if(this.task){clearTimeout(this.task.timer);this.task.worker.terminate();this.task=undefined;}this.update({taskId:undefined,progress:undefined});}
-  private withdraw(){clearTimeout(this.retry);clearTimeout(this.registration);clearInterval(this.heartbeat);this.retry=undefined;this.stopTask();const ws=this.ws;this.ws=undefined;if(ws){ws.onclose=null;ws.onerror=null;ws.onmessage=null;ws.onopen=null;try{if(ws.readyState===1)ws.send(encodeProtocolMessage({type:"disconnect"}));ws.close();}catch{/* Socket may already be closed by the browser. */}}}
+  private withdraw(){this.connectionEpoch++;this.resolving=false;clearTimeout(this.retry);clearTimeout(this.registration);clearInterval(this.heartbeat);this.retry=undefined;this.stopTask();const ws=this.ws;this.ws=undefined;if(ws){ws.onclose=null;ws.onerror=null;ws.onmessage=null;ws.onopen=null;try{if(ws.readyState===1)ws.send(encodeProtocolMessage({type:"disconnect"}));ws.close();}catch{/* Socket may already be closed by the browser. */}}}
   private reconnect(){this.withdraw();if(!this.canConnect())return;this.update({status:this.state.status==="PENDING_APPROVAL"?"PENDING_APPROVAL":"DISCONNECTED"});const delay=Math.min(30000,1000*2**Math.min(this.failures++,5))*(.8+Math.random()*.2);this.retry=setTimeout(()=>{this.retry=undefined;this.connect();},delay);}
   private connect(){
-    if(!this.canConnect()||this.ws)return;clearTimeout(this.retry);this.update({status:"CONNECTING",error:""});
-    let ws:WebSocket;try{ws=this.options.socket(this.options.url);}catch{this.update({error:"Unable to establish a worker connection."});this.reconnect();return;}this.ws=ws;
+    if(!this.canConnect()||this.ws||this.resolving)return;clearTimeout(this.retry);this.update({status:"CONNECTING",error:""});
+    if(this.options.resolveUrl){
+      const epoch=this.connectionEpoch;this.resolving=true;
+      this.options.resolveUrl().then(url=>{if(epoch!==this.connectionEpoch||!this.canConnect())return;this.resolving=false;this.openSocket(url);}).catch(()=>{if(epoch!==this.connectionEpoch||!this.canConnect())return;this.resolving=false;this.update({error:"Unable to authorize worker connection."});this.reconnect();});return;
+    }
+    this.openSocket(this.options.url);
+  }
+  private openSocket(url:string){
+    let ws:WebSocket;try{ws=this.options.socket(url);}catch{this.update({error:"Unable to establish a worker connection."});this.reconnect();return;}this.ws=ws;
     this.registration=setTimeout(()=>{if(this.ws===ws){this.update({error:"Coordinator registration timed out. Retrying…"});this.reconnect();}},10000);
     ws.onopen=()=>{if(this.ws===ws)this.send({type:"register",profile:this.options.profile()});};
     ws.onmessage=event=>{

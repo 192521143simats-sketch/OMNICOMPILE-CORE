@@ -2,6 +2,18 @@ import {describe, expect, it} from "vitest";
 import {createOriginPolicy, trustedProxyPolicy, validateProductionEnvironment,validateHeartbeatTimeouts} from "./runtime-policy.js";
 
 describe("runtime security policy", () => {
+  it("allows only an explicitly selected HTTPS ngrok demonstration origin", () => {
+    const demo="https://faculty-demo.ngrok-free.app";
+    const safe={nodeEnv:"production",publicBaseUrl:demo,adminPasswordHash:"$argon2id$validation",temporaryDemoOrigin:demo};
+    expect(()=>validateProductionEnvironment({...safe,temporaryDemoOrigin:undefined})).toThrow();
+    expect(()=>validateProductionEnvironment(safe)).not.toThrow();
+    expect(()=>validateProductionEnvironment({...safe,coordinatorPublicUrl:"https://other.ngrok-free.app"})).toThrow();
+    for(const endpoint of ["http://faculty-demo.ngrok-free.app","https://localhost","https://127.0.0.1","https://faculty-demo.ngrok-free.app.evil.com"])
+      expect(()=>validateProductionEnvironment({...safe,publicBaseUrl:endpoint,temporaryDemoOrigin:endpoint})).toThrow();
+    const allows=createOriginPolicy(demo,"production",undefined,demo);
+    expect(allows(demo)).toBe(true);
+    expect(allows("https://other.ngrok-free.app")).toBe(false);
+  });
   it("requires a strictly later offline deadline than the stale deadline",()=>{
     expect(()=>validateHeartbeatTimeouts(15000,30000)).not.toThrow();
     for(const pair of [[15000,15000],[30000,15000],[0,30000],[-1,30000],[15000,Infinity],[1.5,30000]]){

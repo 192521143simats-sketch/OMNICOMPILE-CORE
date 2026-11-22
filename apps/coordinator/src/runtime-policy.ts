@@ -12,7 +12,8 @@ function origin(value:string):string {
   return url.origin;
 }
 
-function productionOrigin(value:string):string {
+function productionOrigin(value:string,temporaryDemoOrigin?:string):string {
+  if(temporaryDemoOrigin && !/^https:\/\/[a-z0-9-]+\.ngrok-free\.app$/.test(temporaryDemoOrigin))throw new Error("Invalid temporary demonstration origin");
   const normalized=origin(value),url=new URL(normalized),host=url.hostname.replace(/^\[|\]$/g,"").toLowerCase().replace(/\.$/,"");
   if(url.protocol!=="https:")throw new Error("Production public endpoints require HTTPS");
   const privateV4=(address:string)=>{const [a,b,c]=address.split(".").map(Number);return a===0||a===10||a===127||a!>=224||a===169&&b===254||a===172&&b!>=16&&b!<=31||a===192&&b===168||a===100&&b!>=64&&b!<=127||a===198&&(b===18||b===19)||a===192&&b===0&&(c===0||c===2)||a===198&&b===51&&c===100||a===203&&b===0&&c===113;};
@@ -29,13 +30,14 @@ function productionOrigin(value:string):string {
       else nonpublic=true;
     }
   }else nonpublic=!host.includes(".")||/(^|\.)(localhost|local|internal|lan|home|test|invalid|example|onion|home\.arpa)$/.test(host)||/(^|\.)(trycloudflare\.com|ngrok-free\.app|loca\.lt)$/.test(host);
+  if(normalized===temporaryDemoOrigin)nonpublic=false;
   if(nonpublic||["5173","4100"].includes(url.port))throw new Error("Production endpoints must use a public non-development address");
   return normalized;
 }
 
-export function createOriginPolicy(publicBaseUrl:string, nodeEnv:string, additional?:string) {
+export function createOriginPolicy(publicBaseUrl:string, nodeEnv:string, additional?:string,temporaryDemoOrigin?:string) {
   const configured = [publicBaseUrl, ...(additional?.split(',').map(value => value.trim()).filter(Boolean) ?? [])].map(origin);
-  if (nodeEnv === 'production') configured.forEach(productionOrigin);
+  if (nodeEnv === 'production') configured.forEach(value=>productionOrigin(value,temporaryDemoOrigin));
   const allowed = new Set(configured);
   return (value:string|undefined) => {
     if (value === undefined) return true; // Cookie clients additionally require Origin at WS boundaries.
@@ -62,9 +64,9 @@ export function trustedProxyPolicy(value:string|undefined):false|string[] {
   return addresses;
 }
 
-export function validateProductionEnvironment(config:{nodeEnv:string;publicBaseUrl:string;coordinatorPublicUrl?:string|undefined;adminPasswordHash?:string|undefined;adminPassword?:string|undefined}) {
+export function validateProductionEnvironment(config:{nodeEnv:string;publicBaseUrl:string;coordinatorPublicUrl?:string|undefined;adminPasswordHash?:string|undefined;adminPassword?:string|undefined;temporaryDemoOrigin?:string|undefined}) {
   if (config.nodeEnv !== 'production') return;
   if (!config.adminPasswordHash?.startsWith('$argon2id$')) throw new Error("Production requires an Argon2id ADMIN_PASSWORD_HASH");
   if (config.adminPassword) throw new Error("Remove plaintext ADMIN_PASSWORD in production");
-  for (const url of [config.publicBaseUrl, config.coordinatorPublicUrl].filter((item):item is string => Boolean(item))) productionOrigin(url);
+  for (const url of [config.publicBaseUrl, config.coordinatorPublicUrl].filter((item):item is string => Boolean(item))) productionOrigin(url,config.temporaryDemoOrigin);
 }

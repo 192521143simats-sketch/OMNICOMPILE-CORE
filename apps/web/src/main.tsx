@@ -1,3 +1,5 @@
+import {pageRoute} from "./page-routes.js";
+import {realtimeUrl} from "./realtime.js";
 import {installNavigationMotion,navigateWithMotion} from './navigation-motion.js';
 import {Home} from './landing.js';
 import {PlatformAtmosphere} from './motion.js';
@@ -14,6 +16,7 @@ import {Notice} from "./notice.js";
 import {AdminInspector} from "./admin-inspector.js";
 import {EnrollmentAdmin} from "./enrollment-admin.js";
 import {AdminToolchains} from "./admin-toolchains.js";
+import {WorkerDirectory,workerPlatform} from "./worker-routes.js";
 import {WorkerInstallation,type DistributionPlatform} from "./worker-installation.js";
 import {joinAllowsPlatform,joinPath,parseJoinRoute,WorkerChoices,type JoinPlatform,type JoinWorkerType} from "./worker-onboarding.js";
 import {Login,Signup,Forgot,Reset} from "./auth-pages.js";
@@ -38,7 +41,7 @@ function AdminV2(){
   useEffect(()=>{
     if(!user)return;let stopped=false,socket:WebSocket|undefined,reconnect:ReturnType<typeof setTimeout>|undefined,scheduled:ReturnType<typeof setTimeout>|undefined;
     void liveRefresh.current();
-    function connect(){if(stopped)return;const protocol=location.protocol==="https:"?"wss:":"ws:";socket=new WebSocket(`${protocol}//${location.host}/ws/admin`);
+    async function connect(){if(stopped)return;let endpoint:string;try{endpoint=await realtimeUrl("admin");}catch{if(!stopped)reconnect=setTimeout(connect,3000);return;}if(stopped)return;socket=new WebSocket(endpoint);
       socket.onmessage=event=>{try{const message=JSON.parse(event.data);if(message.type==="snapshot"){setOverview(message.data);if(!scheduled)scheduled=setTimeout(()=>{scheduled=undefined;void liveRefresh.current();},750);}}catch{setError("Live update could not be read. Use Refresh to synchronize.");}};
       socket.onclose=event=>{if(!stopped&&event.code!==1008)reconnect=setTimeout(connect,2000);};
       socket.onerror=()=>setError("Live connection interrupted. Refresh remains available.");
@@ -95,6 +98,7 @@ type JoinNetwork = {
 
 function Join({token,platform}:{token:string;platform?:JoinPlatform}){
   const [network,setNetwork]=useState<JoinNetwork|null>(null);
+  const [nativeOrigin,setNativeOrigin]=useState<string|null>(null);
   const [joined,setJoined]=useState(false);
   const [joining,setJoining]=useState(false);
   const [error,setError]=useState("");
@@ -136,6 +140,7 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
     try{
       const result=await api("/api"+joinPath(token));
       setNetwork(result.network);
+      if(result.nativeWorkerOrigin){const endpoint=new URL(result.nativeWorkerOrigin);if(["https:","http:"].includes(endpoint.protocol))setNativeOrigin(endpoint.origin);}
       if(result.network.accepting)setError("");
       if(platform==="web"){
         try{
@@ -205,7 +210,7 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
         {downloadPending&&<p role="status">Checking device compatibility and package availability…</p>}
         {downloadError&&<p role="status">{downloadError}</p>}
         {!downloadPending&&<WorkerInstallation
-          joinUrl={location.origin+joinPath(token)}
+          joinUrl={(nativeOrigin??location.origin)+joinPath(token)}
           platforms={download?[download.artifact]:[]}
           platform={nativePlatform}
           {...(download?{authorizedUrl:download.downloadUrl}:{})}
@@ -217,9 +222,11 @@ function Join({token,platform}:{token:string;platform?:JoinPlatform}){
 }
 function WorkerPage(){return <Shell title="Worker console" subtitle="Reconnect a previously enrolled browser worker using its secure HttpOnly enrollment cookie."><BrowserNode/></Shell>}
 
-function App(){const path=location.pathname,join=parseJoinRoute(path);if(join)return <Join {...join}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker")return <WorkerPage/>;return <Home/>}
+function App(){const route=pageRoute(location.pathname),path=route.path,join=parseJoinRoute(path);useEffect(()=>{document.title=route.title;},[route.title]);if(route.redirect)return <CanonicalRedirect path={route.redirect}/>;if(!route.found)return <Shell title="Page not found" subtitle="This address does not match an OmniCompile Core page."><p><a href="/">Return to the landing page</a> · <a href="/worker">Worker platforms</a> · <a href="/login">Sign in</a></p></Shell>;if(join)return <Join {...join}/>;if(path==="/login")return <Login Shell={Shell}/>;if(path==="/signup")return <Signup Shell={Shell}/>;if(path==="/forgot-password")return <Forgot Shell={Shell}/>;if(path==="/reset-password")return <Reset Shell={Shell}/>;if(path==="/admin")return <AdminV2/>;if(path==="/dashboard")return <DashboardV2/>;if(path==="/settings"||path==="/compute")return <WorkspaceRedirect/>;if(path==="/worker"||workerPlatform(path)){const platform=workerPlatform(path),params=new URLSearchParams(location.search),token=params.get("token");if(token)return <Join token={token} {...(platform?{platform}:{})}/>;if(platform==="web"&&params.get("reconnect")==="1")return <WorkerPage/>;return <Shell title={platform?`${platform==="web"?"Web":platform==="windows"?"Windows":"Android"} worker`:"Worker platforms"} subtitle="Connect over the internet with explicit consent."><WorkerDirectory {...(platform?{platform}:{})}/></Shell>;}return <Home/>}
 const disposeMotion=installNavigationMotion();
 if(import.meta.hot)import.meta.hot.dispose(disposeMotion);
 createRoot(document.getElementById("root")!).render(<React.StrictMode><App/></React.StrictMode>);
 
 function WorkspaceRedirect(){useEffect(()=>{location.replace("/dashboard");},[]);return null;}
+
+function CanonicalRedirect({path}:{path:string}){useEffect(()=>{location.replace(path+location.search+location.hash);},[path]);return null;}

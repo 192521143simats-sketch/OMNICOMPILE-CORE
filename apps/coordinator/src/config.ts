@@ -23,9 +23,11 @@ export const config = {
   port: integer("PORT", 4100),
   publicBaseUrl: process.env.PUBLIC_BASE_URL ?? "http://localhost:5173",
   coordinatorPublicUrl: process.env.COORDINATOR_PUBLIC_URL,
+  realtimePublicUrl: process.env.OMNICOMPILE_REALTIME_PUBLIC_URL,
   adminUsername: process.env.ADMIN_USERNAME ?? "admin",
   adminPasswordHash: process.env.ADMIN_PASSWORD_HASH,
   adminPassword: process.env.ADMIN_PASSWORD,
+  temporaryDemoOrigin: process.env.OMNICOMPILE_TEMPORARY_DEMO_ORIGIN,
   nodeEnv: process.env.NODE_ENV ?? "development",
   allowedOrigins: process.env.ALLOWED_ORIGINS,
   trustedProxies: trustedProxyPolicy(process.env.TRUSTED_PROXIES),
@@ -55,4 +57,4 @@ if (!config.database.password) throw new Error("DB_PASSWORD is required. Run STA
 if (!config.adminPasswordHash && !config.adminPassword) throw new Error("ADMIN_PASSWORD_HASH or ADMIN_PASSWORD is required.");
 validateProductionEnvironment(config);
 if(config.testInstance && (config.nodeEnv==="production" || !/^[a-f0-9]{16}$/.test(config.testInstance) || config.database.name!==`omnicompile_test_${config.testInstance}` || [4100,5173].includes(config.port))) throw new Error("Invalid isolated test coordinator configuration");
-export const allowedOrigin=createOriginPolicy(config.publicBaseUrl,config.nodeEnv,config.allowedOrigins);
+export const allowedOrigin=createOriginPolicy(config.publicBaseUrl,config.nodeEnv,config.allowedOrigins,config.temporaryDemoOrigin);

@@ -46,3 +46,4 @@ apps/android-worker/**/build-acceptance/
 
 # Disposable local agent tournament records.
 .arena/
+.env*

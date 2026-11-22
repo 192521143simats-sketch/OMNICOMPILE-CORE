@@ -1,3 +1,4 @@
+import {realtimeUrl,usesRealtimeTickets} from "./realtime.js";
 import {useEffect,useRef,useState} from "react";
 import type {CapabilityProfile,ResourceSnapshot} from "@omnicompile/contracts";
 import {BrowserSession,type BrowserState} from "./browser-session.js";
@@ -17,7 +18,7 @@ export function BrowserNode({networkName,onLeave}:{networkName?:string;onLeave?:
   const[state,setState]=useState<BrowserState>({nodeId:"",status:"CONNECTING",error:""}),[leaving,setLeaving]=useState(false),[rotation,setRotation]=useState(""),session=useRef<BrowserSession|null>(null);
   useEffect(()=>{
     if(typeof Worker==="undefined"||typeof WebSocket==="undefined"){setState(s=>({...s,status:"ERROR",error:"This browser does not support Web Workers and WebSockets. Open a current Chrome or Edge browser."}));return;}
-    const controller=new BrowserSession({url:`${location.protocol==="https:"?"wss:":"ws:"}//${location.host}/ws/worker`,profile:browserProfile,resources:browserResources,onChange:setState,socket:url=>new WebSocket(url),worker:()=>new Worker(new URL("./browser-worker.ts",import.meta.url),{type:"module"})});session.current=controller;
+    const controller=new BrowserSession({url:`${location.protocol==="https:"?"wss:":"ws:"}//${location.host}/ws/worker`,...(usesRealtimeTickets?{resolveUrl:()=>realtimeUrl("worker")} : {}),profile:browserProfile,resources:browserResources,onChange:setState,socket:url=>new WebSocket(url),worker:()=>new Worker(new URL("./browser-worker.ts",import.meta.url),{type:"module"})});session.current=controller;
     const visibility=()=>controller.visibility(document.hidden),online=()=>controller.online(navigator.onLine),hide=()=>controller.visibility(true),show=()=>{controller.online(navigator.onLine);controller.visibility(document.hidden);};
     visibility();online();try{if(sessionStorage.getItem(pausePreference)==="1")controller.pause();}catch{/* No credentials are read from browser storage. */}controller.start();document.addEventListener("visibilitychange",visibility);document.addEventListener("freeze",hide);document.addEventListener("resume",show);window.addEventListener("offline",online);window.addEventListener("online",online);window.addEventListener("pagehide",hide);window.addEventListener("pageshow",show);
     return()=>{controller.stop();session.current=null;document.removeEventListener("visibilitychange",visibility);document.removeEventListener("freeze",hide);document.removeEventListener("resume",show);window.removeEventListener("offline",online);window.removeEventListener("online",online);window.removeEventListener("pagehide",hide);window.removeEventListener("pageshow",show);};
