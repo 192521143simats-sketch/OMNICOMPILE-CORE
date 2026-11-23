@@ -15,7 +15,7 @@
     },
     {
       "src": "/api(?:/(.*))?",
-      "dest": "https://a2c0-2406-7400-ce-abd9-2417-533d-d902-93bc.ngrok-free.app/api/$1",
+      "dest": "https://59d2-2402-3a80-40e-2b79-8109-fb4a-a308-1805.ngrok-free.app/api/$1",
       "headers": {
         "Cache-Control": "private, no-store",
         "CDN-Cache-Control": "no-store",
@@ -34,7 +34,7 @@
     },
     {
       "src": "/ws(?:/(.*))?",
-      "dest": "https://a2c0-2406-7400-ce-abd9-2417-533d-d902-93bc.ngrok-free.app/ws/$1"
+      "dest": "https://59d2-2402-3a80-40e-2b79-8109-fb4a-a308-1805.ngrok-free.app/ws/$1"
     },
     {
       "handle": "filesystem"
@@ -44,7 +44,7 @@
       "dest": "/index.html"
     },
     {
-      "src": "/join/[^/]+(?:/(?:web|windows|android))?/?",
+      "src": "/(?:join|join-network-[A-Za-z]+)/[^/]+(?:/(?:web|windows|android))?/?",
       "dest": "/index.html"
     },
     {

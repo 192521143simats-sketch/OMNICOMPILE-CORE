@@ -20,7 +20,7 @@ export function ExecutionPreference({value,onChange,disabled}:{value:ExecutionMo
 export function ExecutionPlacement({job}:{job:{executionMode?:ExecutionMode;executionLocations?:string[]}|null}){
   if(!job)return null;
   return <dl aria-label="Compilation placement">
-    <dt>Worker preference</dt><dd>{job.executionMode?labels[job.executionMode]:'Legacy scheduling policy'}</dd>
+    <dt>Worker preference</dt><dd>{job.executionMode?labels[job.executionMode]:'Not recorded'}</dd>
     <dt>Assigned worker locations</dt><dd>{job.executionLocations?.length?job.executionLocations.join(', '):'Awaiting worker assignment'}</dd>
   </dl>;
 }

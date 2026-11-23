@@ -80,13 +80,7 @@ try{
     if(payload.operation==='matrix_multiply')assert.deepEqual(result.matrix,[[19,22],[43,50]]);
   }
   // A busy compatible machine does not bypass an operation restriction at submission.
-  assert.equal((await request(`/api/admin/networks/${nativeNetwork.id}/policy`,{allowedOperations:['prime_count']},login.cookie,'PATCH')).status,200);
-  const nativeNodes=await store.availableNodes(nativeNetwork.id);await store.pool.execute("UPDATE nodes SET status='BUSY' WHERE id=?",[nativeNodes[0].id]);
-  const email='phase4-policy@example.invalid',password='Phase4PolicyOnly!42';assert.equal((await request('/api/auth/signup',{name:'Phase4 Policy',email,password,confirmPassword:password})).status,201);
-  const user=await request('/api/auth/login',{identifier:email,password});assert.equal(user.status,200);
-  assert.equal((await request('/api/compilations',{language:'python',sourceName:'policy.py',source:'print(1)'},user.cookie)).status,409);
-  await store.pool.execute("UPDATE nodes SET status='AVAILABLE' WHERE id=?",[nativeNodes[0].id]);
-  assert.equal((await request(`/api/admin/networks/${nativeNetwork.id}/policy`,{},login.cookie,'PATCH')).status,200);
+  assert.equal((await request(`/api/admin/networks/${nativeNetwork.id}/policy`,{allowedOperations:['prime_count']},login.cookie,'PATCH')).status,404,'Network scheduling policy endpoint is retired');
   const voluntaryNetwork=await networks.create({name:'Phase4 voluntary disconnect',description:'',maxNodes:1,expiresAt:null},admins[0].id),voluntaryEnrollment=await networks.createEnrollment(voluntaryNetwork.joinToken,'BROWSER','phase4-explicit-disconnect',true);
   logical=new WebSocket(target.base.replace(/^http/,'ws')+'/ws/worker',{headers:{Authorization:'Bearer '+voluntaryEnrollment.credential,Origin:process.env.PUBLIC_BASE_URL}});let logicalNode;
   logical.on('error',()=>{});logical.on('open',()=>logical.send(encodeProtocolMessage({type:'register',profile})));

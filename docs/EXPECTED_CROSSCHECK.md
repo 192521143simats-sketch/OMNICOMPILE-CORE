@@ -403,3 +403,8 @@ The user authorized removal of old OmniCompile application records and artifacts
 ## 23 November 2026 user override: one master link
 
 Scoped invitation generation is superseded by network creation plus one reusable master link. Device consent, individual credentials, administrator approval policy, revocation and capacity limits remain enforced. Native HTTPS transport discovery and resilient public startup are described in [MASTER_LINK_REPAIR.md](MASTER_LINK_REPAIR.md). This update preserves current data and does not certify unsigned/debug packages as signed releases.
+
+
+## Network UI override — 23 November 2026
+
+Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.

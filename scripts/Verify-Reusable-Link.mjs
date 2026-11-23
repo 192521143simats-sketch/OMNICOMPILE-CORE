@@ -9,6 +9,16 @@ const login=await request('/api/auth/login',{identifier:process.env.ADMIN_USERNA
 const pool=mysql.createPool({host:process.env.DB_HOST,port:Number(process.env.DB_PORT),database:target.database,user:process.env.DB_USER,password:process.env.DB_PASSWORD});
 try{
 const created=await request('/api/admin/networks',{name:'Reusable network fixture',maxNodes:3},login.cookie);assert.equal(created.status,201);
+assert.match(new URL(created.value.joinUrl).pathname,/^\/join-network-a\//);
+const token=new URL(created.value.joinUrl).pathname.split('/').at(-1);
+assert.equal((await request(`/api/join-network-b/${token}`)).status,404,'Mismatched network labels must be rejected');
+assert.equal((await request(`/api/join/${token}`)).status,200,'Previously shared token-only links remain usable');
+assert.equal((await request(`/api/admin/networks/${created.value.id}/policy`,undefined,login.cookie)).status,404);
+const policyResponse=await fetch(target.base+`/api/admin/networks/${created.value.id}/policy`,{method:'PATCH',headers:{origin,cookie:login.cookie,'content-type':'application/json'},body:JSON.stringify({allowedWorkerTypes:['ANDROID']})});assert.equal(policyResponse.status,404);
+await pool.execute("UPDATE distributed_networks SET configuration_json=JSON_SET(configuration_json,'$.policy',CAST(? AS JSON)) WHERE id=?",[JSON.stringify({allowedWorkerTypes:['ANDROID']}),created.value.id]);
+const {retireNetworkSchedulingPolicyMigration}=await import('../apps/coordinator/src/migrations/0025-retire-network-scheduling-policy.mjs');await retireNetworkSchedulingPolicyMigration().run(pool);
+const [[configuration]]=await pool.execute('SELECT configuration_json configuration FROM distributed_networks WHERE id=?',[created.value.id]);const config=typeof configuration.configuration==='string'?JSON.parse(configuration.configuration):configuration.configuration;
+assert.equal('policy' in config,false);assert.equal(config.requireAdminApproval,false,'Removing scheduling configuration must preserve admission settings');
 const linkPath=`/api${new URL(created.value.joinUrl).pathname}`,control=`/api/admin/networks/${created.value.id}/join-link`;
 const initial=await request(control,undefined,login.cookie);assert.equal(initial.status,200,'Network must have a persisted default join link');assert.equal(initial.value.enabled,true);assert.equal(initial.value.joinUrl,created.value.joinUrl);
 const body={consent:true,workerType:'BROWSER',deviceIdentity:'reusable-device-one'};

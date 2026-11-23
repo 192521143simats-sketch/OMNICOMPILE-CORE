@@ -15,10 +15,10 @@ it('does not count a closed unavailable socket as connected or a resource-inelig
  const disconnected=summarizeCompilerMetrics({tasks:[],workers:[{id:'lost',status:'AVAILABLE',lastHeartbeat:at,connected:false}],telemetry:[],verifications:[],availability:[]},now);
  expect(disconnected.availability).toMatchObject({registered:1,connected:0,available:0,disconnected:1});
 });
-it('uses persisted reliability and execution budget when determining availability',()=>{
+it('ignores retired network rules while retaining execution budgets',()=>{
  const at=new Date().toISOString();const worker={id:'trusted-history',status:'AVAILABLE',lastHeartbeat:at,profile:{workerType:'BROWSER',operations:{irOptimization:true},logicalCores:2},resources:{cpuUtilizationPercent:0,cpuMeasurementAvailable:false,memoryUtilizationPercent:0,memoryMeasurementAvailable:false,freeMemoryBytes:0,observedAt:at},capability:'ir',taskKind:'C_OPTIMIZE_IR',operation:'c_optimize_ir',timeoutMs:20000,configuration:{policy:{minReliability:.5}},reliabilitySamples:2,reliabilityRate:1};
  expect(qualifyMetricWorkers([worker])[0]?.eligible).toBe(true);
- expect(qualifyMetricWorkers([{...worker,reliabilitySamples:0,reliabilityRate:null}])[0]?.eligible).toBe(false);
+ expect(qualifyMetricWorkers([{...worker,reliabilitySamples:0,reliabilityRate:null}])[0]?.eligible).toBe(true);
 });
 it('does not invent zero resource readings or percentages and excludes stale observations',()=>{
  const now=Date.parse('2026-11-01T10:00:00Z');

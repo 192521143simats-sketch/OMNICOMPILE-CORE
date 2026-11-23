@@ -14,7 +14,7 @@ const routes=[
   {src:'/ws(?:/(.*))?',dest:backend+'/ws/$1'},
   {handle:'filesystem'},
   {src:'/(?:login|signup|forgot-password|reset-password|admin|dashboard|worker|web-worker|browser-worker|windows-worker|android-worker|settings|compute)/?',dest:'/index.html'},
-  {src:'/join/[^/]+(?:/(?:web|windows|android))?/?',dest:'/index.html'},
+  {src:'/(?:join|join-network-[A-Za-z]+)/[^/]+(?:/(?:web|windows|android))?/?',dest:'/index.html'},
   {src:'/',dest:'/index.html'},
   {src:'/.*',dest:'/index.html',status:404},
 ];

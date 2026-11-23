@@ -1,4 +1,4 @@
-import {networkPolicySchema,contributionPolicySchema,resourceSchema,type CapabilityProfile,type ResourceSnapshot,type NetworkPolicy,type ContributionPolicy} from "@omnicompile/contracts";
+import {contributionPolicySchema,resourceSchema,type CapabilityProfile,type ResourceSnapshot,type ContributionPolicy} from "@omnicompile/contracts";
 export * from "./reliability.js";
 
 export type RequiredCapability="base"|"ir"|"c"|"python"|"java";
@@ -17,7 +17,7 @@ export type SchedulableNode={
   historicalPerformance?:Partial<Record<RequiredCapability,NodePerformance>>;
   executionLocation?:ExecutionLocation;
 };
-export type SchedulingContext={nowMs?:number;maxResourceAgeMs?:number;policy?:NetworkPolicy};
+export type SchedulingContext={nowMs?:number;maxResourceAgeMs?:number};
 export type CandidateEvaluation={nodeId:string;eligible:boolean;score:number|null;reasons:string[]};
 export type SchedulingDecision={selectedNodeId:string|null;score:number|null;explanation:string;evaluations:CandidateEvaluation[]};
 
@@ -33,12 +33,10 @@ function validHistory(history:NodePerformance|undefined):history is NodePerforma
 
 export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,context:SchedulingContext={}):CandidateEvaluation{
   const reasons:string[]=[],nowMs=context.nowMs??Date.now(),maxAge=context.maxResourceAgeMs??30_000;
-  const policyResult=networkPolicySchema.safeParse(context.policy??{});
   const androidDefaults=node.profile.workerType==="ANDROID"?{minBatteryPercent:25,wifiOnly:true,thermalProtection:true,allowBackground:false}:{};
   const contributionResult=contributionPolicySchema.safeParse({...androidDefaults,...(node.contributionPolicy??node.profile.contributionPolicy??{})});
-  if(!policyResult.success)reasons.push("network policy is invalid");
   if(!contributionResult.success)reasons.push("contribution policy is invalid");
-  const policy=policyResult.success?policyResult.data:{},contribution=contributionResult.success?contributionResult.data:{};
+  const contribution=contributionResult.success?contributionResult.data:{};
   if(node.status!=="AVAILABLE")reasons.push(`status is ${node.status}`);
   const location=node.executionLocation??"LOCAL";
   if(requirements.executionMode==="CLOUD_ONLY"&&location!=="CLOUD")reasons.push("cloud-only job requires an administrator-designated cloud worker");
@@ -50,10 +48,6 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
   if(requirements.operation==="matrix_multiply"&&node.profile.operations.portableMatrix!==true)reasons.push("portable matrix operation was not negotiated");
   if(requirements.operation==="portable_benchmark"&&node.profile.operations.portableBenchmark!==true)reasons.push("portable benchmark operation was not negotiated");
   if(requirements.requireNativeCSource&&node.profile.operations.nativeCSource!==true)reasons.push("native C source task protocol is unavailable");
-  if(policy.allowedWorkerTypes&&!policy.allowedWorkerTypes.includes(node.profile.workerType))reasons.push("worker type is disallowed by network policy");
-  if(policy.allowedPlatforms&&!policy.allowedPlatforms.includes(node.profile.operatingSystem))reasons.push("platform is disallowed by network policy");
-  if(policy.allowedTaskKinds&&(!requirements.taskKind||!policy.allowedTaskKinds.some(kind=>kind===requirements.taskKind)))reasons.push("task kind is missing or disallowed by network policy");
-  if(policy.allowedOperations&&(!requirements.operation||!policy.allowedOperations.some(operation=>operation===requirements.operation)))reasons.push("operation is missing or disallowed by network policy");
   if(requirements.operatingSystem&&requirements.operatingSystem!==node.profile.operatingSystem)reasons.push("required operating system does not match");
   if(requirements.architecture&&requirements.architecture!==node.profile.architecture)reasons.push("required architecture does not match");
   if(requirements.toolchainVersion){const capability=requirements.capability;if(capability==="base"||capability==="ir"||node.profile.toolchains[capability].version!==requirements.toolchainVersion)reasons.push("required toolchain version does not match");}
@@ -63,7 +57,6 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
   }
   if(requirements.deadlineAt){const deadline=Date.parse(requirements.deadlineAt);if(!Number.isFinite(deadline)||deadline<=nowMs||(requirements.maxDurationMs!==undefined&&nowMs+requirements.maxDurationMs>deadline))reasons.push("task deadline cannot be met within its execution budget");}
   const reliability=node.reliability;
-  if((policy.minReliability??0)>0&&(!reliability||!Number.isInteger(reliability.sampleCount)||reliability.sampleCount<=0||reliability.successRate===null||!Number.isFinite(reliability.successRate)||reliability.successRate<policy.minReliability!||reliability.successRate>1))reasons.push("worker reliability is unknown or below network minimum");
   if(!node.resources)reasons.push("no current resource snapshot");
   else{
     const resources=node.resources,observedAt=Date.parse(resources.observedAt);
@@ -77,7 +70,7 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
     else if(memoryKnown&&resources.freeMemoryBytes<(requirements.minFreeMemoryBytes??0))reasons.push(`requires at least ${requirements.minFreeMemoryBytes} free memory bytes`);
     if(resources.lifecycleState==="PAUSED")reasons.push("worker lifecycle is paused");
     if(resources.networkType==="OFFLINE")reasons.push("worker network is offline");
-    for(const limits of [policy,contribution]){
+    for(const limits of [contribution]){
       if(limits.maxTaskDurationMs!==undefined&&(requirements.maxDurationMs===undefined||requirements.maxDurationMs>limits.maxTaskDurationMs))reasons.push("task duration budget is missing or exceeds policy maximum");
       if(limits.maxMemoryBytes!==undefined){
         if(!memoryKnown)reasons.push("memory policy requires a known memory measurement");

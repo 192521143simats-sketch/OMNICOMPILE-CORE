@@ -1,8 +1,8 @@
 import { z } from "zod";
 import {sha256TaskSchema,primeCountTaskSchema,sha256ChainTaskSchema,matrixMultiplyTaskSchema,portableBenchmarkTaskSchema} from "./portable-catalogue.js";
 export * from "./portable-catalogue.js";
-import {contributionPolicySchema} from "./network-policy.js";
-export * from "./network-policy.js";
+import {contributionPolicySchema} from "./contribution-policy.js";
+export * from "./contribution-policy.js";
 
 export const PROTOCOL_VERSION=2 as const;
 const protocolVersion=z.literal(PROTOCOL_VERSION);

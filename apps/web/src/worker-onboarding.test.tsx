@@ -31,3 +31,10 @@ describe("worker onboarding", () => {
     expect(closed).not.toContain("href=");
   });
 });
+
+it('keeps the network label across platform enrollment links',()=>{
+ expect(joinPath('master-token','windows','A')).toBe('/join-network-a/master-token/windows');
+ expect(parseJoinRoute('/join-network-ab/master-token/android')).toEqual({networkCode:'AB',token:'master-token',platform:'android'});
+ const html=renderToStaticMarkup(<WorkerChoices token="master-token" networkCode="A" accepting/>);
+ expect(html).toContain('/join-network-a/master-token/web');
+});

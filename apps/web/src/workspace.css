@@ -34,3 +34,5 @@
 /* Keep identifiers and actions readable; narrow screens scroll inside the table. */
 .platform-shell .table-wrap table{min-width:760px}
 .platform-shell .table-wrap code{white-space:nowrap;word-break:normal}
+
+.network-join-link{display:grid;justify-items:start;gap:12px;margin-bottom:12px;max-width:560px}.network-link-reveal{display:flex;align-items:end;gap:12px;max-width:100%;width:100%}.network-link-reveal label{flex:1;min-width:180px}.network-link-reveal input{font-family:monospace;font-size:12px}.network-join-link p{margin:0;font-size:12px}.network-inventory td:last-child{min-width:340px}

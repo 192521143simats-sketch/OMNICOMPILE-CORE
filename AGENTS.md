@@ -35,3 +35,8 @@ policy before execution. Do not retry equivalent deletion through other tools.
 The reviewable scripts/Reset-Fresh-Application.ps1 -FactoryReset is prepared for the
 user to run locally. Only report success after Verify-Fresh-Launch.mjs passes;
 current historical launch reports do not establish this new reset.
+
+
+## Network UI override — 23 November 2026
+
+Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.

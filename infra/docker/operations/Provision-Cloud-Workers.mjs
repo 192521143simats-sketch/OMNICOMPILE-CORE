@@ -34,6 +34,7 @@ try{
       const link=await api(`/api/admin/networks/${metadata.networkId}/join-link`);
       const info=await api('/api'+new URL(link.joinUrl).pathname);
       unavailable=info.network.status!=='ACTIVE';
+      if(!unavailable){metadata.joinUrl=link.joinUrl;await save();}
     }catch(error){if(error.status===404)unavailable=true;else throw error;}
     if(unavailable){
       if(process.env.OMNICOMPILE_REPAIR_MANAGED_WORKERS!=='1')throw new Error('The saved managed network is unavailable. Explicitly run START-OMNICOMPILE.bat -RepairManagedWorkers to create a replacement managed pool. Existing networks are preserved.');

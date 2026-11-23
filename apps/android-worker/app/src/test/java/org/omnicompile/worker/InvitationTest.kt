@@ -9,6 +9,14 @@ class InvitationTest {
         assertEquals("https://grid.example", parsed.origin)
         assertEquals("abcdefghijklmnop", parsed.token)
     }
+    @Test fun acceptsNamedNetworkLink() {
+        val parsed=Invitation.parse("https://grid.example/join-network-a/abcdefghijklmnop",false)
+        assertEquals("https://grid.example",parsed.origin)
+        assertEquals("abcdefghijklmnop",parsed.token)
+    }
+    @Test fun acceptsPlatformLinkWithoutConfusingPlatformWithToken() {
+        assertEquals("abcdefghijklmnop",Invitation.parse("https://grid.example/join-network-a/abcdefghijklmnop/android/",false).token)
+    }
     @Test fun rejectsSecretsInUrlAndReleaseCleartext() {
         for (input in listOf("http://grid.example/join/abcdefghijklmnop", "https://user:pass@grid.example/join/abcdefghijklmnop", "https://grid.example/join/token?credential=abc", "file:///join/token"))
             assertThrows(IllegalArgumentException::class.java) { Invitation.parse(input, false) }

@@ -1,5 +1,5 @@
 import React,{useState} from 'react';
-import {parseJoinRoute,type JoinPlatform} from './worker-onboarding.js';
+import {joinPath,parseJoinRoute,type JoinPlatform} from './worker-onboarding.js';
 
 export function workerPlatform(path:string):JoinPlatform|undefined {
   return ({'/web-worker':'web','/browser-worker':'web','/windows-worker':'windows','/android-worker':'android'} as Record<string,JoinPlatform>)[path.replace(/\/$/,'')];
@@ -15,7 +15,7 @@ export function WorkerDirectory({platform}:{platform?:JoinPlatform}) {
       const url=new URL(invitation,location.origin),join=parseJoinRoute(url.pathname);
       const token=join?.token??url.searchParams.get('token');
       if(!token)throw new Error('Paste the participation link supplied by your administrator.');
-      location.assign(platform?workerEntryPath(platform,token):`/worker?token=${encodeURIComponent(token)}`);
+      location.assign(join?.networkCode?joinPath(token,platform,join.networkCode):platform?workerEntryPath(platform,token):`/worker?token=${encodeURIComponent(token)}`);
     } catch {setError('Paste a valid participation link supplied by your administrator.');}
   }
   return <>

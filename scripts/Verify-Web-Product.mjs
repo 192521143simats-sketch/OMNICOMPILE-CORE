@@ -66,23 +66,22 @@ try{
     expect((await context.request.get('/api/admin/overview')).status()).toBe(403);
     await admin.getByLabel('Name',{exact:true}).fill('Browser Acceptance Alpha');
     await admin.getByRole('button',{name:'Create network and master link',exact:true}).click();
-    await expect(admin.getByText('Master network link',{exact:true})).toBeVisible();
+    await expect(admin.getByText('Master network link',{exact:true})).toHaveCount(0);
+    await admin.getByRole('button',{name:'Show / copy link',exact:true}).click();
+    await expect(admin.getByLabel('Master network link',{exact:true})).toBeVisible();
     const headings=await admin.locator('h2').allTextContents();
     expect(headings.indexOf('Create network and master link')).toBeLessThan(headings.indexOf('Execution toolchains'));
     expect(headings.indexOf('Execution toolchains')).toBeLessThan(headings.indexOf('Networks and worker nodes'));
     await expect(admin.getByRole('heading',{name:'Scoped invitations'})).toHaveCount(0);
     await admin.getByRole('button',{name:'Copy',exact:true}).click();
-    await expect(admin.getByRole('button',{name:'✓ Copied',exact:true})).toBeVisible();
+    await expect(admin.getByRole('status').filter({hasText:'Link copied.'})).toBeVisible();
     const network=(await (await adminContext.request.get('/api/admin/networks?page=1&pageSize=10')).json()).items[0];
     async function approveEnrollment(workerType,enrollmentId){let pending;await expect.poll(async()=>{const response=await adminContext.request.get(`/api/admin/networks/${network.id}/enrollments?page=1&pageSize=10`);pending=(await response.json()).items.find(item=>item.approvalStatus==='PENDING'&&item.workerType===workerType&&(!enrollmentId||item.enrollmentId===enrollmentId));return Boolean(pending);},{timeout:30000}).toBe(true);await admin.getByRole('button',{name:'Refresh enrollments',exact:true}).click();await admin.getByRole('row').filter({hasText:pending.enrollmentId}).getByRole('button',{name:'Approve',exact:true}).click();}
-    expect((await adminContext.request.get(`/api/admin/networks/${network.id}/policy`)).status()).toBe(200);
-    await admin.getByRole('button',{name:'Scheduling policy',exact:true}).click();
-    await expect(admin.getByRole('heading',{name:'Network details'})).toBeVisible();
-    await admin.getByLabel('Scheduling policy (JSON)').fill('{}');
-    await admin.getByRole('button',{name:'Save scheduling policy'}).click();
-    await expect(admin.getByRole('status').filter({hasText:'Network scheduling policy saved.'})).toBeVisible();
-    await admin.getByRole('button',{name:'Close details'}).click();
-    const joinURL=await admin.locator('.copy code').textContent();
+    expect((await adminContext.request.get(`/api/admin/networks/${network.id}/policy`)).status()).toBe(404);
+    await expect(admin.getByRole('button',{name:'Scheduling policy',exact:true})).toHaveCount(0);
+    await expect(admin.getByRole('heading',{name:'Network details',exact:true})).toHaveCount(0);
+    const joinURL=await admin.getByLabel('Master network link',{exact:true}).inputValue();
+    expect(new URL(joinURL).pathname).toMatch(/^\/join-network-a\//);
     const workerContext=await browser.newContext({baseURL:base}),workerPage=await workerContext.newPage();
     try{
       workerPage.on('pageerror',error=>failures.push(error.message));
