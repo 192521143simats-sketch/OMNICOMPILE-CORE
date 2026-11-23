@@ -15,7 +15,7 @@
     },
     {
       "src": "/api(?:/(.*))?",
-      "dest": "https://59d2-2402-3a80-40e-2b79-8109-fb4a-a308-1805.ngrok-free.app/api/$1",
+      "dest": "https://f30b-103-249-82-242.ngrok-free.app/api/$1",
       "headers": {
         "Cache-Control": "private, no-store",
         "CDN-Cache-Control": "no-store",
@@ -34,7 +34,7 @@
     },
     {
       "src": "/ws(?:/(.*))?",
-      "dest": "https://59d2-2402-3a80-40e-2b79-8109-fb4a-a308-1805.ngrok-free.app/ws/$1"
+      "dest": "https://f30b-103-249-82-242.ngrok-free.app/ws/$1"
     },
     {
       "handle": "filesystem"

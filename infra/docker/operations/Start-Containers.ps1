@@ -69,21 +69,14 @@ foreach ($language in @('c','python','java')) {
 }
 Invoke-Docker -Arguments (@('compose') + $composeArgs + @('config','--quiet'))
 if (-not $SkipBuild) { Invoke-Docker -Arguments (@('compose') + $composeArgs + @('build')) }
-Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--wait','--wait-timeout','240'))
+# Enrollment needs the control plane, not healthy workers with stale credentials.
+Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--wait','--wait-timeout','240','omnicompile-mysql','omnicompile-artifacts','omnicompile-executor','omnicompile-coordinator','omnicompile-frontend'))
 if (-not $hostNode) { throw 'Node.js is required for secure cloud-worker enrollment. Install the supported pinned Node runtime, then restart.' }
-$credentialHashes = @{}
-foreach ($language in @('c','python','java')) {
-    $credentialHashes[$language] = Get-Sha256 (Join-Path $credentialDirectory ($language + '.credential'))
-}
 & $hostNode.Source (Join-Path $ProjectRoot 'infra/docker/operations/Provision-Cloud-Workers.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Cloud worker enrollment failed. Existing project data is preserved; inspect the enrollment error above.' }
-foreach ($language in @('c','python','java')) {
-    $after = Get-Sha256 (Join-Path $credentialDirectory ($language + '.credential'))
-    if ($after -ne $credentialHashes[$language]) {
-        Invoke-Docker -Arguments (@('compose') + $composeArgs + @('restart',('omnicompile-' + $language + '-worker')))
-    }
-    Wait-Healthy -Name ('omnicompile-' + $language + '-worker')
-}
+# Recreate only the managed agents after credentials are validated/replaced. This
+# resets failed health checks and reopens credential mounts; identities stay saved.
+Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--no-deps','--force-recreate','--wait','--wait-timeout','240','omnicompile-c-worker','omnicompile-python-worker','omnicompile-java-worker'))
 
 $manifestAfter = if (Test-Path -LiteralPath $manifestPath) { Get-Sha256 $manifestPath } else { '' }
 $backendAfter = & docker container ls --all --filter 'name=^/omnicompile-coordinator$' --format '{{.ID}}'

@@ -461,3 +461,25 @@ Configurable network scheduling policies and Network details are removed, includ
 See [COMPILER_METRICS_UPDATE.md](COMPILER_METRICS_UPDATE.md) for automatic placement,
 device-only timing/availability presentation, preserved measured resource data and
 isolated validation evidence. No factory reset or worker revocation repair ran.
+
+
+## Managed worker startup repair — 23 November 2026
+
+The launcher previously waited for every container before running enrollment.
+Revoked saved credentials could therefore make a worker unhealthy and prevent the
+explicit repair from running. Start-Containers now waits for the five control/data
+services first, provisions or validates enrollments, then recreates and waits for
+only the three managed agents. Ordinary startup still refuses revoked identities;
+replacement requires the existing RepairManagedWorkers switch.
+
+The requested repair was executed successfully with Start-Product.ps1
+-RepairManagedWorkers -NoBrowser. All three replacement managed enrollments were
+approved and registered online; revoked historical records and application data
+were preserved. No volume/database reset or separate MYSQL change was performed.
+The tunnel changed, so the launcher published updated routes and verified the
+public API. Regression test startup-order.test.mjs reproduced the old failure with
+mocked Docker/Node processes before the fix; all 70 operations tests passed after.
+
+A subsequent normal startup without RepairManagedWorkers completed successfully;
+all three saved enrollment IDs were unchanged, and the public API returned the
+expected unauthenticated response. Use START-OMNICOMPILE.bat normally now.
