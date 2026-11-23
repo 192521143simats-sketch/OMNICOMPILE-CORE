@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import {randomUUID} from 'node:crypto';
 import WebSocket from 'ws';
 import {encodeProtocolMessage,parseCoordinatorMessage} from '@omnicompile/contracts';
+import {lowerCToIR} from '@omnicompile/compiler-c';
 import {execute} from '../apps/worker/src/executor.ts';
 import {Store} from '../apps/coordinator/src/database.ts';
 import {NetworkService} from '../apps/coordinator/src/networks.ts';
@@ -43,7 +44,12 @@ try{
  await poll(async()=>{const [rows]=await store.pool.execute('SELECT status FROM nodes WHERE id=?',[nodeId]);return rows[0]?.status;},value=>value==='AVAILABLE','worker availability');
  const actualJobs=[];
  for(const user of users){
-  const submitted=await request('/api/compilations',{language:'c',sourceName:'metrics.c',source:'int main(void) { int x = 2 + 3; return x; }'},user.cookie);assert.equal(submitted.status,202);actualJobs.push(submitted.body.id);
+  // Create an isolated IR workload directly: this fixture has a browser only,
+  // whereas public Hybrid submissions also require an eligible toolchain fallback.
+  const source='int main(void) { int x = 2 + 3; return x; }';
+  const job=await store.createCompilationJob(user.id,network.id,'c','metrics.c',source);
+  await store.createCOptimizationBatch(network.id,lowerCToIR(source),job.id);
+  const submitted={body:job};actualJobs.push(job.id);
   const metrics=await poll(async()=>{if(fatal)throw fatal;return request(`/api/user/compiler-metrics?jobId=${submitted.body.id}`,undefined,user.cookie);},value=>value.status===200&&value.body.tasks.successful===1,'coordinator accepted actual IR computation');
   assert.equal(metrics.body.completion.count,1);assert.ok(metrics.body.completion.averageMs>=0&&metrics.body.completion.averageMs<999999,'E2E duration must use coordinator timestamps, not worker execution claim');assert.equal(metrics.body.verification.verified,1);assert.equal(metrics.body.resources.cpuPercent,null,'unavailable browser reading must not be zero');
  }
@@ -76,7 +82,7 @@ try{
   const id=`TASK-${randomUUID()}`,terminal=['COMPLETED','FAILED','CANCELLED'].includes(status),attempt=status==='QUEUED'?0:1;
   await store.pool.execute("INSERT INTO tasks(id,session_id,network_id,job_id,kind,payload_json,required_capability,status,attempt,created_at,completed_at) VALUES(?,NULL,?,?,'METRICS_FIXTURE','{}','metrics_fixture',?,?,?,?)",[id,network.id,seededJob.id,status,attempt,assigned,terminal?at:null]);
   if(attempt)await store.pool.execute('INSERT INTO task_attempts(task_id,attempt,node_id,status,scheduler_score,scheduler_explanation,assigned_at,completed_at,failure_reason,lease_expires_at) VALUES(?,1,?,?,0,?,?,?,?,TIMESTAMPADD(SECOND,300,UTC_TIMESTAMP(3)))',[id,nativeNode.nodeId,status==='FAILED'&&reason==='TIMEOUT'?'TIMED_OUT':status,'Synthetic arithmetic fixture, not executed work',assigned,terminal?at:null,reason]);
-  if(status==='COMPLETED'){completedTask=id;await store.pool.execute("INSERT INTO result_verifications(id,task_id,node_id,attempt,outcome,method,received_at,completed_at) VALUES(?,?,?,1,'VERIFIED','synthetic-metric-arithmetic-fixture',?,?)",[`VERIFY-${randomUUID()}`,id,nativeNode.nodeId,at,at]);await store.metrics.sampleAvailability();}
+  if(status==='COMPLETED'){completedTask=id;await store.pool.execute("INSERT INTO result_verifications(id,task_id,node_id,attempt,outcome,method,received_at,completed_at) VALUES(?,?,?,1,'VERIFIED','independent-source-recompilation',?,?)",[`VERIFY-${randomUUID()}`,id,nativeNode.nodeId,at,at]);await store.metrics.sampleAvailability();}
   if(status==='RUNNING')telemetryTask=id;
  }
  for(const [cpu,ram,observed] of [[20,null,at],[40,60,at],[100,100,new Date(now.getTime()-120000).toISOString()]])await store.pool.execute('INSERT INTO worker_telemetry(task_id,node_id,platform,cpu_percent,ram_percent,observed_at) VALUES(?,?,?,?,?,?)',[telemetryTask,nativeNode.nodeId,'WINDOWS',cpu,ram,observed]);

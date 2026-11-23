@@ -274,16 +274,24 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
   app.get("/api/networks",{preHandler:requireUser},async()=>{const page=await networks.listNetworks({page:1,pageSize:100});return{items:page.items.filter((item:any)=>item.status==="ACTIVE")};});
   app.get("/api/jobs",{preHandler:requireUser},async(request:AuthRequest,reply)=>{const parsed=pageSchema.safeParse(request.query);return parsed.success?networks.listJobs(parsed.data,request.auth!.role==="ADMIN"?undefined:request.auth!.id):reply.code(400).send(apiError("INVALID_PAGE","Invalid pagination parameters."));});
   app.post("/api/compilations",{preHandler:requireRole("USER")},async(request:AuthRequest,reply)=>{
-    const parsed=z.object({language:z.enum(["c","python","java"]),sourceName:z.string().min(1).max(255),source:z.string().min(1).max(1_000_000),executionInput:z.string().max(16384).default(""),executionMode:z.enum(["CLOUD_ONLY","LOCAL_ONLY","HYBRID"]).default("CLOUD_ONLY")}).safeParse(request.body);
+    const parsed=z.object({language:z.enum(["c","python","java"]),sourceName:z.string().min(1).max(255),source:z.string().min(1).max(1_000_000),executionInput:z.string().max(16384).default(""),executionMode:z.enum(["AUTO","CLOUD_ONLY","LOCAL_ONLY","HYBRID"]).default("AUTO")}).safeParse(request.body);
     if(!parsed.success)return reply.code(400).send(apiError("INVALID_COMPILATION","Check the compilation request.",parsed.error.issues));
     const{language,sourceName,source}=parsed.data,extension={c:".c",python:".py",java:".java"}[language];
     if(!/^[A-Za-z0-9][A-Za-z0-9._-]*$/.test(sourceName)||!sourceName.toLowerCase().endsWith(extension))return reply.code(400).send(apiError("INVALID_SOURCE_EXTENSION",`Use a filename ending in ${extension}, without a directory path.`));
     const mismatch=sourceLanguageMismatch(language,source);if(mismatch)return reply.code(400).send(apiError("SOURCE_LANGUAGE_MISMATCH",mismatch));
-    let ir:ReturnType<typeof lowerCToIR>|null=null;if(language==="c"&&parsed.data.executionMode!=="LOCAL_ONLY"){try{ir=lowerCToIR(source);}catch{/* The real GCC path handles source outside the custom IR grammar and reports invalid C. */}}
-    const capability=language==="c"?(ir?"ir":"c"):language,networkId=await selectNetworkFor(capability,undefined,parsed.data.executionMode);
+    let executionMode:ExecutionMode=parsed.data.executionMode==="AUTO"?"HYBRID":parsed.data.executionMode;
+    let ir:ReturnType<typeof lowerCToIR>|null=null;if(language==="c"&&executionMode!=="LOCAL_ONLY"){try{ir=lowerCToIR(source);}catch{/* The real GCC path handles source outside the custom IR grammar and reports invalid C. */}}
+    const capability=language==="c"?(ir?"ir":"c"):language;
+    let networkId=await selectNetworkFor(capability,undefined,executionMode);
+    if(!networkId&&parsed.data.executionMode==="AUTO"){
+      // A capable native device can compile without a registered fallback peer.
+      // Browser-only IR cannot claim a native compiler or strand a source job.
+      executionMode="LOCAL_ONLY";ir=null;
+      networkId=await selectNetworkFor(language,undefined,executionMode);
+    }
     if(!networkId)return reply.code(409).send(apiError("NO_COMPATIBLE_NETWORK",parsed.data.executionMode==="LOCAL_ONLY"?"No compatible local native worker is connected. Choose Cloud Only or Hybrid to allow a cloud worker.":parsed.data.executionMode==="CLOUD_ONLY"?"No compatible administrator-approved cloud worker is connected for this language.":"No compatible local or cloud worker is connected to an active network."));
     if(Buffer.byteLength(parsed.data.executionInput)>16384)return reply.code(400).send(apiError("INVALID_EXECUTION_INPUT","Standard input must not exceed 16 KB."));
-    const job=await store.createCompilationJob(request.auth!.id,networkId,language,sourceName,source,parsed.data.executionInput,parsed.data.executionMode);
+    const job=await store.createCompilationJob(request.auth!.id,networkId,language,sourceName,source,parsed.data.executionInput,executionMode);
     void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");const taskKind=language==="c"?"C_COMPILE":language==="python"?"PYTHON_COMPILE":"JAVA_COMPILE",operation=language==="c"?"c_compile":language==="python"?"python_compile":"java_compile";await store.createJobWorkTask(job.id,networkId,taskKind,{operation,source,sourceName},language);}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
     return reply.code(202).send(job);
   });

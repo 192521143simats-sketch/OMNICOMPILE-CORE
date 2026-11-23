@@ -14,7 +14,7 @@ it('renders six live indicators without manufacturing percentages or unavailable
 });
 it('displays actual counts, separate CPU and RAM, method-labelled verification and trends',async()=>{
   vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,tasks:{...empty.tasks,successful:2,failed:1,totalCompleted:3,successRate:66.666,trend:[{date:'2026-11-01',successful:2,failed:1,timedOut:0,totalCompleted:3,successRate:66.666}]},completion:{averageMs:153.5,count:2,platforms:[{platform:'WINDOWS',count:2,averageMs:153.5}]},resources:{...empty.resources,cpuPercent:23.5,cpuReadings:4},verification:{...empty.verification,verified:2,rejected:1,completed:3,rate:66.666,history:[{taskId:'TASK-1',workerId:'NODE-A001',outcome:'VERIFIED',method:'independent-recomputation',receivedAt:'2026-11-01T10:00:00Z',completedAt:'2026-11-01T10:00:01Z'}]}})));const view=await mount();
-  try{await act(async()=>view.root.render(<CompilerMetrics/>));expect(view.host.textContent).toContain('66.7%');expect(view.host.textContent).toContain('153.5 ms');expect(view.host.textContent).toContain('23.5%');expect(view.host.textContent).toContain('independent-recomputation');expect(view.host.textContent).toContain('2026-11-01');}finally{await view.close();}
+  try{await act(async()=>view.root.render(<CompilerMetrics/>));expect(view.host.textContent).toContain('66.7%');expect(view.host.textContent).toContain('153.5 ms');expect(view.host.textContent).toContain('23.5%');expect(view.host.textContent).toContain('independent-recomputation');expect(view.host.textContent).not.toContain('Historical success trend');}finally{await view.close();}
 });
 it('aborts an old job request, clears its data and ignores late responses after a scope change',async()=>{
   const pending:Array<{resolve:(value:Response)=>void;signal:AbortSignal}>=[];vi.stubGlobal('fetch',vi.fn((_path:string,init:RequestInit)=>new Promise<Response>(resolve=>pending.push({resolve,signal:init.signal!}))));const view=await mount();
@@ -40,16 +40,21 @@ it('labels retained values stale when a later poll fails instead of presenting a
   vi.useFakeTimers();const fetcher=vi.fn().mockResolvedValueOnce(response(empty)).mockRejectedValueOnce(new Error('Network unavailable'));vi.stubGlobal('fetch',fetcher);const view=await mount();
   try{await act(async()=>view.root.render(<CompilerMetrics/>));await act(async()=>vi.advanceTimersByTime(3000));expect(view.host.textContent).toContain('Last values may be stale');expect(view.host.textContent).toContain('Updates interrupted');expect(view.host.querySelector('[role="alert"]')?.textContent).toContain('Unable to reach');}finally{await view.close();}
 });
-it('offers cloud and other-native platform filters and requests server-scoped data',async()=>{
- const fetcher=vi.fn(async(_path:string)=>response(empty));vi.stubGlobal('fetch',fetcher);const view=await mount();
+it('shows only device platforms for timing and availability while retaining assistance in totals and resource measurements',async()=>{
+ const platforms=['WEB','WINDOWS','ANDROID','CLOUD','NATIVE_OTHER'];
+ vi.stubGlobal('fetch',vi.fn(async()=>response({...empty,
+  completion:{averageMs:100,count:5,platforms:platforms.map(platform=>({platform,averageMs:100,count:1}))},
+  availability:{...empty.availability,registered:5,connected:5,platforms:platforms.map(platform=>({...empty.availability,platform,registered:1,connected:1}))},
+  resources:{...empty.resources,platforms:platforms.map(platform=>({...empty.resources,platform}))}
+ })));const view=await mount();
  try{
-  await act(async()=>view.root.render(<CompilerMetrics jobId="JOB-ABCDE"/>));
+  await act(async()=>view.root.render(<CompilerMetrics/>));
   const selector=view.host.querySelector<HTMLSelectElement>('[aria-label="Metrics platform"]')!;
-  expect(selector.querySelector('option[value="CLOUD"]')).not.toBeNull();
-  expect(selector.querySelector('option[value="NATIVE_OTHER"]')).not.toBeNull();
-  await act(async()=>{selector.value='CLOUD';selector.dispatchEvent(new Event('change',{bubbles:true}));});
-  expect(fetcher.mock.calls.at(-1)?.[0]).toContain('platform=CLOUD');
-  expect(fetcher.mock.calls.at(-1)?.[0]).toContain('jobId=JOB-ABCDE');
+  expect(Array.from(selector.options).map(option=>option.value)).toEqual(['','WEB','WINDOWS','ANDROID']);
+  for(const index of [1,3]){const card=view.host.querySelectorAll('article')[index]!;expect(card.textContent).not.toContain('Other native');expect(card.querySelector('table')!.querySelectorAll('tbody tr')).toHaveLength(3);}
+  expect(view.host.textContent).not.toContain('Historical success trend');
+  expect(view.host.querySelectorAll('article')[1]!.textContent).toContain('5 successful completed tasks');
+  expect(view.host.querySelectorAll('article')[4]!.textContent).toContain('Other native');
  }finally{await view.close();}
 });
 

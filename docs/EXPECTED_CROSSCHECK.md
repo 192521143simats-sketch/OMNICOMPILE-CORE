@@ -408,3 +408,11 @@ Scoped invitation generation is superseded by network creation plus one reusable
 ## Network UI override — 23 November 2026
 
 Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.
+
+
+### Compiler dashboard override — 23 November 2026
+
+Compilation worker preference and Historical success trend are removed. Timing and
+availability display Web/Windows/Android, retaining supporting-service work in
+aggregate measurements without inventing device provenance. Measured resource
+utilization remains unchanged. See COMPILER_METRICS_UPDATE.md for scoped evidence.

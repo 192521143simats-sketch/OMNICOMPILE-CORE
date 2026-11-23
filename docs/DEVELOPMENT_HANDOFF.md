@@ -454,3 +454,10 @@ Startup now uses built runtime images. `Start-Online-Demo.ps1` prepares the secu
 ## Network UI override — 23 November 2026
 
 Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.
+
+
+## Compiler dashboard — 23 November 2026
+
+See [COMPILER_METRICS_UPDATE.md](COMPILER_METRICS_UPDATE.md) for automatic placement,
+device-only timing/availability presentation, preserved measured resource data and
+isolated validation evidence. No factory reset or worker revocation repair ran.

@@ -112,7 +112,7 @@ try{
         for(const item of [{language:'c',file:'sample-c-easy.c'},{language:'python',file:'sample-python-easy.py'},{language:'java',file:'sample-java-easy.java'}]){
           await expect.poll(async()=>{const nodes=await (await adminContext.request.get('/api/admin/nodes?page=1&pageSize=10')).json();return nodes.items.some(node=>node.workerType==='NATIVE'&&node.status==='AVAILABLE'&&node.profile.runtimes[item.language]&&node.resources?.freeMemoryBytes>=536870912);},{timeout:30000}).toBe(true);
           await page.goto('/dashboard');await page.getByLabel('Language',{exact:true}).selectOption(item.language);
-          await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
+          await expect(page.getByLabel('Compilation worker preference')).toHaveCount(0);
           let fixtureSource=await readFile(resolve('samples',item.language,item.file),'utf8');
           if(item.language==='python')fixtureSource+='\nif False:\n    print("UNREACHABLE_TEST_MARKER")\n';
           else if(item.language==='java'){
@@ -163,7 +163,7 @@ try{
         ]){
           await page.goto('/dashboard');
           await page.getByLabel('Language',{exact:true}).selectOption(item.language);
-          await page.getByLabel('Compilation worker preference').selectOption('LOCAL_ONLY');
+          await expect(page.getByLabel('Compilation worker preference')).toHaveCount(0);
           await page.getByLabel('Upload source file').setInputFiles({name:item.name,mimeType:'text/plain',buffer:Buffer.from(item.source)});
           await waitNative(item.language);
           const submitted=page.waitForResponse(response=>new URL(response.url()).pathname==='/api/compilations'&&response.request().method()==='POST');
