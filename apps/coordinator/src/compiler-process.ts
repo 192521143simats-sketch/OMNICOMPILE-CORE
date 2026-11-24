@@ -1,3 +1,4 @@
+import {planJavaUnits,aggregateJavaUnits} from '@omnicompile/compiler-java';
 import {planPythonUnits,aggregatePythonUnits} from '@omnicompile/compiler-python';
 import {verifyCompilation} from './compilation-verification.js';
 import {compileCSource,compileCExecutable} from '@omnicompile/compiler-c';
@@ -9,7 +10,9 @@ process.once('message',async(message:any)=>{
   try{
     const payload=message.payload;
     let result:unknown;
-    if(payload.action==='python_plan')result=await planPythonUnits(payload.source.sourceText,payload.source.sourceName);
+    if(payload.action==='java_plan')result=await planJavaUnits(payload.source.sourceText,payload.source.sourceName);
+    else if(payload.action==='java_aggregate')result=await aggregateJavaUnits(payload.source.sourceText,payload.source.sourceName,payload.plan,payload.results);
+    else if(payload.action==='python_plan')result=await planPythonUnits(payload.source.sourceText,payload.source.sourceName);
     else if(payload.action==='python_aggregate')result=await aggregatePythonUnits(payload.source.sourceText,payload.source.sourceName,payload.plan,payload.results);
     else if(payload.action==='verify')result=await verifyCompilation(payload.source,payload.worker);
     else if(payload.action==='c_ir'){

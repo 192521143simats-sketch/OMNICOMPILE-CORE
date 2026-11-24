@@ -1,3 +1,4 @@
+import type {JavaUnitPlan} from '@omnicompile/compiler-java';
 import type {PythonUnitPlan} from '@omnicompile/compiler-python';
 import {registerCompilerAssistance} from "./compiler-assistance.js";
 import {RealtimeTickets} from "./realtime-tickets.js";
@@ -185,15 +186,15 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     try{const verified=await verifyCompilation(source,result,jobAbortControllers.get(jobId)?.signal);await store.metrics.finish(verificationId,'VERIFIED');return verified;}catch(cause){await store.metrics.finish(verificationId,transientDatabaseFailure(cause)?'FAILED':'REJECTED');throw cause;}
   }
   async function finalizeNativeJob(jobId:string,result:any,executionTimeMs:number){const source=await store.getCompilationSource(jobId);if(!source)throw new Error("Compilation source is unavailable");
-    const partition=source.language==='python'?await store.getPythonCompilationPlan(jobId):null;
+    const partition=source.language==='python'?await store.getPythonCompilationPlan(jobId):source.language==='java'?await store.getJavaCompilationPlan(jobId):null;
     let verified:any;
     if(partition){
       const [rows]=await store.pool.execute<any[]>("SELECT t.id,t.status,r.result_json result,r.execution_time_ms elapsed,t.assigned_node_id nodeId,t.attempt FROM tasks t LEFT JOIN results r ON r.task_id=t.id AND r.attempt=t.attempt WHERE t.job_id=?",[jobId]);
       if(rows.length!==partition.taskIds.length||rows.some(row=>row.status!=='COMPLETED'||!row.result))return;
       await store.setJobStage(jobId,"CODE_GENERATING","VERIFYING_COMPILATION");
-      const ordered=partition.taskIds.map(id=>{const row=rows.find(row=>row.id===id);return typeof row.result==='string'?JSON.parse(row.result):row.result;});
+      const ordered=partition.taskIds.map(id=>{const row=rows.find(row=>row.id===id),result=typeof row.result==='string'?JSON.parse(row.result):row.result;return {operation:result.operation,generatedSource:result.generatedSource};});
       const checks=await Promise.all(rows.map(row=>store.metrics.begin(row.id,row.nodeId,Number(row.attempt),'independent-source-recompilation')));
-      try{verified=await runCompilerProcess<any>({action:'python_aggregate',source:{language:source.language,sourceName:source.sourceName,sourceText:source.sourceText},plan:partition.plan,results:ordered},jobAbortControllers.get(jobId)?.signal??new AbortController().signal);await Promise.all(checks.map(id=>store.metrics.finish(id,'VERIFIED')));}catch(error){await Promise.all(checks.map(id=>store.metrics.finish(id,transientDatabaseFailure(error)?'FAILED':'REJECTED')));throw error;}
+      try{verified=await runCompilerProcess<any>({action:`${source.language}_aggregate`,source:{language:source.language,sourceName:source.sourceName,sourceText:source.sourceText},plan:partition.plan,results:ordered},jobAbortControllers.get(jobId)?.signal??new AbortController().signal);await Promise.all(checks.map(id=>store.metrics.finish(id,'VERIFIED')));}catch(error){await Promise.all(checks.map(id=>store.metrics.finish(id,transientDatabaseFailure(error)?'FAILED':'REJECTED')));throw error;}
       executionTimeMs=rows.reduce((sum,row)=>sum+Number(row.elapsed),0);
     }else{await store.setJobStage(jobId,"CODE_GENERATING","VERIFYING_COMPILATION");verified=await verifyNativeWithAudit(jobId,source,result);}
     await store.setJobStage(jobId,"CODE_GENERATING","CODE_GENERATING");const artifacts=nativeArtifacts(source,verified);
@@ -311,10 +312,10 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     if(!networkId)return reply.code(409).send(apiError("NO_COMPATIBLE_NETWORK",parsed.data.executionMode==="LOCAL_ONLY"?"No compatible local native worker is connected. Enroll a compatible device worker.":parsed.data.executionMode==="CLOUD_ONLY"?"Cloud is a tool provider, not a worker platform. Choose automatic placement.":"No compatible Web, Windows or Android worker is connected to an active network."));
     if(Buffer.byteLength(parsed.data.executionInput)>16384)return reply.code(400).send(apiError("INVALID_EXECUTION_INPUT","Standard input must not exceed 16 KB."));
     const job=await store.createCompilationJob(request.auth!.id,networkId,language,sourceName,source,parsed.data.executionInput,executionMode);
-    void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");if(language==='python'){
+    void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");if(language==='python'||language==='java'){
       const controller=new AbortController();jobAbortControllers.set(job.id,controller);
-      try{const plan=await runCompilerProcess<PythonUnitPlan>({action:'python_plan',source:{language,sourceName,sourceText:source}},controller.signal);await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
-    }else{const taskKind=language==='c'?'C_COMPILE':'JAVA_COMPILE',operation=language==='c'?'c_compile':'java_compile';await store.createJobWorkTask(job.id,networkId,taskKind,{operation,source,sourceName},language);}}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
+      try{const plan=await runCompilerProcess<PythonUnitPlan|JavaUnitPlan>({action:`${language}_plan`,source:{language,sourceName,sourceText:source}},controller.signal);networkId=await selectNetworkFor(language,undefined,executionMode,plan.units.length)??networkId;if(plan.language==='python')await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);else await store.createJavaCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
+    }else{await store.createJobWorkTask(job.id,networkId,'C_COMPILE',{operation:'c_compile',source,sourceName},'c');}}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
     return reply.code(202).send(job);
   });
   app.get("/api/compilations/:jobId",{preHandler:requireUser},async(request:AuthRequest,reply)=>{const{jobId}=request.params as{jobId:string},job=await store.getCompilationJob(jobId);if(!job||request.auth!.role!=="ADMIN"&&job.userId!==request.auth!.id)return reply.code(404).send(apiError("JOB_NOT_FOUND","The compilation job was not found."));return job;});

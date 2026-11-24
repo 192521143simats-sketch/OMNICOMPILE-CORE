@@ -35,7 +35,7 @@
     {
       "id": "DEPENDENCY_SPLITTING",
       "status": "NOT_COMPLETE",
-      "details": "Supported C IR functions and Python lexical units verified. Broad C and Java method-level partitioning remain open."
+      "details": "C IR functions, Python lexical units and Java method units verified in isolated runs. Broad C partitioning outside supported IR remains open."
     },
     {
       "id": "DEVICE_TOOL_DELIVERY",

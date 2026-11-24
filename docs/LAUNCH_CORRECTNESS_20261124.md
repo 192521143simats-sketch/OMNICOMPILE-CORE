@@ -216,3 +216,33 @@ authoritative module and is explicitly reported; it is never silently accepted.
   safety and compiler service authentication. Coordinator typecheck/build passed.
 - This expands Python beyond whole-file dispatch, but does not establish arbitrary
   C or Java method-level partitioning, physical-device acceptance or public uptime.
+
+## Java method-unit compilation — 25 November follow-up
+
+Javac parses method boundaries without executing submitted classes. Compilation
+units keep the complete declaration/type context and selected original method
+bodies; other method bodies are compile-only stubs. Constructors, initializers,
+fields, signatures, annotations and nested local scopes stay intact. Every
+original method is validated before masking. Unit output is independently checked,
+selected bodies are assembled, and whole-program validation precedes final JAR
+publication. A mismatched assembly uses the authoritative source with an explicit
+report field, never an unverified candidate. Unit byte counts are intermediate;
+user artifact totals count only the final JAR and PDF.
+
+- a2c4bda36c6678f0 and 74863fbf227b5406: three real Java compilation tasks across
+  two authenticated logical Web identities in one network, output 21, final PDF
+  task totals 3/3 successful. These are protocol fixtures, not physical devices.
+- 23 focused tests passed, including Java plan/aggregation, altered result rejection,
+  constructor/nested-scope preservation and invalid original method detection.
+  Eight network-placement/assistance tests and coordinator typecheck also passed.
+- Python/Java admission now re-ranks using the actual planned unit count before
+  atomically binding the network and creating tasks. After tasks exist, network
+  changes are rejected. Aggregation transports candidate source, not duplicate
+  intermediate binaries, keeping payload size bounded.
+- e8320e35e7873b00: new all-platform regression did not run because Docker Engine
+  did not respond within 30 seconds. This is not an application-test pass or fail.
+- Automatic approval review blocked the proposed startup partial-readiness edit;
+  it did not execute. Do not retry an equivalent edit through another mechanism.
+
+Broad C partitioning outside supported IR remains open. Public access remains
+blocked by ngrok quota and requires an operator-provided replacement transport.
