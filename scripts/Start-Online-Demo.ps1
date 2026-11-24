@@ -28,11 +28,12 @@ if (!$tunnel.Count) {
 if ($tunnel.Count -ne 1) { throw 'Demo tunnel did not start. Inspect .runtime/online-demo/ngrok-error.log.' }
 $url = $tunnel[0].public_url
 }
-if ($url -notmatch '^https://[a-z0-9-]+\.(?:ngrok-free\.app|trycloudflare\.com)$') { throw 'Unexpected demo URL; review before exposing the application.' }
+if ($url -notmatch '^https://[a-z0-9-]+\.(?:ngrok-free\.app|trycloudflare\.com)$' -and $url -ne 'https://omnicompile-server.tail4c8dab.ts.net') { throw 'Unexpected demo URL; review before exposing the application.' }
 # Parse credentials internally; never print or copy the plaintext password.
 $hash = node --input-type=module -e 'import fs from "node:fs";import dotenv from "dotenv";import argon2 from "argon2";const e=dotenv.parse(fs.readFileSync(".env"));const p=".runtime/online-demo/admin-password.hash";let h=e.ADMIN_PASSWORD_HASH;if(!h){try{const saved=fs.readFileSync(p,"utf8");if(await argon2.verify(saved,e.ADMIN_PASSWORD))h=saved;}catch{}if(!h){h=await argon2.hash(e.ADMIN_PASSWORD,{type:2,memoryCost:19456,timeCost:2,parallelism:1});fs.writeFileSync(p,h,{mode:0o600});}}process.stdout.write(h);'
 if ($LASTEXITCODE -ne 0 -or !$hash.StartsWith('$argon2id$')) { throw 'Could not prepare production authentication.' }
-$environment = @{NODE_ENV='production';PUBLIC_BASE_URL=$PublicOrigin;COORDINATOR_PUBLIC_URL=$PublicOrigin;ALLOWED_ORIGINS=$url;OMNICOMPILE_REALTIME_PUBLIC_URL=$url;OMNICOMPILE_TEMPORARY_DEMO_ORIGIN=$url;ADMIN_PASSWORD='';ADMIN_PASSWORD_HASH=$hash.Replace('$','$$')}
+$temporaryOrigin = if ($url -match '\.(?:ngrok-free\.app|trycloudflare\.com)$') { $url } else { '' }
+$environment = @{NODE_ENV='production';PUBLIC_BASE_URL=$PublicOrigin;COORDINATOR_PUBLIC_URL=$PublicOrigin;ALLOWED_ORIGINS=$url;OMNICOMPILE_REALTIME_PUBLIC_URL=$url;OMNICOMPILE_TEMPORARY_DEMO_ORIGIN=$temporaryOrigin;ADMIN_PASSWORD='';ADMIN_PASSWORD_HASH=$hash.Replace('$','$$')}
 $override = @{services=@{'omnicompile-coordinator'=@{environment=$environment}}}
 $overrideFile = Join-Path $demoDir 'compose.json'
 $override | ConvertTo-Json -Depth 10 | Set-Content $overrideFile
@@ -47,4 +48,4 @@ for ($attempt=0; $attempt -lt 30; $attempt++) {
 if (!$health -or $health.status -ne 'ready') { throw 'Coordinator readiness failed.' }
 Write-Host "Frontend: $PublicOrigin | Backend transport: $url"
 Write-Host "If the tunnel URL changed, run: node scripts/Publish-Vercel-Demo.mjs"
-Write-Host 'Keep this laptop, Docker, internet, and K: running. First-time visitors may need to click Visit Site.'
+Write-Host 'Keep this laptop, Docker, internet, and K: running. The configured transport service must remain connected.'

@@ -25,5 +25,5 @@ try{
   socket.once('close',()=>{clearTimeout(timer);reject(new Error('Public WebSocket closed before verification'));});
  });
  await writeFile('.runtime/online-demo/realtime-audit.json',JSON.stringify({checkedAt:new Date().toISOString(),origin,transport,authenticatedAdminSnapshot:true},null,2)+'\n');
- console.log('PASS: Vercel login, ticket API and authenticated Cloudflare WSS snapshot. No jobs or enrollments created.');
+ console.log('PASS: Vercel login, ticket API and authenticated public WSS snapshot. No jobs or enrollments created.');
 }finally{if(cookie){const logout=await request('/api/auth/logout',{});assert.equal(logout.status,204,'Smoke-test session must be revoked');}}

@@ -15,7 +15,7 @@
     },
     {
       "src": "/api(?:/(.*))?",
-      "dest": "https://waves-made-dramatic-imagination.trycloudflare.com/api/$1",
+      "dest": "https://omnicompile-server.tail4c8dab.ts.net/api/$1",
       "headers": {
         "Cache-Control": "private, no-store",
         "CDN-Cache-Control": "no-store",
@@ -34,7 +34,7 @@
     },
     {
       "src": "/ws(?:/(.*))?",
-      "dest": "https://waves-made-dramatic-imagination.trycloudflare.com/ws/$1"
+      "dest": "https://omnicompile-server.tail4c8dab.ts.net/ws/$1"
     },
     {
       "handle": "filesystem"
