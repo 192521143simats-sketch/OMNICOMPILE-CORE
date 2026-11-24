@@ -1,11 +1,11 @@
 import 'react';
 
 export type ExecutionMode='CLOUD_ONLY'|'LOCAL_ONLY'|'HYBRID';
-const labels:Record<ExecutionMode,string>={CLOUD_ONLY:'Cloud Only',LOCAL_ONLY:'Local Only',HYBRID:'Automatic — best eligible worker with toolchain support'};
-export function ExecutionPlacement({job}:{job:{executionMode?:ExecutionMode;executionLocations?:string[]}|null}){
+export function ExecutionPlacement({job}:{job:{executionMode?:ExecutionMode;executionLocations?:string[];workerPlatforms?:string[]}|null}){
   if(!job)return null;
+  const platforms=(job.workerPlatforms??[]).filter(value=>['Web','Windows','Android'].includes(value));
   return <dl aria-label="Compilation placement">
-    <dt>Execution routing</dt><dd>{job.executionMode?labels[job.executionMode]:'Not recorded'}</dd>
-    <dt>Assigned worker locations</dt><dd>{job.executionLocations?.length?job.executionLocations.join(', '):'Awaiting worker assignment'}</dd>
+    <dt>Worker selection</dt><dd>Automatic — best eligible device in the selected network</dd>
+    <dt>Assigned worker platforms</dt><dd>{platforms.length?platforms.join(', '):'Awaiting device worker assignment'}</dd>
   </dl>;
 }

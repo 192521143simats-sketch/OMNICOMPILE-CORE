@@ -165,10 +165,6 @@ services:
       OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
       OMNICOMPILE_EXECUTOR_URL: http://omnicompile-executor:4102
       OMNICOMPILE_EXECUTOR_TOKEN_FILE: /run/secrets/executor-token
-      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
-      COORDINATOR_URL: http://omnicompile-coordinator:4100
-    volumes:
-    - ./.runtime/docker/cloud-workers/c.credential:/run/secrets/worker-credential:ro
     secrets:
     - compiler-token
     - executor-token
@@ -205,10 +201,6 @@ services:
       OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
       OMNICOMPILE_EXECUTOR_URL: http://omnicompile-executor:4102
       OMNICOMPILE_EXECUTOR_TOKEN_FILE: /run/secrets/executor-token
-      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
-      COORDINATOR_URL: http://omnicompile-coordinator:4100
-    volumes:
-    - ./.runtime/docker/cloud-workers/python.credential:/run/secrets/worker-credential:ro
     secrets:
     - compiler-token
     - executor-token
@@ -245,10 +237,6 @@ services:
       OMNICOMPILE_COMPILER_TOKEN_FILE: /run/secrets/compiler-token
       OMNICOMPILE_EXECUTOR_URL: http://omnicompile-executor:4102
       OMNICOMPILE_EXECUTOR_TOKEN_FILE: /run/secrets/executor-token
-      WORKER_CREDENTIAL_FILE: /run/secrets/worker-credential
-      COORDINATOR_URL: http://omnicompile-coordinator:4100
-    volumes:
-    - ./.runtime/docker/cloud-workers/java.credential:/run/secrets/worker-credential:ro
     secrets:
     - compiler-token
     - executor-token

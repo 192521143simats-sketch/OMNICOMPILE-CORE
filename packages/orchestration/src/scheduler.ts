@@ -39,6 +39,7 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
   const contribution=contributionResult.success?contributionResult.data:{};
   if(node.status!=="AVAILABLE")reasons.push(`status is ${node.status}`);
   const location=node.executionLocation??"LOCAL";
+  if(location==="CLOUD")reasons.push("Cloud tool providers are not worker nodes");
   if(requirements.executionMode==="CLOUD_ONLY"&&location!=="CLOUD")reasons.push("cloud-only job requires an administrator-designated cloud worker");
   if(requirements.executionMode==="LOCAL_ONLY"&&location!=="LOCAL")reasons.push("local-only job cannot use a cloud worker");
   if(contribution.enabled===false)reasons.push("worker contribution is disabled");

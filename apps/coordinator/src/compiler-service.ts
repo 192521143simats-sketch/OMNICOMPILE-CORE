@@ -1,7 +1,7 @@
 import Fastify from 'fastify';
 import {z} from 'zod';
 import {timingSafeEqual} from 'node:crypto';
-import {readFileSync,existsSync} from 'node:fs';
+import {readFileSync} from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {runOwnedProcess,requestDockerJob} from '@omnicompile/orchestration';
 import {compilerPayloadSchema} from './docker-executor-schema.js';
@@ -49,12 +49,7 @@ async function main(){
   const token=readFileSync(process.env.OMNICOMPILE_COMPILER_TOKEN_FILE??'/run/secrets/compiler-token','utf8').trim();
   const app=createCompilerService(language,token);
   await app.listen({host:'0.0.0.0',port:4101});
-  const credentialFile=process.env.WORKER_CREDENTIAL_FILE;
-  if(credentialFile&&existsSync(credentialFile)&&readFileSync(credentialFile,'utf8').trim()){
-    // The worker keeps its existing enrollment, capability, heartbeat and task protocol.
-    const workerEntry=new URL(import.meta.url.endsWith('.ts')?'../../worker/src/cloud.ts':'../../worker/dist/cloud.js',import.meta.url);
-    await import(workerEntry.href);
-  }
+  // Tool providers never enroll as nodes or connect to the worker task socket.
   for(const signal of ['SIGINT','SIGTERM'] as const)process.once(signal,()=>{void app.close();});
 }
 export function compilerStartupDiagnostic(error:unknown){

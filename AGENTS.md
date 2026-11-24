@@ -57,3 +57,12 @@ Only the selected compilation belongs in its user-facing metrics.
 Dependency-aware distributed partitioning is currently limited to supported C IR;
 whole-file native Python/Java compilation must not be described as fully partitioned.
 The broader partitioning requirement remains open. See docs/LAUNCH_CORRECTNESS_20261124.md.
+
+
+## Latest user clarification — 24 November 2026
+
+Cloud is a tool/storage/hosting provider, never a worker platform. Worker platforms
+are Web, Windows and Android. Do not report remotely executed native tools as local
+browser/Android compilation. Device tool delivery and general dependency-safe
+partitioning remain implementation work, not a label change. User explicitly chose
+compiled output plus PDF in the follow-up answer; this supersedes source downloads.

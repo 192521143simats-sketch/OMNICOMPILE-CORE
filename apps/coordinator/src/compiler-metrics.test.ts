@@ -12,7 +12,7 @@ it('does not count a closed unavailable socket as connected or a resource-inelig
  const data=summarizeCompilerMetrics({tasks:[],workers:[{id:'a',platform:'WEB',status:'UNAVAILABLE',lastHeartbeat:at},{id:'b',platform:'WEB',status:'AVAILABLE',lastHeartbeat:at,eligible:false}],telemetry:[],verifications:[],availability:[]},now);
  expect(data.availability).toMatchObject({registered:2,connected:1,available:0,unhealthy:1,percentage:0});
  expect(qualifyMetricWorkers([{id:'c',status:'AVAILABLE',profile:null,resources:null,capability:'ir'}])[0]?.eligible).toBe(false);
- const disconnected=summarizeCompilerMetrics({tasks:[],workers:[{id:'lost',status:'AVAILABLE',lastHeartbeat:at,connected:false}],telemetry:[],verifications:[],availability:[]},now);
+ const disconnected=summarizeCompilerMetrics({tasks:[],workers:[{id:'lost',platform:'WEB',status:'AVAILABLE',lastHeartbeat:at,connected:false}],telemetry:[],verifications:[],availability:[]},now);
  expect(disconnected.availability).toMatchObject({registered:1,connected:0,available:0,disconnected:1});
 });
 it('ignores retired network rules while retaining execution budgets',()=>{
@@ -30,17 +30,17 @@ it('separates CPU/RAM valid readings and verification outcomes',()=>{
  const data=summarizeCompilerMetrics({tasks:[],workers:[],telemetry:[{platform:'WINDOWS',cpuPercent:20,ramPercent:null,observedAt:at},{platform:'ANDROID',cpuPercent:40,ramPercent:60,observedAt:at}],verifications:[{outcome:'VERIFIED'},{outcome:'REJECTED'},{outcome:'FAILED'},{outcome:'PENDING'}],availability:[]},Date.parse(at));
  expect(data.resources).toMatchObject({cpuPercent:30,ramPercent:60,cpuReadings:2,ramReadings:1});expect(data.verification).toMatchObject({verified:1,rejected:1,failed:1,pending:1,completed:3,rate:100/3});
 });
-it('includes cloud and other native task, worker and telemetry measurements without relabelling them as Windows',()=>{
+it('excludes tool providers and unrecognized platforms from worker counts and telemetry without relabelling them as Windows',()=>{
  const at='2026-11-01T10:00:00.000Z';
  const data=summarizeCompilerMetrics({tasks:[
   {status:'COMPLETED',platform:'CLOUD',assignedAt:at,receivedAt:'2026-11-01T10:00:00.120Z'},
   {status:'COMPLETED',platform:'NATIVE_OTHER',assignedAt:at,receivedAt:'2026-11-01T10:00:00.240Z'}
  ],workers:[{id:'cloud',platform:'CLOUD',status:'AVAILABLE',lastHeartbeat:at}],telemetry:[{platform:'CLOUD',cpuPercent:30,ramPercent:50,observedAt:at}],verifications:[],availability:[]},Date.parse(at));
- expect(data.completion.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({count:1,averageMs:120});
- expect(data.completion.platforms.find(row=>row.platform==='NATIVE_OTHER')).toMatchObject({count:1,averageMs:240});
+ expect(data.completion.platforms.map(row=>row.platform)).toEqual(['WEB','WINDOWS','ANDROID']);
  expect(data.completion.platforms.find(row=>row.platform==='WINDOWS')).toMatchObject({count:0,averageMs:null});
- expect(data.availability.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({registered:1,available:1,percentage:100});
- expect(data.resources.platforms.find(row=>row.platform==='CLOUD')).toMatchObject({cpuPercent:30,ramPercent:50,cpuReadings:1,ramReadings:1});
+ expect(data.availability).toMatchObject({registered:0,available:0,percentage:null});
+ expect(data.resources).toMatchObject({cpuPercent:null,ramPercent:null,cpuReadings:0,ramReadings:0});
+
 });
 import {CompilerMetrics,summarizeOptimizationEvidence} from './compiler-metrics.js';
 it('validates language-bound evidence and recomputes signed reductions without inventing runtime gain',()=>{
@@ -50,8 +50,8 @@ it('validates language-bound evidence and recomputes signed reductions without i
 });
 it('queries bounded distinct completed jobs through owner and selected platform guards',async()=>{
  const calls:Array<{sql:string;params:any[]}>=[];const connection={query:async()=>[],beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},execute:async(sql:string,params:any[])=>{calls.push({sql,params});return [[],[]];}};
- const metrics=new CompilerMetrics({getConnection:async()=>connection} as any);const result=await metrics.read('owner',{jobId:'job',language:'python',platform:'CLOUD'});
- const query=calls.find(call=>call.sql.startsWith('SELECT DISTINCT j.id jobId'))!;expect(query).toBeDefined();expect(query.sql).toContain("j.status='COMPLETED'");expect(query.sql).toContain('j.user_id=?');expect(query.sql).toContain('SELECT DISTINCT');expect(query.sql).toContain('LIMIT 500');expect(query.sql).toContain('EXISTS');expect(query.params).toEqual(['owner','job','python','CLOUD']);expect(result.optimization).toEqual({jobsMeasured:0,items:[]});
+ const metrics=new CompilerMetrics({getConnection:async()=>connection} as any);const result=await metrics.read('owner',{jobId:'job',language:'python',platform:'WINDOWS'});
+ const query=calls.find(call=>call.sql.startsWith('SELECT DISTINCT j.id jobId'))!;expect(query).toBeDefined();expect(query.sql).toContain("j.status='COMPLETED'");expect(query.sql).toContain('j.user_id=?');expect(query.sql).toContain('SELECT DISTINCT');expect(query.sql).toContain('LIMIT 500');expect(query.sql).toContain('EXISTS');expect(query.params).toEqual(['owner','job','python','WINDOWS']);expect(result.optimization).toEqual({jobsMeasured:0,items:[]});
 });
 
 it('retains independently validated C IR costs and preserves unknown compiler measurements',()=>{

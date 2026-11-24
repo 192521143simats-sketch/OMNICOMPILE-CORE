@@ -1,0 +1,81 @@
+{
+  "scope": "Latest user overrides, not a general release certification",
+  "evidence": "docs/LAUNCH_CORRECTNESS_20261124.md",
+  "requirements": [
+    {
+      "id": "METRIC_OUTCOME",
+      "status": "VERIFIED",
+      "details": "Final requested execution failure yields job success 0%; compile checks remain separately identified."
+    },
+    {
+      "id": "METRIC_TIMING",
+      "status": "VERIFIED",
+      "details": "Full job duration, worker dispatch/receipt duration and program runtime have different labels and scopes."
+    },
+    {
+      "id": "METRIC_LAYOUT",
+      "status": "VERIFIED",
+      "details": "Compact platform tables and word-based optimization text wrapping; obsolete histories removed."
+    },
+    {
+      "id": "JOB_SCOPE_NAMES",
+      "status": "VERIFIED",
+      "details": "Owner/current-job metrics; one parent compilation, admin child tasks; display identities include network and participants."
+    },
+    {
+      "id": "BYTE_INTEGRITY",
+      "status": "VERIFIED",
+      "details": "Compiled download bytes and PDF bytes derive from persisted artifacts; report excludes its own unknown rendered size."
+    },
+    {
+      "id": "NETWORK_SELECTION",
+      "status": "VERIFIED",
+      "details": "Eligible-worker workload capacity ranking, same-network scheduling; one eligible worker allowed."
+    },
+    {
+      "id": "DEPENDENCY_SPLITTING",
+      "status": "NOT_COMPLETE",
+      "details": "Supported C IR functions only; arbitrary C, Python and Java dependency-safe partitioning remains open."
+    },
+    {
+      "id": "DEVICE_TOOL_DELIVERY",
+      "status": "AWAITING_USER",
+      "details": "Server-assisted versus strictly device-local tool execution question pending; no false local-compilation claim."
+    },
+    {
+      "id": "CLOUD_PROVIDER_BOUNDARY",
+      "status": "IMPLEMENTED",
+      "details": "No tool-service worker session; no startup enrollment; CLOUD rejected by scheduler and approval."
+    },
+    {
+      "id": "WORKER_AVAILABILITY",
+      "status": "VERIFIED",
+      "details": "Web/Windows/Android counts and measured telemetry only; tool-provider records excluded."
+    },
+    {
+      "id": "ADMIN_NETWORKS",
+      "status": "VERIFIED",
+      "details": "Admin names primary; system letters reused after disable; default startup creates no network."
+    },
+    {
+      "id": "ADMIN_DIALOG_REFRESH",
+      "status": "VERIFIED",
+      "details": "Centered inspector and latest-request refresh semantics verified by browser integration."
+    },
+    {
+      "id": "ARTIFACT_POLICY",
+      "status": "VERIFIED",
+      "details": "Latest explicit user choice: compiled C executable, Python bytecode or Java JAR plus PDF only."
+    },
+    {
+      "id": "CASE_STUDIES",
+      "status": "VERIFIED",
+      "details": "19 original deterministic industry-inspired sample files; actual isolated compiler/execution smoke checks passed."
+    },
+    {
+      "id": "PUBLIC_TRANSPORT",
+      "status": "BLOCKED",
+      "details": "ngrok monthly quota; manual replacement transport URL pending. No paid upgrade authorized."
+    }
+  ]
+}

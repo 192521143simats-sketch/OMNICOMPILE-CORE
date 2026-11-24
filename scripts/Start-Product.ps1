@@ -38,7 +38,7 @@ try {
         if ($LASTEXITCODE -ne 0) { $mustBuild = $true }
     }
     if ($RepairManagedWorkers) { $env:OMNICOMPILE_REPAIR_MANAGED_WORKERS = '1' } else { Remove-Item Env:OMNICOMPILE_REPAIR_MANAGED_WORKERS -ErrorAction SilentlyContinue }
-    Write-Host '[3/5] Starting the saved services and worker identities...'
+    Write-Host '[3/5] Starting application services and compiler tool providers...'
     & (Join-Path $projectRoot 'infra/docker/operations/Start-Containers.ps1') -ProjectRoot $projectRoot -SkipBuild:(!$mustBuild) -ComposeOverride $override -PublicOrigin $origin
     Write-Host '[4/5] Checking the public frontend transport...'
     $publish = Join-Path $projectRoot 'vercel.json'

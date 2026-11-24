@@ -76,7 +76,7 @@ it.each([
  const evidence={version:1,language,method:'Verified optimization',transformations:0,measurement:{unit,before:10,after:10,reductionPercent:0},compiler:null,artifactBytes:10,runtimeSpeedupPercent:null,deadCodeElimination:{status:'compiler-managed',method:'Compiler pass',removedStatements:null,removedInstructions:null}};
  const artifacts=await buildReports({language,sourceName:'main',source:'unchanged',artifacts:[{artifactType:'GENERATED_SOURCE',fileName:'compiled.c',mediaType:'text/plain',bytes:Buffer.from('unchanged')}],optimizationEvidence:evidence});
  const report=JSON.parse(artifacts[0]!.bytes.toString());expect(report.output.optimizationTarget).toBe(target);expect(report.output.optimizedSource).toBe('unchanged');
- if(language==='c'&&unit==='artifact-bytes')expect(report.output.filePurposes[0].purpose).toBe('Compiler-input source; optimization applies to the native executable');
+ expect(report.output.filePurposes.some((item:any)=>item.file==='compiled.c')).toBe(false);
  const pdf=artifacts[1]!.bytes.toString('latin1');const text=[...pdf.matchAll(/stream\r?\n([\s\S]*?)\r?\nendstream/g)].flatMap(match=>{try{return [...inflateSync(Buffer.from(match[1]!,'latin1')).toString('latin1').matchAll(/<([0-9a-f]+)>/gi)].map(token=>Buffer.from(token[1]!,'hex').toString('latin1'));}catch{return [];}}).join('');expect(text).toContain(`Optimization target: ${target}`);
  const failed=JSON.parse((await buildReports({language,sourceName:'main',source:'',artifacts:[],status:'FAILED',optimizationEvidence:evidence}))[0]!.bytes.toString());expect(failed.output.optimizationTarget).toBe('Not measured');
 });

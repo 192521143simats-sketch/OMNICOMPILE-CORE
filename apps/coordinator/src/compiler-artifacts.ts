@@ -1,6 +1,11 @@
 import type {StoredArtifact} from "./database.js";
 
 type Source={language:"c"|"python"|"java";sourceName:string;sourceText:string};
+/** Publish one language's compiled products; source and intermediates stay in the report. */
+export function compiledDownloads(language:Source['language'],artifacts:StoredArtifact[]):StoredArtifact[]{
+  const type=language==='c'?'EXECUTABLE':language==='python'?'BYTECODE':'JAR';
+  return artifacts.filter(artifact=>artifact.artifactType===type);
+}
 const safeName=(name:unknown,extension:string)=>typeof name==="string"&&name.length<=255&&/^[\p{L}\p{N}\p{Sc}\p{Pc}][\p{L}\p{N}\p{M}\p{Sc}\p{Pc}./-]*$/u.test(name)&&!name.split("/").some(part=>!part||part==="."||part==="..")&&name.endsWith(extension);
 export const outputName=(sourceName:string,prefix:string,extension:string)=>`${prefix}${sourceName.slice(0,sourceName.lastIndexOf(".")).slice(0,255-prefix.length-extension.length)}${extension}`;
 export function artifactDisposition(fileName:string){const base=fileName.split("/").at(-1)??"artifact",fallback=base.replace(/[^A-Za-z0-9._$-]/g,"_");return `attachment; filename="${fallback}"; filename*=UTF-8''${encodeURIComponent(base).replace(/[!'()*]/g,value=>`%${value.charCodeAt(0).toString(16).toUpperCase()}`)}`;}

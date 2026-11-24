@@ -489,3 +489,13 @@ expected unauthenticated response. Use START-OMNICOMPILE.bat normally now.
 
 See LAUNCH_CORRECTNESS_20261124.md for source changes, scoped evidence and the
 remaining universal partitioning and ngrok reconnection requirements.
+
+
+## Latest provider/sample/artifact follow-up
+
+The latest user answer selects compiled output plus PDF, superseding source-only
+downloads. Cloud services are tools, never device workers. See the scoped
+LAUNCH_REQUIREMENTS_20261124.json ledger and case-studies README. Original
+docs/engineering/REQUIREMENT_LEDGER.json is absent; its historical update script
+cannot update it. Device-local versus server-assisted compiler delivery is awaiting
+the current user question, and universal partitioning remains incomplete.

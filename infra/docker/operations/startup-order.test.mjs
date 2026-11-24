@@ -5,7 +5,7 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-for(const configured of [true,false])test(`startup provisions before agents; configured pool: ${configured}`,{skip:process.platform!=='win32'},async()=>{
+for(const configured of [true,false])test(`startup starts tools without enrolling workers; legacy metadata: ${configured}`,{skip:process.platform!=='win32'},async()=>{
  const fixture=await mkdtemp(join(tmpdir(),'omnicompile-startup-'));
  const startup=resolve('infra/docker/operations/Start-Containers.ps1');
  try{
@@ -31,7 +31,7 @@ function global:docker {
  if ($items[0] -eq 'container') { 'fixture-backend'; return }
  if ($items -contains 'up' -and $items -contains '--wait') {
   $workerWait=($items -contains 'omnicompile-c-worker') -or $items[-1] -eq '240'
-  if ($workerWait -and !(Test-Path (Join-Path $env:FIXTURE_ROOT 'provisioned'))) { $global:LASTEXITCODE=1; return }
+  # Tool readiness is independent of worker credentials.
  }
 }
 function global:Invoke-RestMethod { @{status='ready'} }
@@ -42,8 +42,9 @@ function global:Invoke-WebRequest { @{StatusCode=200} }
   assert.equal(run.status,0,run.stdout+run.stderr);
   const calls=(await readFile(join(fixture,'calls'),'utf8')).split(/\r?\n/).filter(Boolean);
   const starts=calls.filter(line=>line.includes(' up '));
-  assert.equal(starts.length,configured?2:1,'an empty application must not create managed workers or a network');
+  assert.equal(starts.length,2,'core services and tool providers must start without creating a network');
   assert.ok(!starts[0].includes('omnicompile-c-worker'));
-  assert.equal(starts.slice(1).some(line=>line.includes('omnicompile-c-worker')),configured);
+  assert.equal(starts.slice(1).some(line=>line.includes('omnicompile-c-worker')),true);
+  await assert.rejects(readFile(join(fixture,'provisioned')),'startup must never provision cloud nodes');
  }finally{await rm(fixture,{recursive:true,force:true});}
 });

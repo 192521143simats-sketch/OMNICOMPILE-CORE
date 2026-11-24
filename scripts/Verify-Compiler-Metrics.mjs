@@ -113,7 +113,7 @@ try{
  try{
   for(const operatingSystem of ['Linux fixture','Unknown native fixture']){
    await store.pool.execute('UPDATE nodes SET profile_json=? WHERE id=?',[JSON.stringify({...nativeProfile,operatingSystem}),nativeNode.nodeId]);
-   const other=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(other.availability.registered,2);assert.equal(other.availability.platforms.find(row=>row.platform==='WINDOWS').registered,0,`${operatingSystem} must not be classified as Windows`);
+   const other=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(other.availability.registered,1,'unrecognized native platforms cannot inflate device worker totals');assert.equal(other.availability.platforms.find(row=>row.platform==='WINDOWS').registered,0,`${operatingSystem} must not be classified as Windows`);
    assert.equal((await store.metrics.read(alpha.id,{jobId:seededJob.id,platform:'WINDOWS'})).tasks.successful,0);
   }
  }finally{await store.pool.execute('UPDATE nodes SET profile_json=? WHERE id=?',[JSON.stringify(nativeProfile),nativeNode.nodeId]);}

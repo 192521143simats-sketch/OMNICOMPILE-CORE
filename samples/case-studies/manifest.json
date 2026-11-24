@@ -1,0 +1,177 @@
+{
+  "version": 1,
+  "description": "Synthetic industry-inspired case studies, not proprietary production code. No external dependencies or network access.",
+  "cases": [
+    {
+      "file": "case-studies/c/warehouse_reorder.c",
+      "language": "c",
+      "outcome": "success",
+      "stdout": "reorder_units=34\n",
+      "scenario": "Warehouse purchase planning with package rounding",
+      "complexity": "O(n)",
+      "dependencies": "demand -> shortage -> reorder -> main"
+    },
+    {
+      "file": "case-studies/c/factory_quality.c",
+      "language": "c",
+      "outcome": "success",
+      "stdout": "rejects=2 energy=1204\n",
+      "scenario": "Factory quality and energy aggregation; independent analysis branches",
+      "complexity": "O(n)",
+      "dependencies": "within -> rejects; energy independent; main joins"
+    },
+    {
+      "file": "case-studies/c/freight_routes.c",
+      "language": "c",
+      "outcome": "success",
+      "stdout": "cheapest_route=9\n",
+      "scenario": "Freight routing through intermediate depots; loop-carried dependencies",
+      "complexity": "O(n^3)",
+      "dependencies": "Each k iteration requires the preceding distance matrix"
+    },
+    {
+      "file": "case-studies/c/pricing_optimization.c",
+      "language": "c",
+      "outcome": "success",
+      "stdout": "invoice_cents=1205\n",
+      "scenario": "Pricing with bounded constant expressions and unreachable branch",
+      "complexity": "O(1)",
+      "dependencies": "price -> main; optimization opportunity, not guaranteed byte shrinkage"
+    },
+    {
+      "file": "case-studies/c/broken_purchase_order.c",
+      "language": "c",
+      "outcome": "compile_error",
+      "stdout": null,
+      "scenario": "Purchase order referencing an undeclared tax amount",
+      "complexity": "n/a",
+      "dependencies": "Compiler must report missing_tax with location"
+    },
+    {
+      "file": "case-studies/c/reconciliation_failure.c",
+      "language": "c",
+      "outcome": "runtime_error",
+      "stdout": "",
+      "scenario": "Deliberate business-rule failure after valid compilation",
+      "complexity": "O(1)",
+      "dependencies": "Exit 2 must fail execution metric"
+    },
+    {
+      "file": "case-studies/python/invoice_reconciliation.py",
+      "language": "python",
+      "outcome": "success",
+      "stdout": "ACME=65.00 BETA=20.00\n",
+      "scenario": "Customer billing using exact decimal money and grouped totals",
+      "complexity": "O(n)",
+      "dependencies": "line_total -> reconcile; ordered monetary aggregation"
+    },
+    {
+      "file": "case-studies/python/fraud_windows.py",
+      "language": "python",
+      "outcome": "success",
+      "stdout": "alerts=1 account=A\n",
+      "scenario": "Fraud screening by per-account rolling transaction windows",
+      "complexity": "O(n*w) with explicit window sum",
+      "dependencies": "Stateful per-account event order; cannot reorder events within account"
+    },
+    {
+      "file": "case-studies/python/manufacturing_schedule.py",
+      "language": "python",
+      "outcome": "success",
+      "stdout": "makespan=9\n",
+      "scenario": "Manufacturing critical-path planning with independent branches and cycle guard",
+      "complexity": "O(V+E) with memoization",
+      "dependencies": "cut -> paint -> assemble; wire -> assemble"
+    },
+    {
+      "file": "case-studies/python/pricing_optimization.py",
+      "language": "python",
+      "outcome": "success",
+      "stdout": "invoice_cents=1205\n",
+      "scenario": "Constant arithmetic and unreachable legacy pricing",
+      "complexity": "O(1)",
+      "dependencies": "invoice -> output; inspect measured AST transformations"
+    },
+    {
+      "file": "case-studies/python/broken_purchase_order.py",
+      "language": "python",
+      "outcome": "compile_error",
+      "stdout": null,
+      "scenario": "Deliberate missing colon in purchase-order function",
+      "complexity": "n/a",
+      "dependencies": "SyntaxError before execution"
+    },
+    {
+      "file": "case-studies/python/reconciliation_failure.py",
+      "language": "python",
+      "outcome": "runtime_error",
+      "stdout": "",
+      "scenario": "Valid bytecode, deliberate business-rule runtime exception",
+      "complexity": "O(1)",
+      "dependencies": "Failure must not become 100% success"
+    },
+    {
+      "file": "case-studies/java/WarehouseReorder.java",
+      "language": "java",
+      "outcome": "success",
+      "stdout": "reorder_units=34\n",
+      "scenario": "Warehouse procurement with immutable nested record and method dependencies",
+      "complexity": "O(n)",
+      "dependencies": "record accessors -> demand -> reorder -> main"
+    },
+    {
+      "file": "case-studies/java/FreightRoutes.java",
+      "language": "java",
+      "outcome": "success",
+      "stdout": "cheapest_route=9\n",
+      "scenario": "Corporate freight path optimization with shared matrix",
+      "complexity": "O(n^3)",
+      "dependencies": "Loop-carried k dependency must remain ordered"
+    },
+    {
+      "file": "case-studies/java/BillingPipeline.java",
+      "language": "java",
+      "outcome": "success",
+      "stdout": "ACME=65.00 BETA=20.00\n",
+      "scenario": "Invoice aggregation using BigDecimal, generics and nested type",
+      "complexity": "O(n log c)",
+      "dependencies": "Line -> amount -> merge; independent line totals, deterministic final reduction"
+    },
+    {
+      "file": "case-studies/java/PricingOptimization.java",
+      "language": "java",
+      "outcome": "success",
+      "stdout": "invoice_cents=1205\n",
+      "scenario": "Constant arithmetic and unreachable branch in pricing",
+      "complexity": "O(1)",
+      "dependencies": "invoice -> main; measured javac/optimizer evidence only"
+    },
+    {
+      "file": "case-studies/java/BrokenPurchaseOrder.java",
+      "language": "java",
+      "outcome": "compile_error",
+      "stdout": null,
+      "scenario": "Deliberate undefined tax symbol",
+      "complexity": "n/a",
+      "dependencies": "javac located symbol error"
+    },
+    {
+      "file": "case-studies/java/ReconciliationFailure.java",
+      "language": "java",
+      "outcome": "runtime_error",
+      "stdout": "",
+      "scenario": "Deliberate failed ledger reconciliation after successful compilation",
+      "complexity": "O(1)",
+      "dependencies": "Nonzero Java exit must fail final success metric"
+    },
+    {
+      "file": "case-studies/c/manufacturing_ir.c",
+      "language": "c",
+      "outcome": "success",
+      "stdout": "",
+      "scenario": "Pure integer manufacturing quote with independent functions and dependent aggregation",
+      "complexity": "O(units)",
+      "dependencies": "material and labor and overhead -> quote -> main; five IR compilation units"
+    }
+  ]
+}

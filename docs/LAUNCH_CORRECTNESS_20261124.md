@@ -81,3 +81,60 @@ Latest verified follow-up (24 November):
   no automatic replacement tunnel helper was installed. Automatic approval review
   rejected helper creation and its mock process test as blocked by policy.
 - No factory reset ran and no developer database or artifact volume was removed.
+
+
+## Compiled downloads and cloud boundary follow-up
+
+The latest explicit answer supersedes source downloads: compiled output plus PDF.
+C publishes executable artifacts, Python CPython bytecode, Java the complete JAR.
+Original/generated source remains in the report, not a separate download. Actual
+persisted compiled/PDF byte lengths define the download total.
+
+Cloud is not a worker. Tool services no longer start worker sessions, startup no
+longer provisions managed node credentials, and compose no longer mounts those
+credentials. Scheduler rejects historical CLOUD nodes; approval only accepts LOCAL.
+Legacy identifiers/container image names are retained to preserve deployment and
+image references; their services are authenticated tools, not node identities.
+Metric platform rows are Web, Windows and Android; infrastructure cannot inflate
+worker counts or telemetry. Historical records are preserved, not deleted.
+
+The new samples/case-studies manifest has 19 original industry-inspired programs,
+including exact outputs, compile failures, runtime failures and a five-function C
+IR manufacturing case. All 19 passed isolated actual compiler/execution smoke
+checks. Initial C execution checks failed because the test tmpfs omitted exec;
+the harness was corrected and all passed. No production database was used.
+
+Remaining architectural work is explicit: browser/Android native tool delivery and
+arbitrary dependency-aware Python/Java partitioning are not implemented. A cloud
+compiler HTTP request is remote execution and must not be labeled device-local
+compilation. Do not claim these gates satisfied by tool-only service startup or
+by passing native fixture tests. Public ngrok quota remains unresolved.
+
+
+Latest scoped acceptance evidence:
+- 7d6e2c61c9675cbf: compiled-output/PDF-only application integration passed,
+  including intentional runtime failures and timeout with honest final metrics.
+- bc5c7a35ecf5ab10: real browser UI compilation/download, compact metric tables,
+  dialog and refresh checks passed after compiled-output policy change.
+- 19f5a2f2c80dd049: five manufacturing C IR function units actually computed over
+  two authenticated logical protocol workers in one network, verified aggregation
+  and compiled artifact. Not physical-device evidence.
+- 828c73e2823a581d: all successful/runtime-failure case-study submissions passed,
+  then compiler-error regression exposed a race losing structured positions.
+  Terminal task failure now atomically saves compilerDiagnostics on its parent;
+  background reports reuse that evidence rather than replacing it with plain text.
+- f4bcec397e7f1d6a: all six baseline/case-study compile-error checks passed after
+  the race fix, including precise positions and accurate error/warning counts.
+- 2808eaf3b747f569: metrics isolation, arithmetic, honest worker platform counts,
+  network identity reuse and genuine IR computation passed. The preceding run
+  b6df17cd0ba5ea82 correctly failed an obsolete fixture expecting Linux/unknown
+  native platforms in worker totals; fixture now requires recognized devices only.
+- Focused regressions passed 66 tests, later 54 tests after final metric/placement
+  labels. Slow Java compilation-verification passed all 11 tests in isolation.
+  A broader concurrent unit run hit its Java test timeout and was interrupted;
+  do not report the entire unit suite green from that run.
+- Workspace builds/typechecks and both startup-order tests passed. No factory reset
+  ran. Pending user question determines server-assisted versus device-local tools.
+
+- b32435466363565e: repeated compiler-error regression passed with the explicit
+  atomic compilerDiagnostics assertion enabled for all six failures.
