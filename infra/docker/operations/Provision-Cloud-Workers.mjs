@@ -83,6 +83,9 @@ try{
     else if(enrollment.approvalStatus!=='APPROVED')throw new Error(`The saved ${language} enrollment has not been approved.`);
   }
   console.log('Three private compiler enrollments provisioned and approved. Private enrollment files remain in ignored .runtime/docker/cloud-workers.');
+}catch(error){
+  console.error(error instanceof Error?error.message:'Managed worker provisioning failed.');
+  process.exitCode=1;
 }finally{
   if(cookie)await api('/api/auth/logout',{}).catch(()=>console.error('Provisioning logout failed; the session will expire under the normal policy.'));
 }

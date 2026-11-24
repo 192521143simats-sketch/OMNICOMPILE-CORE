@@ -20,21 +20,15 @@ try{
   if(env.ADMIN_PASSWORD)assert.equal(await argon2.verify(users[0].passwordHash,env.ADMIN_PASSWORD),true,'Configured administrator password does not match');
   report.counts.administrators=1;report.counts.ordinaryUsers=0;
   const [networks]=await db.query('SELECT name,network_code code,next_node_number nextNodeNumber FROM distributed_networks');
-  assert.deepEqual(networks.map(row=>row.name),['OmniCompile compiler pool']);report.counts.networks=1;
-  assert.equal(networks[0].code,'A','Fresh network lettering must start at A');
-  assert.equal(Number(networks[0].nextNodeNumber),4,'Three new workers must consume only A001 through A003');
+  assert.equal(networks.length,0,'A fresh application must wait for an administrator-created network');report.counts.networks=0;
   const [[sequence]]=await db.query('SELECT next_value value FROM network_identity_sequence WHERE id=1');
-  assert.equal(Number(sequence.value),2,'The next newly created network must be B');
-  report.networkCode='A';report.nextNetworkCode='B';
-  const [nodeIds]=await db.query('SELECT id FROM nodes ORDER BY id');
-  assert.deepEqual(nodeIds.map(row=>row.id),['NODE-A001','NODE-A002','NODE-A003'],'No retired node identities may remain');
-  const [[enrollments]]=await db.query("SELECT COUNT(*) count FROM network_enrollments WHERE status='ACTIVE' AND approval_status='APPROVED' AND revoked_at IS NULL");
-  assert.equal(Number(enrollments.count),3);report.counts.enrollments=3;report.workerIds=nodeIds.map(row=>row.id);
-  const [[workers]]=await db.query("SELECT COUNT(*) count FROM nodes n JOIN network_enrollments e ON e.id=n.enrollment_id WHERE n.status='AVAILABLE' AND e.approval_status='APPROVED' AND e.execution_location='CLOUD' AND n.revoked_at IS NULL");
-  assert.equal(Number(workers.count),3,'Three managed compiler workers must be available');report.counts.managedWorkers=3;
+  assert.equal(Number(sequence.value),1,'The first administrator-created network must receive A');
+  report.nextNetworkCode='A';
+  const [[nodes]]=await db.query('SELECT COUNT(*) count FROM nodes');assert.equal(Number(nodes.count),0);report.counts.managedWorkers=0;report.workerIds=[];
+  const [[enrollments]]=await db.query('SELECT COUNT(*) count FROM network_enrollments');assert.equal(Number(enrollments.count),0);report.counts.enrollments=0;
 }finally{await db.end();}
 const docker='C:\\Program Files\\Docker\\Docker\\resources\\bin\\docker.exe';
-const containers=JSON.parse(execFileSync(docker,['inspect','omnicompile-coordinator','omnicompile-mysql','omnicompile-artifacts','omnicompile-executor','omnicompile-c-worker','omnicompile-python-worker','omnicompile-java-worker'],{encoding:'utf8',windowsHide:true}));
+const containers=JSON.parse(execFileSync(docker,['inspect','omnicompile-coordinator','omnicompile-mysql','omnicompile-artifacts','omnicompile-executor'],{encoding:'utf8',windowsHide:true}));
 for(const container of containers){assert.equal(container.Config.Labels['com.docker.compose.project'],'omnicompile');assert.equal(container.State.Health?.Status,'healthy',container.Name);}
 assert.equal(containers[0].Mounts.some(mount=>mount.Destination.startsWith('/app/apps/')),false,'Launch must use the built image, not source-file patches');
 const artifactProbe=`import {S3Client,ListObjectsV2Command} from '@aws-sdk/client-s3';import {readFileSync} from 'node:fs';const client=new S3Client({region:'us-east-1',endpoint:process.env.OMNICOMPILE_ARTIFACT_ENDPOINT,forcePathStyle:true,credentials:{accessKeyId:readFileSync(process.env.OMNICOMPILE_ARTIFACT_ACCESS_KEY_FILE,'utf8').trim(),secretAccessKey:readFileSync(process.env.OMNICOMPILE_ARTIFACT_SECRET_KEY_FILE,'utf8').trim()}});const result=await client.send(new ListObjectsV2Command({Bucket:process.env.OMNICOMPILE_ARTIFACT_BUCKET,MaxKeys:1}));console.log(JSON.stringify({objects:result.Contents?.length??0,truncated:!!result.IsTruncated}));client.destroy();`;

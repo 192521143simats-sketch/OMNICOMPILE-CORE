@@ -89,7 +89,11 @@ try{
  await store.metrics.sampleAvailability();
  const fixture=await request(`/api/user/compiler-metrics?jobId=${seededJob.id}`,undefined,alpha.cookie);assert.equal(fixture.status,200);const m=fixture.body;
  assert.equal(m.tasks.successful,1);assert.equal(m.tasks.failed,1);assert.equal(m.tasks.timedOut,1);assert.equal(m.tasks.cancelled,1);assert.equal(m.tasks.pending,1);assert.equal(m.tasks.running,1);assert.equal(m.tasks.totalCompleted,3);assert.ok(Math.abs(m.tasks.successRate-100/3)<1e-9);
- assert.equal(m.completion.averageMs,300);assert.equal(m.completion.count,1);assert.equal(m.resources.cpuPercent,30);assert.equal(m.resources.ramPercent,60);assert.equal(m.resources.cpuReadings,2);assert.equal(m.resources.ramReadings,1);assert.equal(m.availability.registered,1);assert.equal(m.availability.disconnected,1);assert.equal(m.availability.percentage,0);assert.ok(m.availability.history.length>=1);assert.equal(m.tasks.trend.length,1);
+ assert.equal(m.completion.averageMs,300);assert.equal(m.completion.count,1);assert.equal(m.resources.cpuPercent,30);assert.equal(m.resources.ramPercent,60);assert.equal(m.resources.cpuReadings,2);assert.equal(m.resources.ramReadings,1);assert.equal(m.availability.registered,2);assert.equal(m.availability.disconnected,1);assert.equal(m.availability.percentage,0);assert.ok(m.availability.history.length>=1);assert.equal(m.tasks.trend.length,1);
+ await store.pool.execute("UPDATE compilation_jobs SET metrics_json=JSON_OBJECT('execution',JSON_OBJECT('status','FAILED')) WHERE id=?",[seededJob.id]);
+ const runtimeFailed=await store.metrics.read(alpha.id,{jobId:seededJob.id});
+ assert.equal(runtimeFailed.tasks.successful,0,'a failed program execution cannot advertise successful end-to-end work');
+ await store.pool.execute("UPDATE compilation_jobs SET metrics_json='{}' WHERE id=?",[seededJob.id]);
  const webOnly=await request(`/api/user/compiler-metrics?jobId=${seededJob.id}&platform=WEB`,undefined,alpha.cookie);assert.equal(webOnly.body.tasks.totalCompleted,0);assert.equal(webOnly.body.resources.cpuPercent,null);
  const python=await request('/api/user/compiler-metrics?language=python&platform=WINDOWS',undefined,alpha.cookie);assert.equal(python.body.tasks.successful,1);assert.equal(python.body.completion.averageMs,300);
  const betaOnly=await request('/api/user/compiler-metrics',undefined,beta.cookie);assert.equal(betaOnly.body.tasks.successful,1);assert.equal(betaOnly.body.tasks.failed,0);assert.equal(betaOnly.body.resources.cpuPercent,null,'another user must not receive telemetry from shared network participants');
@@ -98,7 +102,7 @@ try{
  const [[savedEnrollment]]=await store.pool.execute('SELECT expires_at expiresAt FROM network_enrollments WHERE id=?',[nativeEnrollment.enrollmentId]);
  try{
   await store.pool.execute('UPDATE network_enrollments SET expires_at=? WHERE id=?',[new Date(Date.now()-60000).toISOString(),nativeEnrollment.enrollmentId]);
-  assert.equal((await store.metrics.read(alpha.id,{jobId:seededJob.id})).availability.registered,0,'expired registrations must not remain in the active denominator');
+  assert.equal((await store.metrics.read(alpha.id,{jobId:seededJob.id})).availability.registered,1,'expired registrations must not remain in the active denominator');
  }finally{await store.pool.execute('UPDATE network_enrollments SET expires_at=? WHERE id=?',[savedEnrollment.expiresAt,nativeEnrollment.enrollmentId]);}
  try{
   await store.pool.execute("UPDATE distributed_networks SET status='DISABLED' WHERE id=?",[network.id]);
@@ -109,12 +113,12 @@ try{
  try{
   for(const operatingSystem of ['Linux fixture','Unknown native fixture']){
    await store.pool.execute('UPDATE nodes SET profile_json=? WHERE id=?',[JSON.stringify({...nativeProfile,operatingSystem}),nativeNode.nodeId]);
-   const other=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(other.availability.registered,1);assert.equal(other.availability.platforms.find(row=>row.platform==='WINDOWS').registered,0,`${operatingSystem} must not be classified as Windows`);
+   const other=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(other.availability.registered,2);assert.equal(other.availability.platforms.find(row=>row.platform==='WINDOWS').registered,0,`${operatingSystem} must not be classified as Windows`);
    assert.equal((await store.metrics.read(alpha.id,{jobId:seededJob.id,platform:'WINDOWS'})).tasks.successful,0);
   }
  }finally{await store.pool.execute('UPDATE nodes SET profile_json=? WHERE id=?',[JSON.stringify(nativeProfile),nativeNode.nodeId]);}
  await store.pool.execute("UPDATE nodes SET status='UNAVAILABLE',last_heartbeat=? WHERE id=?",[new Date().toISOString(),nativeNode.nodeId]);
- const unavailable=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(unavailable.availability.connected,0);assert.equal(unavailable.availability.available,0);assert.equal(unavailable.availability.unhealthy,1);
+ const unavailable=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(unavailable.availability.connected,1);assert.equal(unavailable.availability.available,0);assert.equal(unavailable.availability.unhealthy,1);
  await store.pool.execute("UPDATE nodes SET status='BUSY',current_task_id=?,last_heartbeat=? WHERE id=?",[telemetryTask,new Date().toISOString(),nativeNode.nodeId]);
  await store.metrics.sampleForNode(nativeNode.nodeId);
  const oldObservation=new Date(Date.now()-180000).toISOString();
@@ -128,7 +132,7 @@ try{
  const history=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.ok(history.availability.history.some(row=>row.busy===1),'busy transition must be recorded');assert.ok(history.availability.history.some(row=>row.disconnected===1),'disconnection must be recorded');
  const completionHistory=await store.metrics.read(beta.id,{jobId:actualJobs[1]});assert.ok(completionHistory.availability.history.some(row=>row.busy>=1),'real RUNNING transition must be captured for short jobs');assert.ok(completionHistory.availability.history.some(row=>row.busy===0),'real accepted completion must capture the worker leaving BUSY');
  await store.pool.execute('UPDATE nodes SET revoked_at=? WHERE id=?',[at,nativeNode.nodeId]);
- const revoked=await request(`/api/user/compiler-metrics?jobId=${seededJob.id}`,undefined,alpha.cookie);assert.equal(revoked.body.availability.registered,0);assert.equal(revoked.body.availability.percentage,null);assert.equal(revoked.body.tasks.successful,1,'revocation must preserve historical task outcomes');
+ const revoked=await request(`/api/user/compiler-metrics?jobId=${seededJob.id}`,undefined,alpha.cookie);assert.equal(revoked.body.availability.registered,1);assert.equal(revoked.body.availability.percentage,0);assert.equal(revoked.body.tasks.successful,1,'revocation must preserve historical task outcomes');
  assert.ok(completedTask);
  // A native payload passing format checks is not yet a verified compilation.
  // These are explicitly synthetic state-machine fixtures, not executed programs.
@@ -140,5 +144,10 @@ try{
  const rejectedCompilation=await store.metrics.read(alpha.id,{jobId:pendingNative.id});assert.equal(rejectedCompilation.tasks.successful,0);assert.equal(rejectedCompilation.tasks.failed,1);assert.equal(rejectedCompilation.verification.rate,50);
  let rateLimited=false;for(let i=0;i<45;i++){const response=await request('/api/user/compiler-metrics',undefined,alpha.cookie);if(response.status===429){rateLimited=true;break;}assert.equal(response.status,200);}assert.ok(rateLimited,'one owner must have a bounded polling budget');
  assert.equal((await request('/api/user/compiler-metrics',undefined,beta.cookie)).status,200,'users sharing an IP must not consume each other\'s metric budgets');
+ const recycled=await networks.create({name:'Recycling original',description:'Isolated allocation test',expiresAt:null,maxNodes:3},admin.body.user.id);
+ await networks.disable(recycled.id);
+ const replacement=await networks.create({name:'Recycling replacement',description:'Isolated allocation test',expiresAt:null,maxNodes:3},admin.body.user.id);
+ assert.equal(replacement.networkCode,recycled.networkCode,'new network must reuse the first free system letter');
+ assert.notEqual(replacement.id,recycled.id,'history must retain a distinct immutable network identity');
  console.log(JSON.stringify({ownerIsolation:true,adminExcluded:true,actualIRComputationAndCoordinatorAcceptance:true,duplicateRejectionRecorded:true,endToEndUsesCoordinatorReceipt:true,languageAndPlatformFilters:true,allFiveMetricSnapshots:true,nullTelemetryNotZero:true,revokedDenominatorExcluded:true,expiredAndDisabledDenominatorExcluded:true,linuxAndUnknownNotWindows:true,unavailableNotConnected:true,staleSourceTimestampPreserved:true,futureTelemetryRejected:true,busyCompletionAndDisconnectHistory:true,availabilityHistory:true,exactArithmeticUsesLabelledPersistedFixtures:true,worker:'logical authenticated WebSocket fixture executing real IR optimizer; not physical browser/Windows/Android acceptance'}));
 }finally{clearInterval(timer);socket?.terminate();await store.close();}

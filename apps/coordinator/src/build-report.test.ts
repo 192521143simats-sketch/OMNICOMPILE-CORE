@@ -40,7 +40,7 @@ describe("program-specific build reports",()=>{
     expect(report.finalResult.status).toBe("FAILED");
     expect(report.programInformation.errors).toBe(1);
     expect(report.errors[0]).toMatchObject({line:1,message:"'missing' undeclared"});
-    expect(report.result.outputAvailable).toEqual(["build-report.json","build-report.pdf"]);
+    expect(report.result.outputAvailable).toEqual(["build-report.pdf"]);
     expect(report.resourceUsage.memoryUsedBytes).toBeNull();
     expect(artifacts[1]!.bytes.subarray(0,4).toString()).toBe("%PDF");
   });

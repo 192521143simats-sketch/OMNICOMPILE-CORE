@@ -2,8 +2,8 @@
 // database data, SSH keys, compiler credentials, or the repository working tree.
 import {readFileSync,writeFileSync,mkdirSync,cpSync} from 'node:fs';
 import {spawnSync} from 'node:child_process';
-const backend=readFileSync('.runtime/online-demo/url.txt','utf8').trim();
-if(!/^https:\/\/[a-z0-9-]+\.ngrok-free\.app$/.test(backend))throw new Error('Unexpected backend tunnel origin.');
+import {publicTransportOrigin} from './Public-Transport-Origin.mjs';
+const backend=publicTransportOrigin(readFileSync('.runtime/online-demo/url.txt','utf8').trim());
 const build=spawnSync(process.execPath,['scripts/Build-Vercel-Frontend.mjs'],{stdio:'inherit'});
 if(build.status!==0)throw new Error('Build failed; nothing published.');
 const routes=[

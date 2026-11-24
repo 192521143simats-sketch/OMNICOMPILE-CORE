@@ -36,3 +36,5 @@
 .platform-shell .table-wrap code{white-space:nowrap;word-break:normal}
 
 .network-join-link{display:grid;justify-items:start;gap:12px;margin-bottom:12px;max-width:560px}.network-link-reveal{display:flex;align-items:end;gap:12px;max-width:100%;width:100%}.network-link-reveal label{flex:1;min-width:180px}.network-link-reveal input{font-family:monospace;font-size:12px}.network-join-link p{margin:0;font-size:12px}.network-inventory td:last-child{min-width:340px}
+
+.admin-inspector-dialog{width:min(900px,calc(100vw - 32px));max-height:85vh;padding:0;border:1px solid #666;border-radius:12px;color:inherit;background:var(--background,#101113)}.admin-inspector-dialog::backdrop{background:#000a}.admin-inspector-dialog .inspector{margin:0;max-height:82vh;overflow:auto;padding:24px}

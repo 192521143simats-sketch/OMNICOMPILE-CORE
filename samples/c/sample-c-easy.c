@@ -5,5 +5,5 @@ int main(void) {
         total = total + index;
         index = index + 1;
     }
-    return total == 49995000;
+    return total == 49995000 ? 0 : 1;
 }

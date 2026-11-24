@@ -50,7 +50,7 @@ describe('artifact object and MySQL commit boundary',()=>{
   });
   it('records terminal failure even when failure reports cannot reach object storage',async()=>{
     const test=fixture('FAILED',false,true);
-    await expect(test.store.attachFailureReports('JOB-ABCDE',[{...artifact,artifactType:'BUILD_REPORT_JSON'}],'Output storage unavailable')).rejects.toThrow('Artifact upload failed');
+    await expect(test.store.attachFailureReports('JOB-ABCDE',[{...artifact,artifactType:'BUILD_REPORT_PDF'}],'Output storage unavailable')).rejects.toThrow('Artifact upload failed');
     expect(test.failureTransitions()).toBe(1);
     expect(test.inserts()).toBe(0);
   });

@@ -40,3 +40,20 @@ current historical launch reports do not establish this new reset.
 ## Network UI override — 23 November 2026
 
 Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.
+
+
+## Launch and compilation overrides — 24 November 2026
+
+Fresh reset baseline is now one administrator, zero networks/enrollments/workers,
+next system letter A. Do not automatically create a managed pool on ordinary
+startup with no saved pool metadata. Existing records remain preserved. Network
+names entered by administrators are primary; system letters are secondary and
+reused after disable while immutable history and unique node identities remain.
+Allow one eligible worker without adding a "not distributed" UI label. User
+artifact downloads are final .c/.py/.java source and PDF, not binaries or JSON.
+Compiler/run outcomes, full job turnaround and program runtime are distinct.
+Only the selected compilation belongs in its user-facing metrics.
+
+Dependency-aware distributed partitioning is currently limited to supported C IR;
+whole-file native Python/Java compilation must not be described as fully partitioned.
+The broader partitioning requirement remains open. See docs/LAUNCH_CORRECTNESS_20261124.md.

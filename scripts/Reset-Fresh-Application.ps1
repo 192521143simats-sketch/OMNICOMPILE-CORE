@@ -56,4 +56,4 @@ $volumeAfter=& $docker volume inspect mysql --format '{{.CreatedAt}} {{.Mountpoi
 if($protectedId -ne $protectedAfter -or $protectedVolume -ne $volumeAfter){throw 'Protected MYSQL identity mismatch.'}
 & node (Join-Path $PSScriptRoot 'Verify-Fresh-Launch.mjs') --public
 if($LASTEXITCODE -ne 0){throw 'Fresh baseline verification failed; inspect the report rather than resetting again.'}
-Write-Host 'Fresh launch verified: administrator=1, compiler pool=Network A, workers=A001-A003, next network=B; ordinary users/jobs/artifacts/sessions=0.'
+Write-Host 'Fresh launch verified: administrator=1, networks=0, workers=0, next network=A; ordinary users/jobs/artifacts/sessions=0.'

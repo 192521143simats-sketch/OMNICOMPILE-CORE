@@ -32,5 +32,5 @@ int checksum(int limit) {
 
 int main(void) {
     int result = checksum(1000);
-    return result > 0;
+    return result > 0 ? 0 : 1;
 }

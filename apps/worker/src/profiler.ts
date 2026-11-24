@@ -20,7 +20,8 @@ export async function probeToolchain(command:string,args:string[],timeoutMs=3_00
   }catch{return {available:false};}
 }
 
-export async function profile(probe:ToolchainProbe=probeToolchain,discoverJdkHomes=probe===probeToolchain):Promise<CapabilityProfile>{
+const startupProbe:ToolchainProbe=(command,args)=>probeToolchain(command,args,10_000);
+export async function profile(probe:ToolchainProbe=startupProbe,discoverJdkHomes=probe===startupProbe):Promise<CapabilityProfile>{
   const cpus=os.cpus();
   const [c,python]=await Promise.all([probe(process.env.GCC_EXECUTABLE??"gcc",["--version"]),probe(process.env.PYTHON_EXECUTABLE??"python",["--version"])]);let java=await probe("javac",["-version"]);if(!java.available&&discoverJdkHomes){for(const home of [process.env.OMNICOMPILE_JDK_HOME,process.env.JAVA_HOME,"C:\\Program Files\\Java\\jdk-21.0.12.1"].filter(Boolean) as string[]){const executable=join(home,"bin",process.platform==="win32"?"javac.exe":"javac");if(existsSync(executable)){java=await probe(executable,["-version"]);if(java.available)break;}}}
   return {workerType:"NATIVE",deviceType:"DESKTOP",cpuModel:cpus[0]?.model??"Unknown CPU",logicalCores:Math.max(cpus.length,1),totalMemoryBytes:os.totalmem(),operatingSystem:`${os.type()} ${os.release()}`,architecture:os.arch(),runtimes:{c:c.available,python:python.available,java:java.available},toolchains:{c,python,java},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:true,nativeCSource:c.available}};

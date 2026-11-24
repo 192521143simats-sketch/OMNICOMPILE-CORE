@@ -51,7 +51,7 @@ it('validates language-bound evidence and recomputes signed reductions without i
 it('queries bounded distinct completed jobs through owner and selected platform guards',async()=>{
  const calls:Array<{sql:string;params:any[]}>=[];const connection={query:async()=>[],beginTransaction:async()=>{},commit:async()=>{},rollback:async()=>{},release:()=>{},execute:async(sql:string,params:any[])=>{calls.push({sql,params});return [[],[]];}};
  const metrics=new CompilerMetrics({getConnection:async()=>connection} as any);const result=await metrics.read('owner',{jobId:'job',language:'python',platform:'CLOUD'});
- const query=calls.find(call=>call.sql.includes('j.metrics_json'))!;expect(query).toBeDefined();expect(query.sql).toContain("j.status='COMPLETED'");expect(query.sql).toContain('j.user_id=?');expect(query.sql).toContain('SELECT DISTINCT');expect(query.sql).toContain('LIMIT 500');expect(query.sql).toContain('EXISTS');expect(query.params).toEqual(['owner','job','python','CLOUD']);expect(result.optimization).toEqual({jobsMeasured:0,items:[]});
+ const query=calls.find(call=>call.sql.startsWith('SELECT DISTINCT j.id jobId'))!;expect(query).toBeDefined();expect(query.sql).toContain("j.status='COMPLETED'");expect(query.sql).toContain('j.user_id=?');expect(query.sql).toContain('SELECT DISTINCT');expect(query.sql).toContain('LIMIT 500');expect(query.sql).toContain('EXISTS');expect(query.params).toEqual(['owner','job','python','CLOUD']);expect(result.optimization).toEqual({jobsMeasured:0,items:[]});
 });
 
 it('retains independently validated C IR costs and preserves unknown compiler measurements',()=>{

@@ -72,11 +72,20 @@ if (-not $SkipBuild) { Invoke-Docker -Arguments (@('compose') + $composeArgs + @
 # Enrollment needs the control plane, not healthy workers with stale credentials.
 Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--wait','--wait-timeout','240','omnicompile-mysql','omnicompile-artifacts','omnicompile-executor','omnicompile-coordinator','omnicompile-frontend'))
 if (-not $hostNode) { throw 'Node.js is required for secure cloud-worker enrollment. Install the supported pinned Node runtime, then restart.' }
+$managedWorkersReady = $false
+if (Test-Path -LiteralPath (Join-Path $credentialDirectory 'enrollment.json')) {
 & $hostNode.Source (Join-Path $ProjectRoot 'infra/docker/operations/Provision-Cloud-Workers.mjs')
-if ($LASTEXITCODE -ne 0) { throw 'Cloud worker enrollment failed. Existing project data is preserved; inspect the enrollment error above.' }
+if ($LASTEXITCODE -ne 0) {
+    if ($env:OMNICOMPILE_REPAIR_MANAGED_WORKERS -eq '1') { throw 'Explicit managed-worker repair failed. Existing project data is preserved.' }
+    Write-Warning 'Saved managed workers are unavailable. The application will start; enroll workers in an active administrator-created network.'
+} else { $managedWorkersReady = $true }
 # Recreate only the managed agents after credentials are validated/replaced. This
 # resets failed health checks and reopens credential mounts; identities stay saved.
+if ($managedWorkersReady) {
 Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--no-deps','--force-recreate','--wait','--wait-timeout','240','omnicompile-c-worker','omnicompile-python-worker','omnicompile-java-worker'))
+} else { Invoke-Docker -Arguments (@('compose') + $composeArgs + @('stop','omnicompile-c-worker','omnicompile-python-worker','omnicompile-java-worker')) }
+
+} else { Write-Host 'No managed compiler pool configured. Create a network in the administrator dashboard and enroll workers.' }
 
 $manifestAfter = if (Test-Path -LiteralPath $manifestPath) { Get-Sha256 $manifestPath } else { '' }
 $backendAfter = & docker container ls --all --filter 'name=^/omnicompile-coordinator$' --format '{{.ID}}'
@@ -84,8 +93,10 @@ if ($backendBefore -and $backendBefore -eq $backendAfter -and $manifestBefore -n
     Write-Host 'Reloading the backend because actual worker package metadata changed.'
     Invoke-Docker -Arguments (@('compose') + $composeArgs + @('restart','omnicompile-coordinator'))
 }
+if ($managedWorkersReady) {
 & $hostNode.Source (Join-Path $ProjectRoot 'infra/docker/operations/Verify-Managed-Workers.mjs')
 if ($LASTEXITCODE -ne 0) { throw 'Managed compiler workers are not online. Startup is incomplete; inspect worker connection diagnostics.' }
+}
 Write-Host '[5/6] Verifying application database, API and frontend...'
 Wait-Healthy -Name 'omnicompile-mysql'
 Wait-Healthy -Name 'omnicompile-executor'

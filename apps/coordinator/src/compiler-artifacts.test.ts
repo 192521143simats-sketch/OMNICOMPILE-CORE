@@ -32,9 +32,10 @@ describe("native compiler artifacts",()=>{
   });
   it("accepts safe Unicode Java class paths without loosening traversal protection",()=>{
     const source="package café; class Main {}",bytes=Buffer.concat([Buffer.from("cafebabe","hex"),Buffer.alloc(12)]),jar=Buffer.concat([Buffer.from([80,75,3,4]),Buffer.alloc(22)]);
-    for(const fileName of ["₹/Main.class","café/‿Main.class"]){expect(nativeArtifacts({language:"java",sourceName:"Main.java",sourceText:source},{operation:"java_compile",generatedSource:source,fileName:"Main.jar",artifactBase64:jar.toString("base64"),classes:[{fileName,contentBase64:bytes.toString("base64")}]} )[1]!.fileName).toBe(fileName);}
+    for(const fileName of ["₹/Main.class","café/‿Main.class"]){expect(nativeArtifacts({language:"java",sourceName:"Main.java",sourceText:source},{operation:"java_compile",generatedSource:source,fileName:"Main.jar",artifactBase64:jar.toString("base64"),classes:[{fileName,contentBase64:bytes.toString("base64")}]} ).find(item=>item.artifactType==="BYTECODE")!.fileName).toBe(fileName);}
     const artifacts=nativeArtifacts({language:"java",sourceName:"Main.java",sourceText:source},{operation:"java_compile",generatedSource:source,fileName:"Main.jar",artifactBase64:jar.toString("base64"),classes:[{fileName:"café/Main.class",contentBase64:bytes.toString("base64")}]});
-    expect(artifacts[1]!.fileName).toBe("café/Main.class");
+    expect(artifacts.find(item=>item.artifactType==="BYTECODE")!.fileName).toBe("café/Main.class");
+    expect(artifacts.some(item=>item.artifactType==="GENERATED_SOURCE")).toBe(true);
   });
   it("keeps derived artifact names within the existing database filename limit",()=>{
     const sourceName="x".repeat(252)+".PY",bytecode=Buffer.alloc(20);bytecode[2]=13;bytecode[3]=10;

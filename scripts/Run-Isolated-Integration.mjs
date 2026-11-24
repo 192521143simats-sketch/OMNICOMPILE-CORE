@@ -19,7 +19,7 @@ if(evidenceRoot&&!isAbsolute(evidenceRoot))throw new Error('Test evidence root m
 if(evidenceRoot&&(mode==='android-native'||mode==='android-browser'||mode==='mixed'&&process.env.OMNICOMPILE_TEST_ANDROID==='1'))throw new Error('Android device fixtures require their existing guarded repository evidence path.');
 const startedAt=new Date().toISOString(),evidence=evidenceRoot?resolve(evidenceRoot,instance):resolve(root,'.runtime','integration',instance);
 await mkdir(evidence,{recursive:true});
-let created=false,coordinator,web,tls,native,coordinatorLog='',exitCode=1;
+let created=false,coordinator,web,tls,native,broker,coordinatorLog='',exitCode=1;
 const results=[];
 const pause=ms=>new Promise(resolve=>setTimeout(resolve,ms));
 function command(executable,args,{env=process.env,timeout=30_000,onControl,input}={}) {
@@ -30,7 +30,7 @@ function command(executable,args,{env=process.env,timeout=30_000,onControl,input
     const finish=(error,code)=>{if(settled)return;settled=true;clearTimeout(timer);error?reject(error):resolve({code,output});};
     const stop=async(error)=>{forcedError=error;try{await terminateOwnedTestProcess(child);}catch(cause){forcedError=cause;}finish(forcedError);};
     const timer=setTimeout(()=>void stop(new Error(`${executable} timed out after ${timeout} ms`)),timeout);
-    child.stdout.on('data',chunk=>{const value=chunk.toString();output+=value;if(mode==='android-browser'&&env.OMNICOMPILE_ANDROID_MANUAL==='1'&&value.includes('MANUAL ACTION:'))console.log(value.trim().replaceAll(password,'[REDACTED]').replaceAll(rootPassword,'[REDACTED]'));if(output.length>2_000_000&&!forcedError)void stop(new Error('Integration command output limit exceeded'));});
+    child.stdout.on('data',chunk=>{const value=chunk.toString();output+=value;if(mode==='execution'&&args.some(argument=>String(argument).endsWith('Verify-Execution.mjs')))process.stdout.write(value);if(mode==='android-browser'&&env.OMNICOMPILE_ANDROID_MANUAL==='1'&&value.includes('MANUAL ACTION:'))console.log(value.trim().replaceAll(password,'[REDACTED]').replaceAll(rootPassword,'[REDACTED]'));if(output.length>2_000_000&&!forcedError)void stop(new Error('Integration command output limit exceeded'));});
     child.stderr.on('data',chunk=>{output+=chunk.toString();});
     child.on('error',error=>finish(error));child.on('close',code=>finish(forcedError,code??-1));
     if(onControl)child.on("message",message=>{void onControl(message.recoveryAction,message).then(()=>child.send({id:message.id}),error=>{const safe=String(error.message).replaceAll(password,'[REDACTED]').replaceAll(rootPassword,'[REDACTED]');results.push({fault:message.recoveryAction,error:safe});console.error(`Owned fault ${message.recoveryAction}: ${safe}`);child.send({id:message.id,error:"Isolated fault control failed; inspect runner logs"});}).catch(()=>{});});
@@ -58,6 +58,14 @@ try {
   if(tlsPort){env.PUBLIC_BASE_URL=`https://127.0.0.1:${tlsPort}`;env.OMNICOMPILE_TEST_WEB_BASE=env.PUBLIC_BASE_URL;}
   if(mode==='android-browser'){env.PUBLIC_BASE_URL=`http://omnicompile-test-${instance}.localhost:${webPort}`;env.OMNICOMPILE_TEST_WEB_BASE=env.PUBLIC_BASE_URL;}
   if(['windows','windows-install','android-native'].includes(mode))env.PUBLIC_BASE_URL=base;
+  if(mode==='execution'){
+    const brokerPort=await availablePort(),tokenPath=resolve(evidence,'executor-fixture.token');
+    await writeFile(tokenPath,randomBytes(32).toString('hex'),{mode:0o600});
+    env.OMNICOMPILE_EXECUTOR_TOKEN_FILE=tokenPath;env.OMNICOMPILE_EXECUTOR_URL=`http://127.0.0.1:${brokerPort}`;env.OMNICOMPILE_TEST_BROKER_PORT=String(brokerPort);
+    broker=spawn(process.execPath,['--import','tsx',resolve(root,'scripts/Isolated-Execution-Broker.mjs')],{cwd:root,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
+    broker.stdout.on('data',chunk=>{coordinatorLog+='[owned executor] '+chunk;});broker.stderr.on('data',chunk=>{coordinatorLog+='[owned executor] '+chunk;});
+    await waitFor(async()=>{const response=await fetch(env.OMNICOMPILE_EXECUTOR_URL+'/ready',{signal:AbortSignal.timeout(3000)});if(!response.ok)throw new Error('Owned execution images are not ready');},'owned execution broker',60000);
+  }
   function startCoordinator(){coordinator=spawn(process.execPath,['--import','tsx',resolve(root,'apps/coordinator/src/server.ts')],{cwd:root,env,windowsHide:true,stdio:['ignore','pipe','pipe']});
   coordinator.stdout.on('data',chunk=>{coordinatorLog+=chunk.toString();});coordinator.stderr.on('data',chunk=>{coordinatorLog+=chunk.toString();});
   coordinator.on('error',error=>{coordinatorLog+=`Coordinator spawn failed: ${error.message}`;});}
@@ -117,7 +125,7 @@ try {
   if(mode==='phase9')scripts.splice(0,scripts.length,'Verify-Phase9.mjs');
   for(const script of scripts){
     console.log(`Running ${script} against isolated test MySQL and coordinator...`);
-    const result=await command(process.execPath,['--import','tsx',resolve(root,'scripts',script)],{env,timeout:['windows-install','android-native','mixed'].includes(mode)?600000:mode==='android-browser'&&env.OMNICOMPILE_ANDROID_MANUAL==='1'?900_000:300_000,...(['Verify-Task-Recovery.mjs','Verify-Phase4-Closure.mjs','Verify-Web-Product.mjs','Verify-Browser-Worker.mjs','Verify-Windows-Worker.mjs','Verify-Windows-Installation.mjs','Verify-Android-Native.mjs','Verify-Mixed-Workers.mjs'].includes(script)?{onControl:control}:{})});
+    const result=await command(process.execPath,['--import','tsx',resolve(root,'scripts',script)],{env,timeout:(['windows-install','android-native','mixed'].includes(mode)||mode==='execution'&&env.OMNICOMPILE_TEST_SAMPLES==='1')?600000:mode==='android-browser'&&env.OMNICOMPILE_ANDROID_MANUAL==='1'?900_000:300_000,...(['Verify-Task-Recovery.mjs','Verify-Phase4-Closure.mjs','Verify-Web-Product.mjs','Verify-Browser-Worker.mjs','Verify-Windows-Worker.mjs','Verify-Windows-Installation.mjs','Verify-Android-Native.mjs','Verify-Mixed-Workers.mjs'].includes(script)?{onControl:control}:{})});
     await writeFile(resolve(evidence,`${script}.log`),result.output);
     results.push({script,exitCode:result.code});
     if(result.code!==0){
@@ -131,6 +139,7 @@ try {
   exitCode=0;
 }catch(error){console.error(error.message);results.push({error:error.message});}
 finally {
+  if(broker)try{await terminateOwnedTestProcess(broker);}catch(error){exitCode=1;results.push({cleanupError:error.message});}
   if(tls)try{await terminateOwnedTestProcess(tls);}catch(error){exitCode=1;results.push({cleanupError:error.message});}
   if(native)try{await terminateOwnedTestProcess(native);}catch(error){exitCode=1;results.push({cleanupError:error.message});}
   if(web&&web.exitCode===null){web.kill();await Promise.race([new Promise(resolve=>web.once('exit',resolve)),pause(5000)]);}

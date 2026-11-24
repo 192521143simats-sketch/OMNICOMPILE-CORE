@@ -119,6 +119,7 @@ export function selectNode(nodes:SchedulableNode[],requirements:TaskRequirements
     }else evaluation.reasons.push("no historical samples; resource-only score");
   }
   const eligible=evaluations.filter((item):item is CandidateEvaluation&{score:number}=>item.eligible&&item.score!==null).sort((a,b)=>{
+    const qualityDifference=b.score-a.score;if(qualityDifference)return qualityDifference;
     if(requirements.executionMode==="HYBRID"){
       const localDifference=Number((byId.get(b.nodeId)?.executionLocation??"LOCAL")==="LOCAL")-Number((byId.get(a.nodeId)?.executionLocation??"LOCAL")==="LOCAL");
       if(localDifference)return localDifference;

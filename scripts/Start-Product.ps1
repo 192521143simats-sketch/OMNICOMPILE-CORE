@@ -1,5 +1,6 @@
 param([switch]$Rebuild,[switch]$NoBrowser,[switch]$RepairManagedWorkers)
 $ErrorActionPreference = 'Stop'
+$previousRepairFlag = $env:OMNICOMPILE_REPAIR_MANAGED_WORKERS
 $projectRoot = Split-Path $PSScriptRoot -Parent
 Set-Location -LiteralPath $projectRoot
 $env:PATH = "${env:ProgramFiles}\Docker\Docker\resources\bin;${env:PATH}"
@@ -36,7 +37,7 @@ try {
         & docker image inspect "omnicompile-${image}:$tag" *> $null
         if ($LASTEXITCODE -ne 0) { $mustBuild = $true }
     }
-    if ($RepairManagedWorkers) { $env:OMNICOMPILE_REPAIR_MANAGED_WORKERS = '1' }
+    if ($RepairManagedWorkers) { $env:OMNICOMPILE_REPAIR_MANAGED_WORKERS = '1' } else { Remove-Item Env:OMNICOMPILE_REPAIR_MANAGED_WORKERS -ErrorAction SilentlyContinue }
     Write-Host '[3/5] Starting the saved services and worker identities...'
     & (Join-Path $projectRoot 'infra/docker/operations/Start-Containers.ps1') -ProjectRoot $projectRoot -SkipBuild:(!$mustBuild) -ComposeOverride $override -PublicOrigin $origin
     Write-Host '[4/5] Checking the public frontend transport...'
@@ -47,8 +48,20 @@ try {
         & node (Join-Path $PSScriptRoot 'Publish-Vercel-Demo.mjs')
         if ($LASTEXITCODE -ne 0) { throw 'Public route deployment failed. The local services remain running; inspect this log.' }
     }
-    $response = Invoke-WebRequest "$origin/api/auth/me" -SkipHttpErrorCheck -TimeoutSec 30
-    if ($response.StatusCode -ne 401 -or !($response.Headers['Content-Type'] -match 'application/json')) { throw 'The public API route is not reaching the coordinator.' }
+    $publicReady = $false
+    $quotaExceeded = $false
+    $deadline = [DateTime]::UtcNow.AddSeconds(120)
+    do {
+        try {
+            $response = Invoke-WebRequest "$origin/api/auth/me" -Headers @{'Cache-Control'='no-cache';'ngrok-skip-browser-warning'='1'} -SkipHttpErrorCheck -TimeoutSec 10
+            if ($response.StatusCode -eq 401 -and $response.Headers['Content-Type'] -match 'application/json') { $publicReady = $true; break }
+            if ($response.StatusCode -eq 403 -and $response.Content -match 'ERR_NGROK_(727|725|729|730)') { $quotaExceeded = $true; break }
+            Write-Host "Waiting for public route propagation (HTTP $($response.StatusCode))..."
+        } catch { Write-Host 'Public transport is reconnecting; local services remain ready.' }
+        Start-Sleep -Seconds 3
+    } while ([DateTime]::UtcNow -lt $deadline)
+    if ($quotaExceeded) { throw 'The ngrok account monthly quota is exhausted. Local services remain ready at http://localhost:5173. Configure an operator-provided public transport URL; retries or database resets will not restore the exhausted quota.' }
+    if (!$publicReady) { throw 'Local services are ready at http://localhost:5173, but public access is unavailable after 120 seconds. Check internet/DNS and .runtime/online-demo/ngrok.log. Do not reset the database.' }
     Write-Host "[5/5] Ready: $origin"
     Write-Host 'Keep this laptop, Docker, K: storage, and internet running.'
     if (!$NoBrowser) { Start-Process $origin }
@@ -56,4 +69,7 @@ try {
     Write-Host "STARTUP FAILED: $($_.Exception.Message)" -ForegroundColor Red
     Write-Host "Log: $log"
     exit 1
-} finally { Stop-Transcript | Out-Null }
+} finally {
+    if ($null -eq $previousRepairFlag) { Remove-Item Env:OMNICOMPILE_REPAIR_MANAGED_WORKERS -ErrorAction SilentlyContinue } else { $env:OMNICOMPILE_REPAIR_MANAGED_WORKERS = $previousRepairFlag }
+    Stop-Transcript | Out-Null
+}

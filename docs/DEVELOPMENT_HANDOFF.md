@@ -483,3 +483,9 @@ mocked Docker/Node processes before the fix; all 70 operations tests passed afte
 A subsequent normal startup without RepairManagedWorkers completed successfully;
 all three saved enrollment IDs were unchanged, and the public API returned the
 expected unauthenticated response. Use START-OMNICOMPILE.bat normally now.
+
+
+## 24 November launch/result corrections
+
+See LAUNCH_CORRECTNESS_20261124.md for source changes, scoped evidence and the
+remaining universal partitioning and ngrok reconnection requirements.

@@ -31,5 +31,5 @@ export function nativeArtifacts(source:Source,result:any):StoredArtifact[]{
   });
   // This checks structure only. Independent recompilation validates optimized
   // source before publication; preserve it when the optimizer changed the input.
-  return[original,...(result.generatedSource===source.sourceText?[]:[generated]),...classes,{artifactType:"JAR",fileName:result.fileName,mediaType:"application/java-archive",bytes}];
+  return[original,generated,...classes,{artifactType:"JAR",fileName:result.fileName,mediaType:"application/java-archive",bytes}];
 }

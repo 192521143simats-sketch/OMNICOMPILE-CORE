@@ -8,7 +8,7 @@ describe('compilation worker placement',()=>{
     const waiting=renderToStaticMarkup(<ExecutionPlacement job={{executionMode:'HYBRID'}}/>);
     expect(waiting).toContain('Awaiting worker assignment');
     const assigned=renderToStaticMarkup(<ExecutionPlacement job={{executionMode:'HYBRID',executionLocations:['CLOUD']}}/>);
-    expect(assigned).toContain('local preferred, cloud fallback');
+    expect(assigned).toContain('best eligible worker with toolchain support');
     expect(assigned).not.toContain('Worker preference');
     expect(assigned).not.toContain('<select');
     expect(assigned).toContain('<dd>CLOUD</dd>');

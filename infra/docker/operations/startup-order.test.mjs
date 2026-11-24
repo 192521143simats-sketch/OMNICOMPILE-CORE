@@ -5,11 +5,13 @@ import {tmpdir} from 'node:os';
 import {join,resolve} from 'node:path';
 import {spawnSync} from 'node:child_process';
 
-test('startup provisions credentials before waiting for unhealthy managed workers',{skip:process.platform!=='win32'},async()=>{
+for(const configured of [true,false])test(`startup provisions before agents; configured pool: ${configured}`,{skip:process.platform!=='win32'},async()=>{
  const fixture=await mkdtemp(join(tmpdir(),'omnicompile-startup-'));
  const startup=resolve('infra/docker/operations/Start-Containers.ps1');
  try{
   await mkdir(join(fixture,'bin'));
+  await mkdir(join(fixture,'.runtime/docker/cloud-workers'),{recursive:true});
+  if(configured)await writeFile(join(fixture,'.runtime/docker/cloud-workers/enrollment.json'),'{}');
   await writeFile(join(fixture,'.env'),'MYSQL_ROOT_PASSWORD=fixture-only\nDB_PORT=3307\nDB_NAME=omnicompile\n');
   await writeFile(join(fixture,'bin','node.ps1'),`param([Parameter(ValueFromRemainingArguments=$true)]$Items)
 if ($Items[0] -like '*Provision-Cloud-Workers.mjs') {
@@ -40,8 +42,8 @@ function global:Invoke-WebRequest { @{StatusCode=200} }
   assert.equal(run.status,0,run.stdout+run.stderr);
   const calls=(await readFile(join(fixture,'calls'),'utf8')).split(/\r?\n/).filter(Boolean);
   const starts=calls.filter(line=>line.includes(' up '));
-  assert.ok(starts.length>=2,'core services and workers must start in separate phases');
+  assert.equal(starts.length,configured?2:1,'an empty application must not create managed workers or a network');
   assert.ok(!starts[0].includes('omnicompile-c-worker'));
-  assert.ok(starts.slice(1).some(line=>line.includes('omnicompile-c-worker')));
+  assert.equal(starts.slice(1).some(line=>line.includes('omnicompile-c-worker')),configured);
  }finally{await rm(fixture,{recursive:true,force:true});}
 });

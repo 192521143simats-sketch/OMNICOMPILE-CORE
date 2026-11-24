@@ -119,7 +119,7 @@ try{
             const entry='public static void main(String[] args) {';expect(fixtureSource).toContain(entry);
             fixtureSource=fixtureSource.replace(entry,entry+' if(false){System.out.println("UNREACHABLE_TEST_MARKER");}');
           }else{
-            const returned='return total == 49995000;';expect(fixtureSource).toContain(returned);
+            const returned='return total == 49995000 ? 0 : 1;';expect(fixtureSource).toContain(returned);
             fixtureSource=fixtureSource.replace(returned,returned+'99+1;');
           }
           await page.getByLabel('Upload source file').setInputFiles({name:item.file,mimeType:'text/plain',buffer:Buffer.from(fixtureSource)});
@@ -142,10 +142,17 @@ try{
           await expect(liveMetrics.getByText('1 / 1 completed outcomes successful',{exact:true})).toBeVisible({timeout:15000});
           await expect(liveMetrics.getByText('0 / 0 completed verification attempts verified',{exact:true})).toHaveCount(0);
           const compileButton=await page.getByRole('button',{name:'Compile and optimize',exact:true}).boundingBox();expect(compileButton?.height).toBeLessThan(80);
+          const timingTable=liveMetrics.locator('article').nth(1).locator('.table-wrap').first();
+          expect(await timingTable.evaluate(element=>element.scrollWidth-element.clientWidth)).toBeLessThanOrEqual(2);
           await screenshot(page,`ui-compiler-${item.language}-desktop.png`);
-          const reports=page.locator('.artifact-list li').filter({hasText:'Build report (JSON)'});
+          await expect(page.locator('.artifact-list li')).toHaveCount(2);
+          await expect(page.locator('.artifact-list li').filter({hasText:'Build report (JSON)'})).toHaveCount(0);
+          const reports=page.locator('.artifact-list li').filter({hasText:'Build report (PDF)'});
           const downloading=page.waitForEvent('download');await reports.getByRole('link',{name:'Download',exact:true}).click();const download=await downloading;
-          expect(download.suggestedFilename()).toBe('build-report.json');const report=JSON.parse(await readFile(await download.path(),'utf8'));
+          expect(download.suggestedFilename()).toBe('build-report.pdf');
+          expect((await readFile(await download.path())).subarray(0,4).toString()).toBe('%PDF');
+          const submittedJob=await admission.json();const observed=await (await context.request.get(`/api/compilations/${submittedJob.id}`)).json();
+          const report=observed.metrics.report;
           expect(report.compilationSummary.sourceFile).toBe(item.file);expect(report.finalResult.status).toBe('SUCCESS');
           expect(report.optimizationEvidence.deadCodeElimination.status).toBe(item.language==='c'?'compiler-managed':'applied');
           if(item.language==='c'){
@@ -178,7 +185,7 @@ try{
         await page.setViewportSize({width:390,height:844});expect(await page.evaluate(()=>document.documentElement.scrollWidth<=innerWidth)).toBe(true);await page.setViewportSize({width:1280,height:720});
         await admin.getByRole('button',{name:'Tasks & jobs'}).click();await admin.getByRole('button',{name:'Inspect job'}).first().click();await expect(admin.getByRole('heading',{name:'Job details'})).toBeVisible();await admin.getByRole('button',{name:'Close details'}).click();
         await admin.getByRole('button',{name:'Inspect task'}).first().click();await expect(admin.getByRole('heading',{name:'Task details'})).toBeVisible();await admin.getByRole('button',{name:'Close details'}).click();
-        await admin.getByRole('button',{name:'Overview',exact:true}).click();await admin.getByRole('button',{name:'Inspect node'}).first().click();await expect(admin.getByRole('heading',{name:'Node details'})).toBeVisible();await admin.getByRole('button',{name:'Close details'}).click();
+        await admin.getByRole('button',{name:'Overview',exact:true}).click();await admin.getByRole('button',{name:'Inspect node'}).first().click();await expect(admin.getByRole('heading',{name:'Node details'})).toBeVisible();expect(await admin.locator('dialog').evaluate(element=>element.open)).toBe(true);await admin.keyboard.press('Escape');await expect(admin.locator('dialog')).toHaveCount(0);await admin.getByRole('button',{name:'Inspect node'}).first().click();await admin.mouse.click(1,1);await expect(admin.locator('dialog')).toHaveCount(0);
         await screenshot(admin,'ui-admin-desktop.png');
         await admin.getByRole('button',{name:'Disable',exact:true}).click();
         await expect.poll(async()=>{const snapshot=await (await adminContext.request.get('/api/admin/overview')).json();return snapshot.summary.onlineWorkers;},{timeout:3000}).toBe(0);

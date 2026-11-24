@@ -4,12 +4,12 @@ import {evaluateNode,selectNode,type SchedulableNode} from "./scheduler.js";
 const node=(id:string,cpu:number,memory:number,runtimes={c:true,python:true,java:true},status="AVAILABLE"):SchedulableNode=>({id,status,profile:{workerType:"NATIVE",deviceType:"DESKTOP",cpuModel:"test",logicalCores:8,totalMemoryBytes:16_000,operatingSystem:"test",architecture:"x64",runtimes,toolchains:{c:{available:runtimes.c},python:{available:runtimes.python},java:{available:runtimes.java}},operations:{irOptimization:true,staticAnalysis:true,browserCompute:true,nativeCompilation:true}},resources:{cpuUtilizationPercent:cpu,freeMemoryBytes:8_000,memoryUtilizationPercent:memory,observedAt:new Date().toISOString()}});
 
 describe("resource-aware scheduler",()=>{
-  it("enforces authoritative cloud/local placement and prefers eligible local peers in hybrid mode",()=>{
+  it("enforces explicit placement but chooses measured quality first in automatic hybrid mode",()=>{
     const cloud={...node("cloud",0,0),executionLocation:"CLOUD" as const};
     const local={...node("local",70,70),executionLocation:"LOCAL" as const};
     expect(selectNode([cloud,local],{capability:"python",executionMode:"CLOUD_ONLY"}).selectedNodeId).toBe("cloud");
     expect(selectNode([cloud,local],{capability:"python",executionMode:"LOCAL_ONLY"}).selectedNodeId).toBe("local");
-    expect(selectNode([cloud,local],{capability:"python",executionMode:"HYBRID"}).selectedNodeId).toBe("local");
+    expect(selectNode([cloud,local],{capability:"python",executionMode:"HYBRID"}).selectedNodeId).toBe("cloud");
     local.status="OFFLINE";
     expect(selectNode([cloud,local],{capability:"python",executionMode:"HYBRID"}).selectedNodeId).toBe("cloud");
     expect(selectNode([cloud],{capability:"python",executionMode:"LOCAL_ONLY"}).selectedNodeId).toBeNull();
