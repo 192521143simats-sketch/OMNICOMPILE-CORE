@@ -9,7 +9,7 @@ import {terminateOwnedTestProcess} from './Owned-Test-Process.mjs';
 import {localDistributionManifest} from './Local-Distribution.mjs';
 
 const mode=process.argv[2]??'all';
-if(!['all','platform','artifacts','enrollment','reusable','execution','results','leases','recovery','cancellation','phase4','compute','web','settings','browser','android-browser','android-native','windows','windows-install','mixed','phase9','metrics','assisted','assisted-native','assisted-browser','c-distribution','python-distribution','java-distribution','kubernetes-provider'].includes(mode)) throw new Error('Unknown isolated integration mode.');
+if(!['all','platform','artifacts','enrollment','reusable','execution','results','leases','recovery','cancellation','phase4','compute','web','settings','browser','android-browser','android-native','windows','windows-install','mixed','phase9','metrics','assisted','assisted-native','assisted-browser','c-distribution','python-distribution','java-distribution','c-native-distribution','kubernetes-provider'].includes(mode)) throw new Error('Unknown isolated integration mode.');
 const root=process.cwd(),instance=randomBytes(8).toString('hex'),container=`omnicompile-test-${instance}`,database=`omnicompile_test_${instance}`;
 const password=randomBytes(32).toString('base64url'),rootPassword=randomBytes(32).toString('base64url');
 // Operators may keep disposable evidence outside the source tree. The random
@@ -53,12 +53,13 @@ try {
   await waitFor(async()=>{const connection=await mysql.createConnection({host:'127.0.0.1',port:dbPort,database,user:'omnicompile_test',password,connectTimeout:2000});try{await connection.query('SELECT 1');}finally{await connection.end();}},'isolated MySQL readiness');
   const port=await availablePort(),base=`http://127.0.0.1:${port}`,webPort=['web','browser','android-browser','mixed','assisted-browser'].includes(mode)?await availablePort():null;
   const tlsPort=mode==='browser'&&process.env.OMNICOMPILE_TEST_TLS==='1'?await availablePort():null;
-  const env={...process.env,OMNICOMPILE_EXECUTION_MODE:process.env.OMNICOMPILE_EXECUTION_MODE??(['execution','assisted','assisted-native','assisted-browser','python-distribution','java-distribution'].includes(mode)?'docker':'disabled'),TASK_TIMEOUT_MS:mode==='recovery'?'6000':(process.env.TASK_TIMEOUT_MS??'30000'),HEARTBEAT_STALE_MS:mode==='recovery'?'60000':(process.env.HEARTBEAT_STALE_MS??'15000'),HEARTBEAT_OFFLINE_MS:mode==='recovery'?'120000':(process.env.HEARTBEAT_OFFLINE_MS??'30000'),RESEND_ENABLED:'false',POSTHOG_ENABLED:'false',RESEND_API_KEY:'',POSTHOG_PROJECT_KEY:'',NODE_ENV:'development',HOST:'127.0.0.1',PORT:String(port),PUBLIC_BASE_URL:webPort?`http://127.0.0.1:${webPort}`:'http://localhost:5173',COORDINATOR_PUBLIC_URL:base,ALLOWED_ORIGINS:'',TRUSTED_PROXIES:'',DB_HOST:'127.0.0.1',DB_PORT:String(dbPort),DB_NAME:database,DB_USER:'omnicompile_test',DB_PASSWORD:password,ADMIN_USERNAME:'integration-admin',ADMIN_PASSWORD:'IntegrationOnly!42',ADMIN_PASSWORD_HASH:'',OMNICOMPILE_TEST_BASE:base,OMNICOMPILE_TEST_INSTANCE:instance,OMNICOMPILE_TEST_WEB_BASE:webPort?`http://127.0.0.1:${webPort}`:'',OMNICOMPILE_TEST_EVIDENCE:evidence};
+  const env={...process.env,OMNICOMPILE_EXECUTION_MODE:process.env.OMNICOMPILE_EXECUTION_MODE??(['execution','assisted','assisted-native','assisted-browser','python-distribution','java-distribution','c-native-distribution'].includes(mode)?'docker':'disabled'),TASK_TIMEOUT_MS:mode==='recovery'?'6000':(process.env.TASK_TIMEOUT_MS??'30000'),HEARTBEAT_STALE_MS:mode==='recovery'?'60000':(process.env.HEARTBEAT_STALE_MS??'15000'),HEARTBEAT_OFFLINE_MS:mode==='recovery'?'120000':(process.env.HEARTBEAT_OFFLINE_MS??'30000'),RESEND_ENABLED:'false',POSTHOG_ENABLED:'false',RESEND_API_KEY:'',POSTHOG_PROJECT_KEY:'',NODE_ENV:'development',HOST:'127.0.0.1',PORT:String(port),PUBLIC_BASE_URL:webPort?`http://127.0.0.1:${webPort}`:'http://localhost:5173',COORDINATOR_PUBLIC_URL:base,ALLOWED_ORIGINS:'',TRUSTED_PROXIES:'',DB_HOST:'127.0.0.1',DB_PORT:String(dbPort),DB_NAME:database,DB_USER:'omnicompile_test',DB_PASSWORD:password,ADMIN_USERNAME:'integration-admin',ADMIN_PASSWORD:'IntegrationOnly!42',ADMIN_PASSWORD_HASH:'',OMNICOMPILE_TEST_BASE:base,OMNICOMPILE_TEST_INSTANCE:instance,OMNICOMPILE_TEST_WEB_BASE:webPort?`http://127.0.0.1:${webPort}`:'',OMNICOMPILE_TEST_EVIDENCE:evidence};
+  if(mode==='c-native-distribution')env.OMNICOMPILE_C_FUNCTION_UNITS='1';
   if(process.env.OMNICOMPILE_TEST_LOCAL_DISTRIBUTION==='1')env.OMNICOMPILE_LOCAL_DISTRIBUTION_MANIFEST=JSON.stringify(await localDistributionManifest(root));
   if(tlsPort){env.PUBLIC_BASE_URL=`https://127.0.0.1:${tlsPort}`;env.OMNICOMPILE_TEST_WEB_BASE=env.PUBLIC_BASE_URL;}
   if(mode==='android-browser'){env.PUBLIC_BASE_URL=`http://omnicompile-test-${instance}.localhost:${webPort}`;env.OMNICOMPILE_TEST_WEB_BASE=env.PUBLIC_BASE_URL;}
   if(['windows','windows-install','android-native'].includes(mode))env.PUBLIC_BASE_URL=base;
-  if(['execution','assisted','assisted-native','assisted-browser','python-distribution','java-distribution'].includes(mode)){
+  if(['execution','assisted','assisted-native','assisted-browser','python-distribution','java-distribution','c-native-distribution'].includes(mode)){
     const brokerPort=await availablePort(),tokenPath=resolve(evidence,'executor-fixture.token');
     await writeFile(tokenPath,randomBytes(32).toString('hex'),{mode:0o600});
     env.OMNICOMPILE_EXECUTOR_TOKEN_FILE=tokenPath;env.OMNICOMPILE_EXECUTOR_URL=`http://127.0.0.1:${brokerPort}`;env.OMNICOMPILE_TEST_BROKER_PORT=String(brokerPort);
@@ -124,6 +125,7 @@ try {
   if(mode==='assisted-native'){env.OMNICOMPILE_TEST_FORCE_ASSISTANCE='1';scripts.splice(0,scripts.length,'Verify-Execution.mjs');}
   if(mode==='assisted-browser')scripts.splice(0,scripts.length,'Verify-Assisted-Browser.mjs');
   if(mode==='assisted')scripts.splice(0,scripts.length,'Verify-Server-Assisted-Compilation.mjs');
+  if(mode==='c-native-distribution')scripts.splice(0,scripts.length,'Verify-C-Native-Distribution.mjs');
   if(mode==='java-distribution')scripts.splice(0,scripts.length,'Verify-Java-Distribution.mjs');
   if(mode==='python-distribution')scripts.splice(0,scripts.length,'Verify-Python-Distribution.mjs');
   if(mode==='c-distribution')scripts.splice(0,scripts.length,'Verify-C-Case-Distribution.mjs');

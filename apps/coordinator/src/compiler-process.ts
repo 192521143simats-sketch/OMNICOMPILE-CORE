@@ -1,7 +1,7 @@
 import {planJavaUnits,aggregateJavaUnits} from '@omnicompile/compiler-java';
 import {planPythonUnits,aggregatePythonUnits} from '@omnicompile/compiler-python';
 import {verifyCompilation} from './compilation-verification.js';
-import {compileCSource,compileCExecutable} from '@omnicompile/compiler-c';
+import {compileCSource,compileCExecutable,planCUnits,aggregateCUnits} from '@omnicompile/compiler-c';
 import {installParentDisconnectGuard} from '@omnicompile/orchestration';
 const releaseParentGuard=installParentDisconnectGuard();
 process.once('message',async(message:any)=>{
@@ -10,7 +10,9 @@ process.once('message',async(message:any)=>{
   try{
     const payload=message.payload;
     let result:unknown;
-    if(payload.action==='java_plan')result=await planJavaUnits(payload.source.sourceText,payload.source.sourceName);
+    if(payload.action==='c_plan')result=await planCUnits(payload.source.sourceText,payload.source.sourceName);
+    else if(payload.action==='c_aggregate')result=await aggregateCUnits(payload.source.sourceText,payload.source.sourceName,payload.plan,payload.results);
+    else if(payload.action==='java_plan')result=await planJavaUnits(payload.source.sourceText,payload.source.sourceName);
     else if(payload.action==='java_aggregate')result=await aggregateJavaUnits(payload.source.sourceText,payload.source.sourceName,payload.plan,payload.results);
     else if(payload.action==='python_plan')result=await planPythonUnits(payload.source.sourceText,payload.source.sourceName);
     else if(payload.action==='python_aggregate')result=await aggregatePythonUnits(payload.source.sourceText,payload.source.sourceName,payload.plan,payload.results);

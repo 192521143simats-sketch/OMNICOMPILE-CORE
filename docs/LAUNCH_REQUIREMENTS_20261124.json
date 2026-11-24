@@ -35,7 +35,7 @@
     {
       "id": "DEPENDENCY_SPLITTING",
       "status": "NOT_COMPLETE",
-      "details": "C IR functions, Python lexical units and Java method units verified in isolated runs. Broad C partitioning outside supported IR remains open."
+      "details": "C IR functions, Python lexical units and Java method units verified in isolated runs. Broader C function-context planning passed local GCC tests but is gated off pending Docker distribution integration."
     },
     {
       "id": "DEVICE_TOOL_DELIVERY",

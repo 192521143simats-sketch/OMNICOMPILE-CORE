@@ -246,3 +246,27 @@ user artifact totals count only the final JAR and PDF.
 
 Broad C partitioning outside supported IR remains open. Public access remains
 blocked by ngrok quota and requires an operator-provided replacement transport.
+
+## Guarded native C function contexts — 25 November
+
+A broader C planner is prepared behind OMNICOMPILE_C_FUNCTION_UNITS=1. Default
+production behavior remains unchanged until the Docker integration passes.
+GCC validates the original source and every proposed function context; declarations,
+headers, pointers and arrays remain intact. Newline counts stay stable. Conditional
+preprocessing, body-local macro directives or a context that cannot compile cause
+an atomic-source fallback. The final executable is rebuilt from authoritative
+original bodies, never from compile-only stubs or untrusted worker binaries.
+
+- Four C planner tests passed on actual local GCC: factory pointer/array/function
+  dependencies, braces in literals, altered result rejection, invalid original
+  source and a macro defined inside a function that affects later declarations.
+- Coordinator/frontend builds passed; 26 focused C/service/placement/assistance
+  checks passed. An additional coordinator typecheck passed after the rollout gate.
+- Verify-C-Native-Distribution.mjs and isolated mode c-native-distribution are
+  prepared, but not run: Docker Engine is unresponsive. The supported Docker Desktop
+  restart command also timed out. Manual tray-menu quit/reopen was requested;
+  no force termination, factory reset or developer-data deletion was attempted.
+- Next: restore Docker, rebuild coordinator/C/Python/Java tool images, run native-C
+  distribution and all-platform assisted regressions, then enable the new C path
+  only after those pass. Apply/restart local services and recheck public access
+  after an operator provides a functioning transport URL.

@@ -1,3 +1,5 @@
+import {cCompilationPlansMigration} from './migrations/0029-c-compilation-plans.mjs';
+import type {CUnitPlan} from '@omnicompile/compiler-c';
 import {javaCompilationPlansMigration} from './migrations/0028-java-compilation-plans.mjs';
 import type {JavaUnitPlan} from '@omnicompile/compiler-java';
 import {pythonCompilationPlansMigration} from './migrations/0027-python-compilation-plans.mjs';
@@ -50,7 +52,7 @@ export type StoredArtifact={artifactType:"SOURCE"|"GENERATED_SOURCE"|"EXECUTABLE
 
 type PreparedArtifact=StoredArtifact & {id:string;digest:string;storageKey:string|null};
 
-export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration(),kubernetesCapacityRetryWaitMigration(),kubernetesProvisioningStagesMigration(),kubernetesFailureReasonMigration(),kubernetesResultReceiptsMigration(),kubernetesPrewarmSlotsMigration(),retireNetworkSchedulingPolicyMigration(),reusableNetworkCodesMigration(),pythonCompilationPlansMigration(),javaCompilationPlansMigration()];}
+export function databaseMigrationPlan(){return [existingSchemaMigration(),workerInvitationMigration(),reusableNetworkLinkMigration(),taskAttemptLeaseMigration(),taskCancellationMigration(),taskPolicyIntegrityMigration(),attemptFailureReasonMigration(),computeOwnershipMigration(),userPreferencesMigration(),workerApprovalMigration(),compilerMetricsMigration(),executionLocationMigration(),artifactObjectStorageMigration(),nativeDownloadGrantsMigration(),invitationRedemptionsMigration(),kubernetesExecutionsMigration(),kubernetesCleanupOutcomeMigration(),kubernetesRunnerDurationMigration(),kubernetesProvisioningDurationMigration(),kubernetesCapacityRetryWaitMigration(),kubernetesProvisioningStagesMigration(),kubernetesFailureReasonMigration(),kubernetesResultReceiptsMigration(),kubernetesPrewarmSlotsMigration(),retireNetworkSchedulingPolicyMigration(),reusableNetworkCodesMigration(),pythonCompilationPlansMigration(),javaCompilationPlansMigration(),cCompilationPlansMigration()];}
 
 export class Store {
   private readonly verifyingTasks=new Set<string>();
@@ -114,6 +116,12 @@ export class Store {
     await connection.execute("INSERT INTO java_compilation_plans(job_id,plan_json,task_ids_json) VALUES(?,?,?)",[jobId,JSON.stringify(plan),JSON.stringify(ids)]);
   });}
   async getJavaCompilationPlan(jobId:string){const [rows]=await this.pool.execute<RowDataPacket[]>("SELECT plan_json plan,task_ids_json taskIds FROM java_compilation_plans WHERE job_id=?",[jobId]);return rows[0]?{plan:this.parseJson<JavaUnitPlan>(rows[0].plan),taskIds:this.parseJson<string[]>(rows[0].taskIds)}:null;}
+  async createCCompilationTasks(jobId:string,networkId:string,sourceName:string,plan:CUnitPlan){return this.transaction(async connection=>{
+    await this.bindUnstartedCompilationNetwork(connection,jobId,networkId);const ids:string[]=[];
+    for(const unit of plan.units){const id=this.id('TASK');ids.push(id);await connection.execute("INSERT INTO tasks(id,session_id,network_id,kind,payload_json,required_capability,status,created_at,job_id,deadline_at) VALUES(?,NULL,?,'C_COMPILE',?,'c','QUEUED',?,?,TIMESTAMPADD(SECOND,300,UTC_TIMESTAMP(3)))",[id,networkId,JSON.stringify({operation:'c_compile',source:unit.source,sourceName}),this.now(),jobId]);}
+    await connection.execute("INSERT INTO c_compilation_plans(job_id,plan_json,task_ids_json) VALUES(?,?,?)",[jobId,JSON.stringify(plan),JSON.stringify(ids)]);
+  });}
+  async getCCompilationPlan(jobId:string){const [rows]=await this.pool.execute<RowDataPacket[]>("SELECT plan_json plan,task_ids_json taskIds FROM c_compilation_plans WHERE job_id=?",[jobId]);return rows[0]?{plan:this.parseJson<CUnitPlan>(rows[0].plan),taskIds:this.parseJson<string[]>(rows[0].taskIds)}:null;}
   async getCompilationJobForTask(taskId:string){const[rows]=await this.pool.execute<RowDataPacket[]>("SELECT job_id jobId FROM tasks WHERE id=?",[taskId]);return rows[0]?.jobId?this.getCompilationJob(String(rows[0].jobId)):undefined;}
   async createCOptimizationBatch(networkId:string,ir:CIntermediateRepresentation,jobId?:string){return this.transaction(async connection=>{if(jobId)await lockActiveJob(connection,jobId,networkId);const batchId=this.id("BATCH"),createdAt=this.now(),tasks: Array<{taskId:string;functionName:string;status:"QUEUED"}> = [];await connection.execute("INSERT INTO optimization_batches(id,session_id,network_id,language,status,original_ir_json,created_at) VALUES(?,NULL,?,'c','DISTRIBUTING',?,?)",[batchId,networkId,JSON.stringify(ir),createdAt]);for(const fn of ir.functions){const taskId=this.id("TASK"),payload={operation:"c_optimize_ir" as const,function:fn};await connection.execute("INSERT INTO tasks(id,session_id,network_id,kind,payload_json,required_capability,status,created_at,deadline_at) VALUES(?,NULL,?,'C_OPTIMIZE_IR',?,'ir','QUEUED',?,TIMESTAMPADD(SECOND,300,UTC_TIMESTAMP(3)))",[taskId,networkId,JSON.stringify(payload),createdAt]);await connection.execute("INSERT INTO optimization_batch_tasks(batch_id,task_id,function_name) VALUES(?,?,?)",[batchId,taskId,fn.name]);tasks.push({taskId,functionName:fn.name,status:"QUEUED"});}if(jobId)await connection.execute("UPDATE compilation_jobs SET status='DISTRIBUTING',stage='DISTRIBUTED_OPTIMIZATION',batch_id=? WHERE id=?",[batchId,jobId]);return{batchId,irKind:ir.kind,irVersion:ir.version,tasks};});}
   async getCOptimizationBatchForTask(taskId:string){const[rows]=await this.pool.execute<RowDataPacket[]>("SELECT batch_id batchId FROM optimization_batch_tasks WHERE task_id=?",[taskId]);return rows[0]?this.getCOptimizationBatch(String(rows[0].batchId)):undefined;}
@@ -220,7 +228,7 @@ export class Store {
     try{
       if(task.kind==="TEST_COMPUTE")result=await verifyPortableResult(task.payload,result,signal);
       else if(task.kind==="C_OPTIMIZE_IR")result=verifyIROptimization((task.payload as {function:IRFunction}).function,result);
-      else {const job=await this.getCompilationJobForTask(taskId);const source=job?await this.getCompilationSource(job.id):null;if(!source)throw new Error("Compilation source unavailable");nativeArtifacts(['PYTHON_COMPILE','JAVA_COMPILE'].includes(task.kind)?{...source,sourceText:(task.payload as {source:string}).source}:source,result);}
+      else {const job=await this.getCompilationJobForTask(taskId);const source=job?await this.getCompilationSource(job.id):null;if(!source)throw new Error("Compilation source unavailable");nativeArtifacts(['PYTHON_COMPILE','JAVA_COMPILE','C_COMPILE'].includes(task.kind)?{...source,sourceText:(task.payload as {source:string}).source}:source,result);}
 
       await this.transaction(async connection=>{
         const now=this.now();

@@ -76,3 +76,14 @@ worker. This supersedes the earlier pending architecture question.
 Python now distributes bounded lexical units and validates ordered whole-module
 assembly. C IR functions remain supported; broad C and Java partitioning remain
 open. See the latest scoped launch correctness evidence.
+
+Java method-unit planning and verified assembly are implemented and passed isolated
+two-device-identity integration runs. Keep constructors/initializers/declarations
+intact; do not execute submitted code during planning. Broad C splitting outside
+IR remains open. The startup partial-readiness edit was blocked by automatic
+approval review before execution; do not retry an equivalent edit.
+
+Broader native C function-context planning is prepared behind
+OMNICOMPILE_C_FUNCTION_UNITS=1, disabled by default pending Docker integration.
+Local GCC tests pass; do not enable or claim distributed acceptance until
+c-native-distribution and assisted regressions pass after Docker recovery.

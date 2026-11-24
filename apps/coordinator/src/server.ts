@@ -1,3 +1,4 @@
+import type {CUnitPlan} from '@omnicompile/compiler-c';
 import type {JavaUnitPlan} from '@omnicompile/compiler-java';
 import type {PythonUnitPlan} from '@omnicompile/compiler-python';
 import {registerCompilerAssistance} from "./compiler-assistance.js";
@@ -186,7 +187,7 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     try{const verified=await verifyCompilation(source,result,jobAbortControllers.get(jobId)?.signal);await store.metrics.finish(verificationId,'VERIFIED');return verified;}catch(cause){await store.metrics.finish(verificationId,transientDatabaseFailure(cause)?'FAILED':'REJECTED');throw cause;}
   }
   async function finalizeNativeJob(jobId:string,result:any,executionTimeMs:number){const source=await store.getCompilationSource(jobId);if(!source)throw new Error("Compilation source is unavailable");
-    const partition=source.language==='python'?await store.getPythonCompilationPlan(jobId):source.language==='java'?await store.getJavaCompilationPlan(jobId):null;
+    const partition=source.language==='python'?await store.getPythonCompilationPlan(jobId):source.language==='java'?await store.getJavaCompilationPlan(jobId):await store.getCCompilationPlan(jobId);
     let verified:any;
     if(partition){
       const [rows]=await store.pool.execute<any[]>("SELECT t.id,t.status,r.result_json result,r.execution_time_ms elapsed,t.assigned_node_id nodeId,t.attempt FROM tasks t LEFT JOIN results r ON r.task_id=t.id AND r.attempt=t.attempt WHERE t.job_id=?",[jobId]);
@@ -312,10 +313,11 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     if(!networkId)return reply.code(409).send(apiError("NO_COMPATIBLE_NETWORK",parsed.data.executionMode==="LOCAL_ONLY"?"No compatible local native worker is connected. Enroll a compatible device worker.":parsed.data.executionMode==="CLOUD_ONLY"?"Cloud is a tool provider, not a worker platform. Choose automatic placement.":"No compatible Web, Windows or Android worker is connected to an active network."));
     if(Buffer.byteLength(parsed.data.executionInput)>16384)return reply.code(400).send(apiError("INVALID_EXECUTION_INPUT","Standard input must not exceed 16 KB."));
     const job=await store.createCompilationJob(request.auth!.id,networkId,language,sourceName,source,parsed.data.executionInput,executionMode);
-    void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");if(language==='python'||language==='java'){
+    void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");
+      if(language==='c'&&process.env.OMNICOMPILE_C_FUNCTION_UNITS!=='1'){await store.createJobWorkTask(job.id,networkId,'C_COMPILE',{operation:'c_compile',source,sourceName},'c');}else{
       const controller=new AbortController();jobAbortControllers.set(job.id,controller);
-      try{const plan=await runCompilerProcess<PythonUnitPlan|JavaUnitPlan>({action:`${language}_plan`,source:{language,sourceName,sourceText:source}},controller.signal);networkId=await selectNetworkFor(language,undefined,executionMode,plan.units.length)??networkId;if(plan.language==='python')await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);else await store.createJavaCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
-    }else{await store.createJobWorkTask(job.id,networkId,'C_COMPILE',{operation:'c_compile',source,sourceName},'c');}}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
+      try{const plan=await runCompilerProcess<PythonUnitPlan|JavaUnitPlan|CUnitPlan>({action:`${language}_plan`,source:{language,sourceName,sourceText:source}},controller.signal);networkId=await selectNetworkFor(language,undefined,executionMode,plan.units.length)??networkId;if(plan.language==='python')await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);else if(plan.language==='java')await store.createJavaCompilationTasks(job.id,networkId,sourceName,plan);else await store.createCCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
+    }}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
     return reply.code(202).send(job);
   });
   app.get("/api/compilations/:jobId",{preHandler:requireUser},async(request:AuthRequest,reply)=>{const{jobId}=request.params as{jobId:string},job=await store.getCompilationJob(jobId);if(!job||request.auth!.role!=="ADMIN"&&job.userId!==request.auth!.id)return reply.code(404).send(apiError("JOB_NOT_FOUND","The compilation job was not found."));return job;});
