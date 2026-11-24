@@ -21,7 +21,7 @@ restore old test records or repeat the reset during routine startup. The separat
 `MYSQL` container and `mysql` volume were explicitly preserved by the user.
 
 
-## Explicit fresh-application request — 23 November 2026
+## Explicit fresh-application request â€” 23 November 2026
 
 When the user explicitly requests a fresh application/factory relaunch, the requested
 baseline includes resetting network allocation: compiler pool Network A, workers
@@ -37,12 +37,12 @@ user to run locally. Only report success after Verify-Fresh-Launch.mjs passes;
 current historical launch reports do not establish this new reset.
 
 
-## Network UI override — 23 November 2026
+## Network UI override â€” 23 November 2026
 
 Configurable network scheduling policies and Network details are removed, including backend enforcement and persisted settings (migration 0025). Do not restore them from older specification clauses. Named links use /join-network-a/<token>; Show / copy link reveals and copies within the network row, never under creation. See docs/NETWORK_JOIN_LINKS.md (repository root relative). This change does not execute the separately blocked factory reset.
 
 
-## Launch and compilation overrides — 24 November 2026
+## Launch and compilation overrides â€” 24 November 2026
 
 Fresh reset baseline is now one administrator, zero networks/enrollments/workers,
 next system letter A. Do not automatically create a managed pool on ordinary
@@ -59,7 +59,7 @@ whole-file native Python/Java compilation must not be described as fully partiti
 The broader partitioning requirement remains open. See docs/LAUNCH_CORRECTNESS_20261124.md.
 
 
-## Latest user clarification — 24 November 2026
+## Latest user clarification â€” 24 November 2026
 
 Cloud is a tool/storage/hosting provider, never a worker platform. Worker platforms
 are Web, Windows and Android. Do not report remotely executed native tools as local
@@ -72,3 +72,7 @@ The user explicitly authorizes all three device platforms to call server compile
 tools when native tools are unavailable. Label this server-assisted compilation,
 attribute the leased task to the device, and never register/count the server as a
 worker. This supersedes the earlier pending architecture question.
+
+Python now distributes bounded lexical units and validates ordered whole-module
+assembly. C IR functions remain supported; broad C and Java partitioning remain
+open. See the latest scoped launch correctness evidence.

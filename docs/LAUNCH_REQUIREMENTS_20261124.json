@@ -35,7 +35,7 @@
     {
       "id": "DEPENDENCY_SPLITTING",
       "status": "NOT_COMPLETE",
-      "details": "Supported C IR functions only; arbitrary C, Python and Java dependency-safe partitioning remains open."
+      "details": "Supported C IR functions and Python lexical units verified. Broad C and Java method-level partitioning remain open."
     },
     {
       "id": "DEVICE_TOOL_DELIVERY",

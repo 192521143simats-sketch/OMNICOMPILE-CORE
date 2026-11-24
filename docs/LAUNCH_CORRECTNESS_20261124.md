@@ -197,3 +197,22 @@ Further assistance verification:
   and failure cases passed (isolated summary exitCode 0). Local services are healthy.
   Public access is still blocked by exhausted ngrok quota; a replacement operator
   transport URL is pending. No physical-device acceptance is implied.
+
+## Python lexical-unit compilation
+
+Python now plans bounded top-level lexical units using CPython AST parsing without
+executing imports, decorators or submitted statements. Nested scopes and same-line
+statements stay atomic; future flags and docstrings are preserved. All child tasks
+belong to the one parent job/network. Compiled candidates are independently checked,
+assembled in original order, and compared against authoritative whole-module
+optimization before final bytecode publication. An assembly mismatch retains the
+authoritative module and is explicitly reported; it is never silently accepted.
+
+- 59c09b01743f920f and a3bcbbd176a65393: four actual Python compiler tasks across
+  two authenticated logical Web worker identities using server tools. Function
+  dependencies preserved, output 21; second run verifies PDF task totals 4/4, 100%.
+- 28 focused unit tests passed, including source tampering, nested closure binding,
+  future annotations, later string expressions, declaration context, migration
+  safety and compiler service authentication. Coordinator typecheck/build passed.
+- This expands Python beyond whole-file dispatch, but does not establish arbitrary
+  C or Java method-level partitioning, physical-device acceptance or public uptime.

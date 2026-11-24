@@ -1,4 +1,4 @@
-import {runOwnedProcess} from '@omnicompile/orchestration';
+import {runOwnedProcess,requestDockerJob} from '@omnicompile/orchestration';
 import {readFileSync} from 'node:fs';
 import {setTimeout as delay} from 'node:timers/promises';
 export async function runCompilerProcess<T>(payload:unknown,signal:AbortSignal):Promise<T>{
@@ -27,6 +27,7 @@ export async function runCompilerProcess<T>(payload:unknown,signal:AbortSignal):
     if(!response.ok)throw Object.assign(new Error(result.error?.message??'Compiler service request failed'),{diagnostics:result.error?.diagnostics});
     return result.result as T;
   }
+  if(process.env.OMNICOMPILE_EXECUTOR_URL&&(command.action==='python_plan'||command.action==='python_aggregate'))return requestDockerJob({kind:command.action,language:'python',payload},signal) as Promise<T>;
   const entry=new URL(import.meta.url.endsWith('.ts')?'./compiler-process.ts':'./compiler-process.js',import.meta.url);
   return (await runOwnedProcess<T>(entry,payload,{signal})).result;
 }

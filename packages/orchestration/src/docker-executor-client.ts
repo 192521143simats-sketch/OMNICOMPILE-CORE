@@ -1,7 +1,7 @@
 import {readFileSync} from 'node:fs';
 import {setTimeout as delay} from 'node:timers/promises';
 
-export type DockerJobRequest={kind:'verify'|'c_ir'|'task'|'execute';language:'c'|'python'|'java';payload:unknown};
+export type DockerJobRequest={kind:'verify'|'c_ir'|'python_plan'|'python_aggregate'|'task'|'execute';language:'c'|'python'|'java';payload:unknown};
 const executionRequestIdPattern=/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 function brokerRequest(path: '/jobs' | '/capabilities' | '/executions' | `/executions/${string}/cancel` | `/execution-receipts/${string}/ack`){
