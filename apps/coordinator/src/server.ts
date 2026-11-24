@@ -176,9 +176,9 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
   async function failJob(jobId:string,cause:unknown,diagnostics?:ReportDiagnostic[]){
     const previousJob=await store.getCompilationJob(jobId);if(previousJob?.status==="CANCELLED")return;
     const savedDiagnostics=(previousJob?.metrics as {compilerDiagnostics?:ReportDiagnostic[]}|null)?.compilerDiagnostics;
-    const detail=cause as {diagnostics?:ReportDiagnostic[]},errors=diagnostics??detail?.diagnostics??(Array.isArray(savedDiagnostics)?savedDiagnostics:undefined)??[{severity:"error" as const,message:cause instanceof Error?cause.message:"Compilation failed",line:null,column:null}];
+    const detail=cause as {diagnostics?:ReportDiagnostic[]},errors=diagnostics??detail?.diagnostics??(Array.isArray(savedDiagnostics)&&savedDiagnostics.length?savedDiagnostics:undefined)??[{severity:"error" as const,message:cause instanceof Error?cause.message:"Compilation failed",line:null,column:null}];
     const error=formatCompilationFailure(errors),source=await store.getCompilationSource(jobId);if(!source){await store.failCompilationJob(jobId,error);return;}
-    const reports=await buildReports({jobId:previousJob?.displayName??jobId,measurements:{compilationMethod:(previousJob?.metrics as any)?.compilationAssistance?.method??"Device compilation / optimization"},language:source.language,sourceName:source.sourceName,source:source.sourceText,artifacts:[],status:"FAILED",diagnostics:errors,processingTimeMs:Date.now()-Date.parse(source.createdAt)});
+    const reports=await buildReports({jobId:previousJob?.displayName??jobId,measurements:{compilationMethod:(previousJob?.metrics as any)?.compilationAssistance?.method??(previousJob?.metrics as any)?.compilationPlanning?.method??"Device compilation / optimization"},language:source.language,sourceName:source.sourceName,source:source.sourceText,artifacts:[],status:"FAILED",diagnostics:errors,processingTimeMs:Date.now()-Date.parse(source.createdAt)});
     await store.attachFailureReports(jobId,reports,error);const failedJob=await store.getCompilationJob(jobId);runBackground(()=>productEvent(failedJob?.userId??null,"job_failed",{language:source.language.toUpperCase(),status:"FAILED"}),logBackgroundFailure);
   }
   async function verifyNativeWithAudit(jobId:string,source:Awaited<ReturnType<typeof store.getCompilationSource>> & {},result:any){
@@ -189,7 +189,7 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
   async function finalizeNativeJob(jobId:string,result:any,executionTimeMs:number){const source=await store.getCompilationSource(jobId);if(!source)throw new Error("Compilation source is unavailable");
     const partition=source.language==='python'?await store.getPythonCompilationPlan(jobId):source.language==='java'?await store.getJavaCompilationPlan(jobId):await store.getCCompilationPlan(jobId);
     let verified:any;
-    if(partition){
+    if(partition&&(partition.plan.units.length!==1||partition.plan.units[0]?.source!==source.sourceText)){
       const [rows]=await store.pool.execute<any[]>("SELECT t.id,t.status,r.result_json result,r.execution_time_ms elapsed,t.assigned_node_id nodeId,t.attempt FROM tasks t LEFT JOIN results r ON r.task_id=t.id AND r.attempt=t.attempt WHERE t.job_id=?",[jobId]);
       if(rows.length!==partition.taskIds.length||rows.some(row=>row.status!=='COMPLETED'||!row.result))return;
       await store.setJobStage(jobId,"CODE_GENERATING","VERIFYING_COMPILATION");
@@ -197,7 +197,7 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
       const checks=await Promise.all(rows.map(row=>store.metrics.begin(row.id,row.nodeId,Number(row.attempt),'independent-source-recompilation')));
       try{verified=await runCompilerProcess<any>({action:`${source.language}_aggregate`,source:{language:source.language,sourceName:source.sourceName,sourceText:source.sourceText},plan:partition.plan,results:ordered},jobAbortControllers.get(jobId)?.signal??new AbortController().signal);await Promise.all(checks.map(id=>store.metrics.finish(id,'VERIFIED')));}catch(error){await Promise.all(checks.map(id=>store.metrics.finish(id,transientDatabaseFailure(error)?'FAILED':'REJECTED')));throw error;}
       executionTimeMs=rows.reduce((sum,row)=>sum+Number(row.elapsed),0);
-    }else{await store.setJobStage(jobId,"CODE_GENERATING","VERIFYING_COMPILATION");verified=await verifyNativeWithAudit(jobId,source,result);}
+    }else{await store.setJobStage(jobId,"CODE_GENERATING","VERIFYING_COMPILATION");verified=await verifyNativeWithAudit(jobId,source,result);if(partition)verified.metrics.partitioning={method:'Single dependency-preserving compilation unit',unitCount:1,assemblyMatched:true,selectedSource:'Independently verified authoritative source'};}
     await store.setJobStage(jobId,"CODE_GENERATING","CODE_GENERATING");const artifacts=nativeArtifacts(source,verified);
     await finalizeJob(jobId,artifacts,{...verified.metrics,workerExecutionTimeMs:executionTimeMs},[],verified.diagnostics??[],"optimizations" in verified?verified.optimizations??[]:[],"runnableJar" in verified?verified.runnableJar:undefined);
   }
@@ -314,9 +314,9 @@ async function aggregateCompletedBatch(taskId:string){const batch=await store.ge
     if(Buffer.byteLength(parsed.data.executionInput)>16384)return reply.code(400).send(apiError("INVALID_EXECUTION_INPUT","Standard input must not exceed 16 KB."));
     const job=await store.createCompilationJob(request.auth!.id,networkId,language,sourceName,source,parsed.data.executionInput,executionMode);
     void(async()=>{try{if(language==="c"&&ir){await store.createCOptimizationBatch(networkId,ir,job.id);}else{await store.setJobStage(job.id,"DISTRIBUTING","DISTRIBUTED_COMPILATION");
-      if(language==='c'&&process.env.OMNICOMPILE_C_FUNCTION_UNITS!=='1'){await store.createJobWorkTask(job.id,networkId,'C_COMPILE',{operation:'c_compile',source,sourceName},'c');}else{
+      if(language==='c'&&process.env.OMNICOMPILE_C_FUNCTION_UNITS==='0'){await store.createJobWorkTask(job.id,networkId,'C_COMPILE',{operation:'c_compile',source,sourceName},'c');}else{
       const controller=new AbortController();jobAbortControllers.set(job.id,controller);
-      try{const plan=await runCompilerProcess<PythonUnitPlan|JavaUnitPlan|CUnitPlan>({action:`${language}_plan`,source:{language,sourceName,sourceText:source}},controller.signal);networkId=await selectNetworkFor(language,undefined,executionMode,plan.units.length)??networkId;if(plan.language==='python')await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);else if(plan.language==='java')await store.createJavaCompilationTasks(job.id,networkId,sourceName,plan);else await store.createCCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
+      try{let plan:PythonUnitPlan|JavaUnitPlan|CUnitPlan;try{plan=await runCompilerProcess<PythonUnitPlan|JavaUnitPlan|CUnitPlan>({action:`${language}_plan`,source:{language,sourceName,sourceText:source}},controller.signal);}catch(cause){await store.recordCompilationPlanningFailure(job.id,Array.isArray((cause as any)?.diagnostics)?(cause as any).diagnostics:[]);throw cause;}networkId=await selectNetworkFor(language,undefined,executionMode,plan.units.length)??networkId;if(plan.language==='python')await store.createPythonCompilationTasks(job.id,networkId,sourceName,plan);else if(plan.language==='java')await store.createJavaCompilationTasks(job.id,networkId,sourceName,plan);else await store.createCCompilationTasks(job.id,networkId,sourceName,plan);}finally{if(jobAbortControllers.get(job.id)===controller)jobAbortControllers.delete(job.id);}
     }}await dispatchPending();}catch(cause){await failJob(job.id,cause);}finally{await broadcast();}})();
     return reply.code(202).send(job);
   });

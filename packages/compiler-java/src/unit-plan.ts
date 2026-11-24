@@ -53,10 +53,12 @@ async function methodRanges(source:string):Promise<Method[]>{
 function replaceBodies(source:string,replacements:Array<Method&{body:string}>){let result=source;for(const item of [...replacements].sort((a,b)=>b.start-a.start))result=result.slice(0,item.start)+item.body+result.slice(item.end);return result;}
 export async function planJavaUnits(source:string,sourceName:string):Promise<JavaUnitPlan>{return buildJavaPlan(source,sourceName,true);}
 async function buildJavaPlan(source:string,sourceName:string,validate:boolean):Promise<JavaUnitPlan>{
- // Validate all original bodies before masking; annotation processing stays disabled.
- if(validate)await compileJava(source,sourceName);
- const methods=await methodRanges(source);
+ // Parse only when the module stays atomic; its assigned worker performs real compilation.
+ // Before masking multiple bodies, validate every original body. Never run user code.
+ let methods:Method[];
+ try{methods=await methodRanges(source);}catch(error){await compileJava(source,sourceName);throw error;}
  if(methods.length<2||methods.some((item,index)=>index>0&&item.start<methods[index-1]!.end))return{version:1,language:'java',methods:[],units:[{ordinal:0,methodOrdinals:[],source}]};
+ if(validate)await compileJava(source,sourceName);
  const width=Math.max(1,Math.ceil(methods.length/4)),units:JavaUnitPlan['units']=[];
  for(let from=0;from<methods.length;from+=width){const selected=methods.slice(from,from+width),methodOrdinals=selected.map((_,offset)=>from+offset);units.push({ordinal:units.length,methodOrdinals,source:replaceBodies(source,methods.filter((_,index)=>!methodOrdinals.includes(index)).map(item=>({...item,body:'{ throw null; }'})))});}
  if(units.reduce((sum,unit)=>sum+Buffer.byteLength(unit.source),0)>8_000_000)throw new Error('Java compilation plan exceeds 8 MB');

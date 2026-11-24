@@ -15,7 +15,7 @@
     },
     {
       "src": "/api(?:/(.*))?",
-      "dest": "https://e8b6-2406-7400-ce-7fc5-81a6-34e7-2f6b-f23b.ngrok-free.app/api/$1",
+      "dest": "https://waves-made-dramatic-imagination.trycloudflare.com/api/$1",
       "headers": {
         "Cache-Control": "private, no-store",
         "CDN-Cache-Control": "no-store",
@@ -34,7 +34,7 @@
     },
     {
       "src": "/ws(?:/(.*))?",
-      "dest": "https://e8b6-2406-7400-ce-7fc5-81a6-34e7-2f6b-f23b.ngrok-free.app/ws/$1"
+      "dest": "https://waves-made-dramatic-imagination.trycloudflare.com/ws/$1"
     },
     {
       "handle": "filesystem"

@@ -104,6 +104,7 @@ export class Store {
     const [tasks]=await connection.execute<RowDataPacket[]>("SELECT id FROM tasks WHERE job_id=? LIMIT 1",[jobId]);if(tasks.length)throw new Error('Compilation network cannot change after task creation');
     await connection.execute("UPDATE compilation_jobs SET network_id=? WHERE id=?",[networkId,jobId]);
   }
+  async recordCompilationPlanningFailure(jobId:string,diagnostics:ReportDiagnostic[]){await this.pool.execute("UPDATE compilation_jobs SET metrics_json=JSON_SET(COALESCE(metrics_json,JSON_OBJECT()),'$.compilationPlanning',CAST(? AS JSON),'$.compilerDiagnostics',CAST(? AS JSON)) WHERE id=? AND status NOT IN ('COMPLETED','FAILED','CANCELLED')",[JSON.stringify({method:'server validation before worker dispatch',status:'FAILED',provider:'server compiler tool service'}),JSON.stringify(diagnostics),jobId]);}
   async createPythonCompilationTasks(jobId:string,networkId:string,sourceName:string,plan:PythonUnitPlan){return this.transaction(async connection=>{
     await this.bindUnstartedCompilationNetwork(connection,jobId,networkId);const ids:string[]=[];
     for(const unit of plan.units){const id=this.id('TASK');ids.push(id);await connection.execute("INSERT INTO tasks(id,session_id,network_id,kind,payload_json,required_capability,status,created_at,job_id,deadline_at) VALUES(?,NULL,?,'PYTHON_COMPILE',?,'python','QUEUED',?,?,TIMESTAMPADD(SECOND,300,UTC_TIMESTAMP(3)))",[id,networkId,JSON.stringify({operation:'python_compile',source:unit.source,sourceName}),this.now(),jobId]);}

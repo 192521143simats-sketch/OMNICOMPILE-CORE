@@ -61,3 +61,11 @@ describe("runtime security policy", () => {
     expect(() => createOriginPolicy("https://grid.example.com", "production", "http://admin.example.com")).toThrow(/HTTPS/);
   });
 });
+
+it("allows only the exact operator-selected Cloudflare demonstration origin",()=>{
+ const demo="https://waves-made-dramatic-imagination.trycloudflare.com",safe={nodeEnv:"production",publicBaseUrl:"https://omnicompile-core-platform.vercel.app",adminPasswordHash:"$argon2id$validation",temporaryDemoOrigin:demo};
+ expect(()=>validateProductionEnvironment(safe)).not.toThrow();
+ const allows=createOriginPolicy(safe.publicBaseUrl,'production',demo,demo);expect(allows(demo)).toBe(true);expect(allows('https://other.trycloudflare.com')).toBe(false);
+ expect(()=>createOriginPolicy(safe.publicBaseUrl,'production',demo)).toThrow();
+ for(const invalid of [demo+'/path',demo+':443','http://demo.trycloudflare.com','https://demo.trycloudflare.com.evil.com'])expect(()=>validateProductionEnvironment({...safe,temporaryDemoOrigin:invalid})).toThrow();
+});

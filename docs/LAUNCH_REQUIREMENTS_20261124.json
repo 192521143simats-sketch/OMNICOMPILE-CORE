@@ -34,13 +34,13 @@
     },
     {
       "id": "DEPENDENCY_SPLITTING",
-      "status": "NOT_COMPLETE",
-      "details": "C IR functions, Python lexical units and Java method units verified in isolated runs. Broader C function-context planning passed local GCC tests but is gated off pending Docker distribution integration."
+      "status": "VERIFIED",
+      "details": "Bounded C function contexts, Python lexical units and Java method units verified. Dependency-sensitive or indivisible contexts remain one validated unit; no claim of universal parallelization."
     },
     {
       "id": "DEVICE_TOOL_DELIVERY",
       "status": "VERIFIED",
-      "details": "User-approved server-assisted device tools implemented. Nine logical language/platform combinations, actual Edge and native-session assistance passed; Android lifecycle tests and package builds passed. This does not establish physical Android or signed installer acceptance."
+      "details": "Final isolated run 701593b4b2408646 passed C/Python/Java for Web/Windows/Android identities and failure semantics. Actual Edge and native-session assistance tests and Android lifecycle/package builds also passed; physical-device and signed-installer acceptance is not established."
     },
     {
       "id": "CLOUD_PROVIDER_BOUNDARY",
@@ -74,8 +74,8 @@
     },
     {
       "id": "PUBLIC_TRANSPORT",
-      "status": "BLOCKED",
-      "details": "ngrok monthly quota; manual replacement transport URL pending. No paid upgrade authorized."
+      "status": "VERIFIED",
+      "details": "Operator Cloudflare origin configured; public 25 page / 10 API and authenticated WSS checks passed. Keep the operator tunnel running."
     }
   ]
 }

@@ -270,3 +270,58 @@ original bodies, never from compile-only stubs or untrusted worker binaries.
   distribution and all-platform assisted regressions, then enable the new C path
   only after those pass. Apply/restart local services and recheck public access
   after an operator provides a functioning transport URL.
+
+## Public Cloudflare connection and final rollout — 25 November
+
+Operator supplied waves-made-dramatic-imagination.trycloudflare.com; the earlier
+strength-laughing URL had stopped (Cloudflare 1033). Saved the validated origin in
+ignored operator-transport-url.txt and used the existing configuration-only path.
+Production validation still required ngrok, which stopped the coordinator; fixed
+it to permit exactly the explicitly selected HTTPS Cloudflare origin. Other
+origins remain rejected; eight runtime-policy tests passed.
+
+- Public production deployment dpl_CMP3mhQZrCur9sYXndHH4T81Af8U: actual Edge smoke
+  passed 25 page routes and 10 API routes, with no browser exceptions.
+- Authenticated Vercel login, ticket issuance and direct Cloudflare WSS admin
+  snapshot passed. The temporary smoke session was revoked; no user jobs,
+  enrollments or networks were created by this public smoke.
+- Native C distribution 0230019f988cf785 passed: four compiler tasks across two
+  authenticated logical Web identities, pointer/array/function dependencies and
+  expected factory output preserved; PDF counts 4/4 successful.
+- 217750ded32faa9b found that invalid source fails before worker dispatch. Corrected
+  failure reports/metrics to identify server validation, without inventing a device
+  task or worker assistance event. Empty saved diagnostics no longer suppress the
+  underlying failure message.
+- ec64cfffc4c9025f passed eight language/platform cases; the final Android/Java case
+  hit its existing 30-second compiler budget under concurrent build load. This run
+  is not a nine-case pass. Optimized atomic Java jobs to two full compilations
+  (worker plus independent verifier), rather than four. Multi-unit validation stays.
+- Updated Java planner tests passed (3). Multi-invocation harness budgets were
+  expanded; production compiler limits were not raised. Runtime/report/metric tests
+  passed (35). PDF labels now distinguish optimizer primary bytes from compiled
+  download totals consistently with the UI.
+- Final rebuilt-image all-platform regression and launcher verification pending.
+
+Final regression:
+- 701593b4b2408646 passed all nine real compiler/execution language/platform
+  identity combinations, plus runtime-failure and validation-before-dispatch cases.
+  The run used the new default C path and optimized atomic compilation, without
+  concurrent image builds. This is logical platform acceptance, not physical-device
+  certification. No production compiler time limits were raised.
+- C function contexts are enabled by default; OMNICOMPILE_C_FUNCTION_UNITS=0
+  remains an explicit rollback. Unsafe preprocessing/declaration contexts stay
+  atomic and retain original source. Single-worker participation remains allowed.
+- Java multi-step planner tests passed after using aggregate test harness budgets
+  appropriate to several actual compiler invocations (93 seconds). Production
+  per-compiler limits are unchanged.
+
+Deployment acceptance:
+- Normal scripts/Start-Product.ps1 -NoBrowser completed with exit code 0 and
+  [5/5] Ready: https://omnicompile-core-platform.vercel.app.
+- All eight application/tool services healthy. Running coordinator image matches
+  the verified built image; C function units confirmed enabled inside the container.
+- Authenticated public login/ticket/Cloudflare WSS smoke passed again after rollout.
+- Existing application data and the separate MYSQL database were preserved. The
+  earlier blocked factory reset and blocked startup partial-readiness/helper edits
+  were not retried. The operator must keep the Cloudflare terminal running; its
+  origin is pinned in ignored configuration and the committed Vercel routes.

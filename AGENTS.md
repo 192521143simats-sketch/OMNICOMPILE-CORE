@@ -87,3 +87,12 @@ Broader native C function-context planning is prepared behind
 OMNICOMPILE_C_FUNCTION_UNITS=1, disabled by default pending Docker integration.
 Local GCC tests pass; do not enable or claim distributed acceptance until
 c-native-distribution and assisted regressions pass after Docker recovery.
+
+Final scoped device-tool regression 701593b4b2408646 passed all nine language/platform
+identity cases plus runtime and pre-dispatch validation failures. Broader C function
+contexts are now default-on after 0230019f988cf785 distribution acceptance; explicit
+OMNICOMPILE_C_FUNCTION_UNITS=0 rolls back. Preserve atomic fallback where dependency
+or preprocessor context requires it. Java atomic jobs avoid redundant full compiler
+runs while retaining independent verification. Keep Cloudflare operator transport
+manual and pinned; public authenticated WSS and 25 page / 10 API smoke checks passed.
+Physical-device and signed-installer gates remain separate from these scoped tests.

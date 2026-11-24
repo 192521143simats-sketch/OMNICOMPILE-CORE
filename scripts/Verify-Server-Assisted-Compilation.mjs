@@ -56,8 +56,9 @@ try{
   ]){
    const submitted=await request('/api/compilations',{language:'python',sourceName:item.sourceName,source:item.source},{cookie:user.cookie});assert.equal(submitted.status,202);
    const result=await poll(()=>request(`/api/compilations/${submitted.value.id}`,undefined,{cookie:user.cookie}),value=>['COMPLETED','FAILED'].includes(value.value.status)&&value.value.artifacts.length>0);
-   assert.equal(result.value.status,item.terminal);assert.equal(result.value.metrics.compilationAssistance.method,'server-assisted compilation');
-   assert.equal(result.value.metrics.report.measurements.compilationMethod,'server-assisted compilation');
+   assert.equal(result.value.status,item.terminal);
+   if(item.execution){assert.equal(result.value.metrics.compilationAssistance.method,'server-assisted compilation');assert.equal(result.value.metrics.report.measurements.compilationMethod,'server-assisted compilation');}
+   else{assert.equal(result.value.metrics.compilationAssistance,undefined);assert.equal(result.value.metrics.report.measurements.compilationMethod,'server validation before worker dispatch');const [[count]]=await store.pool.execute('SELECT COUNT(*) total FROM tasks WHERE job_id=?',[result.value.id]);assert.equal(Number(count.total),0,'Invalid source must fail validation before any device task is created');}
    if(item.execution)assert.equal(result.value.metrics.report.programExecution.status,item.execution);else assert.ok(result.value.metrics.report.errors.some(error=>error.line>0));
    const metrics=await request(`/api/user/compiler-metrics?jobId=${result.value.id}`,undefined,{cookie:user.cookie});assert.equal(metrics.value.jobResult.successRate,0);
   }

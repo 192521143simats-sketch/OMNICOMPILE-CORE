@@ -13,7 +13,7 @@ function origin(value:string):string {
 }
 
 function productionOrigin(value:string,temporaryDemoOrigin?:string):string {
-  if(temporaryDemoOrigin && !/^https:\/\/[a-z0-9-]+\.ngrok-free\.app$/.test(temporaryDemoOrigin))throw new Error("Invalid temporary demonstration origin");
+  if(temporaryDemoOrigin && !/^https:\/\/[a-z0-9-]+\.(?:ngrok-free\.app|trycloudflare\.com)$/.test(temporaryDemoOrigin))throw new Error("Invalid temporary demonstration origin");
   const normalized=origin(value),url=new URL(normalized),host=url.hostname.replace(/^\[|\]$/g,"").toLowerCase().replace(/\.$/,"");
   if(url.protocol!=="https:")throw new Error("Production public endpoints require HTTPS");
   const privateV4=(address:string)=>{const [a,b,c]=address.split(".").map(Number);return a===0||a===10||a===127||a!>=224||a===169&&b===254||a===172&&b!>=16&&b!<=31||a===192&&b===168||a===100&&b!>=64&&b!<=127||a===198&&(b===18||b===19)||a===192&&b===0&&(c===0||c===2)||a===198&&b===51&&c===100||a===203&&b===0&&c===113;};
