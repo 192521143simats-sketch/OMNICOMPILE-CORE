@@ -44,8 +44,8 @@
     },
     {
       "id": "CLOUD_PROVIDER_BOUNDARY",
-      "status": "IMPLEMENTED",
-      "details": "No tool-service worker session; no startup enrollment; CLOUD rejected by scheduler and approval."
+      "status": "VERIFIED",
+      "details": "No tool-service worker session; no startup enrollment; CLOUD rejected by scheduler and approval. Worker authentication also rejects legacy CLOUD credentials; isolated integration b2b408ef19a2fb3f."
     },
     {
       "id": "WORKER_AVAILABILITY",

@@ -138,3 +138,11 @@ Latest scoped acceptance evidence:
 
 - b32435466363565e: repeated compiler-error regression passed with the explicit
   atomic compilerDiagnostics assertion enabled for all six failures.
+
+- b2b408ef19a2fb3f: metrics and cloud credential rejection passed. The legacy
+  provisioning entrypoint now exits without changing any records. Worker
+  authentication rejects CLOUD-designated credentials before registration.
+- Actual local startup completed with eight healthy application/tool services,
+  no enrollment provisioning, and the separate MYSQL preserved. Latest frontend
+  published as dpl_DpRgHXyruPGvVYFxmx6PnFQUSuCW. Public API still depends on
+  replacing the quota-exhausted ngrok transport; frontend READY is not API readiness.

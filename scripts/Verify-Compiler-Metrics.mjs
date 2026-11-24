@@ -119,6 +119,10 @@ try{
  }finally{await store.pool.execute('UPDATE nodes SET profile_json=? WHERE id=?',[JSON.stringify(nativeProfile),nativeNode.nodeId]);}
  await store.pool.execute("UPDATE nodes SET status='UNAVAILABLE',last_heartbeat=? WHERE id=?",[new Date().toISOString(),nativeNode.nodeId]);
  const unavailable=await store.metrics.read(alpha.id,{jobId:seededJob.id});assert.equal(unavailable.availability.connected,1);assert.equal(unavailable.availability.available,0);assert.equal(unavailable.availability.unhealthy,1);
+ await store.pool.execute("UPDATE network_enrollments SET execution_location='CLOUD' WHERE id=?",[nativeEnrollment.enrollmentId]);
+ try{assert.equal(await networks.authenticateCredential(nativeEnrollment.credential),null,'tool-provider credentials cannot authenticate as worker devices');}
+ finally{await store.pool.execute("UPDATE network_enrollments SET execution_location='LOCAL' WHERE id=?",[nativeEnrollment.enrollmentId]);}
+
  await store.pool.execute("UPDATE nodes SET status='BUSY',current_task_id=?,last_heartbeat=? WHERE id=?",[telemetryTask,new Date().toISOString(),nativeNode.nodeId]);
  await store.metrics.sampleForNode(nativeNode.nodeId);
  const oldObservation=new Date(Date.now()-180000).toISOString();
