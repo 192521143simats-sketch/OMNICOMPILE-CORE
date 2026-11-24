@@ -29,3 +29,12 @@ it('shows administrator approval separately from transport failure and retries a
  await expect.poll(()=>f.headers.length,{timeout:5000}).toBe(2);
  await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');
 });
+
+it('requests scoped server assistance when a Windows device lacks the compiler',async()=>{
+ let requested:any;const f=await fixture(undefined,{assist:async(options:any)=>{requested=options;return {result:{operation:'java_compile'},executionTimeMs:12};}});
+ f.session.start();await expect.poll(()=>f.session.snapshot().status).toBe('AVAILABLE');
+ expect(f.session.snapshot().profile?.runtimes.java).toBe(false);expect(f.session.snapshot().profile?.operations.serverAssistedCompilation).toBe(true);
+ f.peer().send(encodeProtocolMessage({type:'task_assignment',taskId:'TASK-assisted',attempt:1,taskKind:'JAVA_COMPILE',payload:{operation:'java_compile',source:'class Main {}',sourceName:'Main.java'}}));
+ await expect.poll(()=>f.messages.find(message=>message.type==='task_result')?.result).toEqual({operation:'java_compile'});
+ expect(requested).toMatchObject({taskId:'TASK-assisted',attempt:1,credential:'private-fixture-credential'});
+});

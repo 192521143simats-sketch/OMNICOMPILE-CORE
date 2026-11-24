@@ -17,7 +17,7 @@ export type SchedulableNode={
   historicalPerformance?:Partial<Record<RequiredCapability,NodePerformance>>;
   executionLocation?:ExecutionLocation;
 };
-export type SchedulingContext={nowMs?:number;maxResourceAgeMs?:number};
+export type SchedulingContext={nowMs?:number;maxResourceAgeMs?:number;toolServiceAvailable?:boolean};
 export type CandidateEvaluation={nodeId:string;eligible:boolean;score:number|null;reasons:string[]};
 export type SchedulingDecision={selectedNodeId:string|null;score:number|null;explanation:string;evaluations:CandidateEvaluation[]};
 
@@ -25,14 +25,17 @@ const operationCapabilities:Record<string,RequiredCapability>={sha256:"base",sha
 function supports(profile:CapabilityProfile,capability:RequiredCapability){
   if(capability==="base")return profile.operations.browserCompute;
   if(capability==="ir")return profile.operations.irOptimization;
-  return profile.workerType==="NATIVE"&&profile.operations.nativeCompilation&&profile.runtimes[capability]&&profile.toolchains[capability].available;
+  return profile.operations.serverAssistedCompilation===true||profile.workerType==="NATIVE"&&profile.operations.nativeCompilation&&profile.runtimes[capability]&&profile.toolchains[capability].available;
 }
 function validHistory(history:NodePerformance|undefined):history is NodePerformance{
   return !!history&&Number.isInteger(history.sampleCount)&&history.sampleCount>0&&Number.isFinite(history.averageExecutionTimeMs)&&history.averageExecutionTimeMs>0&&Number.isFinite(history.successRate)&&history.successRate>=0&&history.successRate<=1;
 }
 
 export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,context:SchedulingContext={}):CandidateEvaluation{
+  const nativeLanguage=["c","python","java"].includes(requirements.capability),assisted=nativeLanguage&&node.profile.operations.serverAssistedCompilation===true&&!(node.profile.workerType==="NATIVE"&&node.profile.operations.nativeCompilation&&node.profile.runtimes[requirements.capability as "c"|"python"|"java"]&&node.profile.toolchains[requirements.capability as "c"|"python"|"java"].available);
+  if(assisted&&(requirements.maxMemoryBytes===undefined||Number.isFinite(requirements.maxMemoryBytes)&&requirements.maxMemoryBytes>=0))requirements={...requirements,maxMemoryBytes:32*1024*1024};
   const reasons:string[]=[],nowMs=context.nowMs??Date.now(),maxAge=context.maxResourceAgeMs??30_000;
+  if(assisted&&!context.toolServiceAvailable)reasons.push("Server compiler tool service is unavailable");
   const androidDefaults=node.profile.workerType==="ANDROID"?{minBatteryPercent:25,wifiOnly:true,thermalProtection:true,allowBackground:false}:{};
   const contributionResult=contributionPolicySchema.safeParse({...androidDefaults,...(node.contributionPolicy??node.profile.contributionPolicy??{})});
   if(!contributionResult.success)reasons.push("contribution policy is invalid");
@@ -48,7 +51,7 @@ export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,
   if(requirements.operation!==undefined){const capability=operationCapabilities[requirements.operation];if(!capability||!supports(node.profile,capability))reasons.push("task operation is unsupported by this worker");}
   if(requirements.operation==="matrix_multiply"&&node.profile.operations.portableMatrix!==true)reasons.push("portable matrix operation was not negotiated");
   if(requirements.operation==="portable_benchmark"&&node.profile.operations.portableBenchmark!==true)reasons.push("portable benchmark operation was not negotiated");
-  if(requirements.requireNativeCSource&&node.profile.operations.nativeCSource!==true)reasons.push("native C source task protocol is unavailable");
+  if(requirements.requireNativeCSource&&!assisted&&node.profile.operations.nativeCSource!==true)reasons.push("native C source task protocol is unavailable");
   if(requirements.operatingSystem&&requirements.operatingSystem!==node.profile.operatingSystem)reasons.push("required operating system does not match");
   if(requirements.architecture&&requirements.architecture!==node.profile.architecture)reasons.push("required architecture does not match");
   if(requirements.toolchainVersion){const capability=requirements.capability;if(capability==="base"||capability==="ir"||node.profile.toolchains[capability].version!==requirements.toolchainVersion)reasons.push("required toolchain version does not match");}

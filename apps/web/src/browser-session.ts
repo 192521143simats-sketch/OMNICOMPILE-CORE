@@ -1,6 +1,6 @@
-import {encodeProtocolMessage,parseCoordinatorMessage,portableWorkloadCatalogue,type CapabilityProfile,type ResourceSnapshot} from "@omnicompile/contracts";
+import {encodeProtocolMessage,parseCoordinatorMessage,requestCompilerAssistance,portableWorkloadCatalogue,type CapabilityProfile,type ResourceSnapshot} from "@omnicompile/contracts";
 export type BrowserState={status:string;nodeId:string;error:string;taskId?:string|undefined;progress?:number|undefined};
-type Options={url:string;resolveUrl?:()=>Promise<string>;profile:()=>CapabilityProfile;resources:()=>ResourceSnapshot;onChange:(state:BrowserState)=>void;socket:(url:string)=>WebSocket;worker:()=>Worker};
+type Options={url:string;resolveUrl?:()=>Promise<string>;profile:()=>CapabilityProfile;resources:()=>ResourceSnapshot;onChange:(state:BrowserState)=>void;socket:(url:string)=>WebSocket;worker:()=>Worker;assist?:typeof requestCompilerAssistance};
 export class BrowserSession{
   private state:BrowserState={status:"CONNECTING",nodeId:"",error:""};
   private ws:WebSocket|undefined;
@@ -46,6 +46,19 @@ export class BrowserSession{
       }else if(message.type==="error")this.update({error:message.message,...(message.code==="WORKER_APPROVAL_PENDING"?{status:"PENDING_APPROVAL"}:{})});
       else if(message.type==="task_assignment"){
         if(this.task){if(this.task.taskId!==message.taskId||this.task.attempt!==message.attempt)this.send({type:"task_state",taskId:message.taskId,attempt:message.attempt,status:"FAILED",error:"Browser worker already has an active attempt."});return;}
+        if(this.canConnect()&&message.payload.operation.endsWith("_compile")&&this.options.profile().operations.serverAssistedCompilation){
+          const abort=new AbortController();
+          const task={taskId:message.taskId,attempt:message.attempt,worker:{terminate:()=>abort.abort()} as Worker,timer:setTimeout(()=>abort.abort(),30000)};this.task=task;
+          this.update({status:"BUSY",taskId:task.taskId,error:""});this.send({type:"task_state",taskId:task.taskId,attempt:task.attempt,status:"RUNNING"});
+          void (this.options.assist??requestCompilerAssistance)({origin:this.options.url,taskId:task.taskId,attempt:task.attempt,signal:abort.signal}).then(completed=>{
+            if(this.task!==task||this.ws!==ws||abort.signal.aborted)return;
+            this.send({type:"task_result",taskId:task.taskId,attempt:task.attempt,...completed,resources:this.options.resources()});
+          }).catch(error=>{
+            if(this.task!==task||this.ws!==ws)return;
+            this.send({type:"task_state",taskId:task.taskId,attempt:task.attempt,status:"FAILED",error:error instanceof Error?error.message:"Server compiler assistance failed",...(Array.isArray(error?.diagnostics)?{diagnostics:error.diagnostics}:{})});
+          }).finally(()=>{if(this.task===task){this.stopTask();this.update({status:"AVAILABLE"});}});
+          return;
+        }
         if(!this.canConnect()||message.payload.operation.endsWith("_compile")){this.send({type:"task_state",taskId:message.taskId,attempt:message.attempt,status:"FAILED",error:"This task requires a native toolchain or unavailable browser contribution."});return;}
         let worker:Worker;try{worker=this.options.worker();}catch{this.send({type:"task_state",taskId:message.taskId,attempt:message.attempt,status:"FAILED",error:"This browser could not start a sandboxed Web Worker."});return;}
         const operation=message.payload.operation,limit=operation in portableWorkloadCatalogue?portableWorkloadCatalogue[operation as keyof typeof portableWorkloadCatalogue].executionLimit.maxDurationMs:30000;

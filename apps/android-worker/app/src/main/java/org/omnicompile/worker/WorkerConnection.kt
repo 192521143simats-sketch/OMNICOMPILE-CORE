@@ -23,7 +23,7 @@ class WorkerConnection(
     private var registration:ScheduledFuture<*>?=null
     private var retry:ScheduledFuture<*>?=null
     private var active:Active?=null
-    private data class Active(val id:String,val attempt:Int,val cancelled:AtomicBoolean=AtomicBoolean(false))
+    private data class Active(val id:String,val attempt:Int,val cancelled:AtomicBoolean=AtomicBoolean(false),@Volatile var toolCall:Call?=null)
     private fun update(change:ConnectionState) { state=change; onState(state) }
     private fun send(ws:WebSocket,type:String,body:JsonObject=buildJsonObject{}) {
         if(socket!==ws)return
@@ -37,7 +37,7 @@ class WorkerConnection(
     fun close() { stop(); transport.shutdownNow(); compute.shutdownNow(); http.dispatcher.executorService.shutdown(); http.connectionPool.evictAll() }
     private fun release() {
         beat?.cancel(false); beat=null; registration?.cancel(false); registration=null
-        active?.cancelled?.set(true); active=null
+        active?.cancelled?.set(true); active?.toolCall?.cancel(); active=null
         val old=socket; socket=null
         old?.send("""{"protocolVersion":2,"type":"disconnect"}"""); old?.close(1000,"Contribution stopped")
     }
@@ -118,7 +118,8 @@ class WorkerConnection(
                 require(id.length in 1..64 && attempt>0)
                 val kind=message["taskKind"]!!.jsonPrimitive.content
                 val payload=message["payload"]!!.jsonObject
-                require(kind=="TEST_COMPUTE"&&payload["operation"]?.jsonPrimitive?.content in setOf("sha256","prime_count","sha256_chain","matrix_multiply","portable_benchmark") || kind=="C_OPTIMIZE_IR"&&payload["operation"]?.jsonPrimitive?.content=="c_optimize_ir") { "Unsupported Android task kind or operation." }
+                val assisted=kind in setOf("C_COMPILE","PYTHON_COMPILE","JAVA_COMPILE")&&payload["operation"]?.jsonPrimitive?.content==mapOf("C_COMPILE" to "c_compile","PYTHON_COMPILE" to "python_compile","JAVA_COMPILE" to "java_compile")[kind]&&profile()["operations"]?.jsonObject?.get("serverAssistedCompilation")?.jsonPrimitive?.booleanOrNull==true
+                require(assisted || kind=="TEST_COMPUTE"&&payload["operation"]?.jsonPrimitive?.content in setOf("sha256","prime_count","sha256_chain","matrix_multiply","portable_benchmark") || kind=="C_OPTIMIZE_IR"&&payload["operation"]?.jsonPrimitive?.content=="c_optimize_ir") { "Unsupported Android task kind or operation." }
                 require(active==null) { "Only one active task is permitted." }
                 require(blocked()==null)
                 val work=Active(id,attempt); active=work; val epoch=generation
@@ -128,20 +129,20 @@ class WorkerConnection(
                     val started=System.nanoTime()
                     try {
                         require(payload.toString().toByteArray(Charsets.UTF_8).size*8L<=policy.maxMemoryBytes) { "Task input exceeds working-memory budget." }
-                        val result=PortableExecutor.execute(payload,maxDurationMs=policy.maxTaskDurationMs,cancelled={work.cancelled.get()},cpuPercent=policy.maxCpuPercent)
+                        val result=if(assisted)CompilerToolClient.compile(http,origin,credential,id,attempt){call->work.toolCall=call;if(work.cancelled.get())call.cancel()} else PortableExecutor.execute(payload,maxDurationMs=policy.maxTaskDurationMs,cancelled={work.cancelled.get()},cpuPercent=policy.maxCpuPercent)
                         enqueue {
                             if(epoch==generation&&socket===ws&&desired&&active===work&&!work.cancelled.get()&&blocked()==null) {
                                 send(ws,"task_result",buildJsonObject {put("taskId",id);put("attempt",attempt);put("result",result);put("executionTimeMs",(System.nanoTime()-started)/1_000_000.0);put("resources",resources())})
                             }
                             if(active===work){active=null;update(state.copy(status="AVAILABLE",currentTask=null))}
                         }
-                    } catch(_:Exception) { enqueue {
-                        if(epoch==generation&&socket===ws&&desired&&active===work)send(ws,"task_state",buildJsonObject{put("taskId",id);put("attempt",attempt);put("status","FAILED");put("error","Task cancelled, invalid, or exceeded the portable execution limit.")})
+                    } catch(error:Exception) { enqueue {
+                        if(epoch==generation&&socket===ws&&desired&&active===work)send(ws,"task_state",buildJsonObject{put("taskId",id);put("attempt",attempt);put("status","FAILED");put("error",(error.message?:"Task cancelled or failed").take(2000));if(error is CompilerToolException&&error.diagnostics!=null)put("diagnostics",error.diagnostics)})
                         if(active===work){active=null;update(state.copy(status="AVAILABLE",currentTask=null))}
                     } }
                 }
             }
-            "task_cancel" -> { val task=active; if(task!=null&&task.id==message["taskId"]?.jsonPrimitive?.content&&task.attempt==message["attempt"]?.jsonPrimitive?.intOrNull) task.cancelled.set(true) }
+            "task_cancel" -> { val task=active; if(task!=null&&task.id==message["taskId"]?.jsonPrimitive?.content&&task.attempt==message["attempt"]?.jsonPrimitive?.intOrNull) {task.cancelled.set(true);task.toolCall?.cancel()} }
             "error" -> { if(message["code"]?.jsonPrimitive?.content=="WORKER_APPROVAL_PENDING")update(state.copy(status="PENDING_APPROVAL",error="Waiting for administrator approval. No work is accepted while pending.")) else update(state.copy(error="Coordinator rejected the request; inspect scoped dashboard diagnostics.")) }
             else -> throw IllegalArgumentException("Unknown protocol message.")
         }

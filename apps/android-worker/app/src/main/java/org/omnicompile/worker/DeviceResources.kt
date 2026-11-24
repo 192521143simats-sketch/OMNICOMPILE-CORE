@@ -33,7 +33,7 @@ class DeviceResources(private val context:Context) {
         put("operatingSystem","Android ${Build.VERSION.RELEASE}");put("architecture",Build.SUPPORTED_ABIS.firstOrNull()?:"unknown")
         put("runtimes",buildJsonObject{put("c",false);put("python",false);put("java",false)})
         put("toolchains",buildJsonObject{for(language in listOf("c","python","java"))put(language,buildJsonObject{put("available",false)})})
-        put("operations",buildJsonObject{put("irOptimization",true);put("staticAnalysis",false);put("browserCompute",true);put("nativeCompilation",false);put("nativeCSource",false);put("taskCancellation",true);put("portableMatrix",true);put("portableBenchmark",true)})
+        put("operations",buildJsonObject{put("irOptimization",true);put("staticAnalysis",false);put("browserCompute",true);put("nativeCompilation",false);put("serverAssistedCompilation",true);put("nativeCSource",false);put("taskCancellation",true);put("portableMatrix",true);put("portableBenchmark",true)})
         // maxCpuPercent in coordinator admission requires OS-wide CPU telemetry.
         // Android exposes only our process CPU here. Cooperative local duty is a
         // separate control, never an advertised OS-wide admission/hard-cap claim.

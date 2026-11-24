@@ -12,8 +12,9 @@ function render(state){
     ['CPU',profile?`${profile.cpuModel} · ${profile.logicalCores} logical cores`:'Not profiled'],['Total RAM',profile?`${(profile.totalMemoryBytes/1024**3).toFixed(2)} GB`:'Not profiled'],
     ['Current CPU',resources?`${resources.cpuUtilizationPercent.toFixed(1)}%`:'Not measured'],['Available RAM',resources?`${(resources.freeMemoryBytes/1024**2).toFixed(0)} MB`:'Not measured'],
     ['OS worker limits',limits?`${limits.cpuRate/100}% CPU · ${limits.memoryBytes/1024**2} MB committed memory`:'Not attached'],
+    ['Compiler assistance',profile?.operations?.serverAssistedCompilation?'Server-assisted compilation supported; tool availability is checked by the coordinator.':'Not negotiated'],
     ['Toolchains',profile?Object.entries(profile.toolchains).map(([name,value])=>`${name}: ${value.available?value.version??'available':'unavailable'}`).join(' · '):'Not profiled'],
-    ['Current task',state.currentTask||'None'],['Local results submitted',state.submitted],['Local tasks failed',state.failed],['Coordinator accepted',summary?.completed??'Not available'],
+    ['Current task',state.currentTask||'None'],['Results submitted by this device',state.submitted],['Device task failures',state.failed],['Coordinator accepted',summary?.completed??'Not available'],
     ['Coordinator failures',summary?.failed??'Not available'],['Coordinator reliability',summary?.reliabilityPercent==null?'Not available':`${summary.reliabilityPercent.toFixed(2)}%`],['Last heartbeat',state.lastHeartbeat||'None']];
   $('details').replaceChildren();for(const [label,value]of fields){const dt=document.createElement('dt'),dd=document.createElement('dd');dt.textContent=label;dd.textContent=String(value);$('details').append(dt,dd);}
   $('activity').textContent=state.recent.map(event=>`${event.at} ${event.status}`).join('\n');

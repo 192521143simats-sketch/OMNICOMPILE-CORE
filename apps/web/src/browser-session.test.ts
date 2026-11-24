@@ -2,9 +2,9 @@ import {afterEach,expect,it,vi} from "vitest";
 import {BrowserSession} from "./browser-session.js";
 import {encodeProtocolMessage} from "@omnicompile/contracts";
 
-function fixture(resolveUrl?:()=>Promise<string>){
+function fixture(resolveUrl?:()=>Promise<string>,extra:Record<string,any>={}){
   vi.useFakeTimers();const sockets:any[]=[],workers:any[]=[],states:any[]=[];
-  const session=new BrowserSession({url:"ws://test/ws/worker",...(resolveUrl?{resolveUrl}:{}),profile:()=>({workerType:"BROWSER",operations:{browserCompute:true}} as any),resources:()=>({cpuUtilizationPercent:0,cpuMeasurementAvailable:false,freeMemoryBytes:0,memoryUtilizationPercent:0,memoryMeasurementAvailable:false,observedAt:new Date().toISOString()}),onChange:s=>states.push(s),socket:()=>{const ws={readyState:0,send:(text:string)=>ws.sent.push(JSON.parse(text)),sent:[] as any[],close:vi.fn(()=>{ws.readyState=3;}),onopen:null as any,onmessage:null as any,onclose:null as any,onerror:null as any};sockets.push(ws);return ws as any;},worker:()=>{const worker={postMessage:vi.fn(),terminate:vi.fn(),onmessage:null as any,onerror:null as any,onmessageerror:null as any};workers.push(worker);return worker as any;}});
+  const session=new BrowserSession({url:"ws://test/ws/worker",...(resolveUrl?{resolveUrl}:{}),profile:()=>({workerType:"BROWSER",operations:{browserCompute:true}} as any),resources:()=>({cpuUtilizationPercent:0,cpuMeasurementAvailable:false,freeMemoryBytes:0,memoryUtilizationPercent:0,memoryMeasurementAvailable:false,observedAt:new Date().toISOString()}),onChange:s=>states.push(s),socket:()=>{const ws={readyState:0,send:(text:string)=>ws.sent.push(JSON.parse(text)),sent:[] as any[],close:vi.fn(()=>{ws.readyState=3;}),onopen:null as any,onmessage:null as any,onclose:null as any,onerror:null as any};sockets.push(ws);return ws as any;},worker:()=>{const worker={postMessage:vi.fn(),terminate:vi.fn(),onmessage:null as any,onerror:null as any,onmessageerror:null as any};workers.push(worker);return worker as any;},...extra});
   session.start();const open=()=>{const ws=sockets.at(-1);ws.readyState=1;ws.onopen();ws.onmessage({data:encodeProtocolMessage({type:"registered",nodeId:"NODE-A001",heartbeatIntervalMs:1000})});return ws;};
   const assign=(ws:any,attempt=1)=>ws.onmessage({data:encodeProtocolMessage({type:"task_assignment",taskKind:"TEST_COMPUTE",taskId:"TASK-1",attempt,payload:{operation:"sha256_chain",input:"abc",iterations:100000}})});
   return{session,sockets,workers,states,open,assign};
@@ -32,4 +32,13 @@ it("discards a pending socket authorization after pause and obtains a fresh tick
   await Promise.resolve();await Promise.resolve();
   expect(f.sockets).toHaveLength(1);
   f.open();expect(f.states.at(-1).status).toBe("AVAILABLE");f.session.stop();
+});
+
+it("uses explicitly negotiated server tools without claiming native browser capability",async()=>{
+ const assist=vi.fn(async()=>({result:{operation:'python_compile'},executionTimeMs:12}));
+ const f=fixture(undefined,{profile:()=>({workerType:'BROWSER',operations:{browserCompute:true,nativeCompilation:false,serverAssistedCompilation:true}}),assist});const ws=f.open();
+ ws.onmessage({data:encodeProtocolMessage({type:'task_assignment',taskId:'TASK-assisted',attempt:1,taskKind:'PYTHON_COMPILE',payload:{operation:'python_compile',source:'print(1)',sourceName:'main.py'}})});
+ expect(f.states.at(-1).status).toBe('BUSY');await Promise.resolve();await Promise.resolve();await Promise.resolve();
+ expect(assist).toHaveBeenCalledWith(expect.objectContaining({taskId:'TASK-assisted',attempt:1}));
+ expect(ws.sent.find((message:any)=>message.type==='task_result')?.result).toEqual({operation:'python_compile'});expect(f.workers).toHaveLength(0);f.session.stop();
 });

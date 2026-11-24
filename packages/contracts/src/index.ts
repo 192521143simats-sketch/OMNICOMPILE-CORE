@@ -1,3 +1,4 @@
+export {requestCompilerAssistance} from "./compiler-assistance-client.js";
 import { z } from "zod";
 import {sha256TaskSchema,primeCountTaskSchema,sha256ChainTaskSchema,matrixMultiplyTaskSchema,portableBenchmarkTaskSchema} from "./portable-catalogue.js";
 export * from "./portable-catalogue.js";
@@ -32,7 +33,7 @@ export const capabilitySchema = z.object({
     python: z.object({ available: z.boolean(), version: z.string().max(300).optional() }),
     java: z.object({ available: z.boolean(), version: z.string().max(300).optional() })
   }),
-  operations: z.object({irOptimization:z.boolean(),staticAnalysis:z.boolean(),browserCompute:z.boolean(),nativeCompilation:z.boolean(),nativeCSource:z.boolean().optional(),taskCancellation:z.boolean().optional(),portableMatrix:z.boolean().optional(),portableBenchmark:z.boolean().optional()}),
+  operations: z.object({irOptimization:z.boolean(),staticAnalysis:z.boolean(),browserCompute:z.boolean(),nativeCompilation:z.boolean(),serverAssistedCompilation:z.boolean().optional(),nativeCSource:z.boolean().optional(),taskCancellation:z.boolean().optional(),portableMatrix:z.boolean().optional(),portableBenchmark:z.boolean().optional()}),
   contributionPolicy:contributionPolicySchema.optional()
 });
 export type CapabilityProfile = z.infer<typeof capabilitySchema>;

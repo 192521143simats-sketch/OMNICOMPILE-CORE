@@ -66,3 +66,9 @@ are Web, Windows and Android. Do not report remotely executed native tools as lo
 browser/Android compilation. Device tool delivery and general dependency-safe
 partitioning remain implementation work, not a label change. User explicitly chose
 compiled output plus PDF in the follow-up answer; this supersedes source downloads.
+
+
+The user explicitly authorizes all three device platforms to call server compiler
+tools when native tools are unavailable. Label this server-assisted compilation,
+attribute the leased task to the device, and never register/count the server as a
+worker. This supersedes the earlier pending architecture question.

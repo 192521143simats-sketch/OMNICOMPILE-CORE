@@ -146,3 +146,54 @@ Latest scoped acceptance evidence:
   no enrollment provisioning, and the separate MYSQL preserved. Latest frontend
   published as dpl_DpRgHXyruPGvVYFxmx6PnFQUSuCW. Public API still depends on
   replacing the quota-exhausted ngrok transport; frontend READY is not API readiness.
+
+
+## Authorized server-assisted device compilation
+
+The user explicitly approved server compiler tools for Web, Windows and Android
+when native tools are absent. Only the assigned device is a worker. New negotiated
+serverAssistedCompilation capability does not invent native runtimes/toolchains.
+The tool endpoint accepts only taskId/attempt, authenticates an active device,
+checks its current network/lease, reads canonical source from the server, and
+runs the pinned isolated compiler broker. It checks cancellation/lease expiry and
+records the assistance method itself for final job metrics and reports.
+
+Implementation includes all three clients, scheduler and
+assignment revalidation, metric availability, endpoint and report wiring. Source
+unit tests and typechecks passed. Android testDebugUnitTest passed after correcting
+a new test's Kotlin declaration syntax. Initial assisted integration 257651d228fe886e
+exposed a nested broker-result wrapper; fixed to forward the actual compiler result.
+Subsequent ea3469b7a4ff1f71 passed real C/Python/Java compile+run under Web, Windows
+and Android logical identities, counting one device only. ce466630e5e31260 passed
+an actual Edge browser requesting all three compiler tools and executing outputs.
+These are scoped tests, not physical Android or installed Windows acceptance.
+
+Assisted failure/native lifecycle tests and development package builds passed.
+Services were rebuilt and all eight are healthy. General dependency-safe
+Python/Java and broad C partitioning is still open and must not be represented
+as complete.
+
+
+Further assistance verification:
+- edeb675956ca1d30 passed all nine language/platform combinations plus assisted
+  Python compiler-error and runtime-failure cases; failures yielded final success 0%.
+- 46591264d2daafcc passed the real native session with local compiler capabilities
+  deliberately disabled: C/Python/Java success, warnings, runtime errors, timeout,
+  Java library and located compiler failures. Its earlier outer 300-second run
+  86152118e52eb776 exhausted the test harness budget after most cases; the expanded
+  assisted suite now has a 600-second harness budget, without raising task leases.
+- 79e3c0a6110e7309 passed actual Edge C/Python/Java compilation after receipt-based
+  handoff: binaries remain server-side, and devices return identity-bound short
+  receipts. Wrong device/attempt and lease-withdrawal regressions passed.
+- c4ef5696d8248df6 passed worker metrics and excludes archived tool providers from
+  active device inventory as well as credentials, scheduling and counts.
+- Android testDebugUnitTest and assembleDebug passed, including a WebSocket-to-tool
+  HTTP-to-device-result lifecycle test. Windows installer rebuild completed;
+  packages remain development builds, with no new signing or physical acceptance.
+- Targeted source tests passed (50, then 54 scoped checks); affected workspace
+  typechecks/builds passed. No entire-suite acceptance claim is made.
+
+- 56959091a5ea1dee: final receipt-based nine logical platform/language combinations
+  and failure cases passed (isolated summary exitCode 0). Local services are healthy.
+  Public access is still blocked by exhausted ngrok quota; a replacement operator
+  transport URL is pending. No physical-device acceptance is implied.
