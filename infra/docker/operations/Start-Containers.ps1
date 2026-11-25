@@ -63,6 +63,21 @@ foreach ($purpose in @('compiler','executor','artifacts-access','artifacts-secre
 }
 Invoke-Docker -Arguments (@('compose') + $composeArgs + @('config','--quiet'))
 if (-not $SkipBuild) { Invoke-Docker -Arguments (@('compose') + $composeArgs + @('build')) }
+# Existing tags are not proof that the coordinator and executor speak the same
+# request protocol. The executor inherits coordinator code only when rebuilt.
+function Get-ExecutorSchemaHash([string]$Image) {
+    $probe = 'const fs=require("node:fs"),crypto=require("node:crypto");const p="/app/apps/coordinator/src/docker-executor-schema.ts";process.stdout.write(crypto.createHash("sha256").update(fs.readFileSync(p)).digest("hex"));'
+    $result = & docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges --entrypoint node $Image -e $probe
+    if ($LASTEXITCODE -ne 0 -or $result -notmatch '^[a-f0-9]{64}$') { throw "Cannot verify executor request schema in $Image. No data was removed." }
+    return $result
+}
+$coordinatorSchema = Get-ExecutorSchemaHash 'omnicompile-coordinator:local'
+if ($coordinatorSchema -ne (Get-ExecutorSchemaHash 'omnicompile-executor:local')) {
+    Write-Host 'Executor request schema is stale. Rebuilding the executor with its coordinator dependency...'
+    Invoke-Docker -Arguments (@('compose') + $composeArgs + @('build','omnicompile-executor'))
+    $coordinatorSchema = Get-ExecutorSchemaHash 'omnicompile-coordinator:local'
+    if ($coordinatorSchema -ne (Get-ExecutorSchemaHash 'omnicompile-executor:local')) { throw 'Executor/coordinator request schemas still differ; refusing incompatible startup.' }
+}
 # Enrollment needs the control plane, not healthy workers with stale credentials.
 Invoke-Docker -Arguments (@('compose') + $composeArgs + @('up','--detach','--wait','--wait-timeout','240','omnicompile-mysql','omnicompile-artifacts','omnicompile-executor','omnicompile-coordinator','omnicompile-frontend'))
 # Language containers expose authenticated tools only. They are not enrolled nodes.
