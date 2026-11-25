@@ -21,6 +21,7 @@ try{
   const profile={workerType,deviceType:'DESKTOP',cpuModel:'Logical protocol fixture with native toolchains disabled; not physical-device evidence',logicalCores:2,totalMemoryBytes:0,operatingSystem:platform==='WINDOWS'?'Windows protocol fixture':platform,architecture:'fixture',runtimes:{c:false,python:false,java:false},toolchains:{c:{available:false},python:{available:false},java:{available:false}},operations:{irOptimization:true,staticAnalysis:false,browserCompute:true,nativeCompilation:false,serverAssistedCompilation:true,taskCancellation:true}};
   // Android has measurable memory and therefore advertises an actual bounded fixture value.
   if(workerType!=='BROWSER')profile.totalMemoryBytes=1024**3;
+  if(workerType==='ANDROID')profile.contributionPolicy={enabled:true,maxMemoryBytes:16*1024*1024,maxTaskDurationMs:30000,wifiOnly:true,allowBackground:false,thermalProtection:true,minBatteryPercent:25};
   const snapshot=()=>workerType==='BROWSER'?resources():{...resources(),memoryMeasurementAvailable:true,freeMemoryBytes:512*1024*1024};
   socket=new WebSocket(target.base.replace(/^http/,'ws')+'/ws/worker',{headers:{...headers,Origin:process.env.PUBLIC_BASE_URL}});
   socket.on('error',error=>{fatal=error;});socket.on('open',()=>socket.send(encodeProtocolMessage({type:'register',profile})));
@@ -47,6 +48,17 @@ try{
    assert.equal(result.value.metrics.compilationAssistance.method,'server-assisted compilation');assert.equal(result.value.metrics.compilationAssistance.workerNodeId,nodeId);
    assert.equal(result.value.metrics.report.programExecution.status,'SUCCEEDED');assert.equal(result.value.metrics.report.programExecution.output,'42\n');
    assert.equal(result.value.metrics.report.measurements.compilationMethod,'server-assisted compilation');
+   const evidence=result.value.metrics.report.optimizationEvidence;
+   assert.ok(evidence,'Actual compiler optimization evidence must be present');
+   if(item.language==='c')assert.ok(evidence.compiler.options.includes('-O2'));
+   else assert.ok(evidence.transformations>0,'The literal 20+22 must be transformed by the language optimizer');
+   for(const artifact of result.value.artifacts){
+    assert.ok(['EXECUTABLE','BYTECODE','JAR','BUILD_REPORT_PDF'].includes(artifact.artifactType));
+    const download=await fetch(target.base+artifact.downloadUrl,{headers:{cookie:user.cookie},signal:AbortSignal.timeout(15000)});
+    assert.equal(download.status,200);const bytes=Buffer.from(await download.arrayBuffer());
+    assert.equal(bytes.length,artifact.sizeBytes,'Recorded download bytes must equal actual stored bytes');
+    if(artifact.artifactType==='BUILD_REPORT_PDF')assert.equal(bytes.subarray(0,5).toString(),'%PDF-');
+   }
    const metrics=await request(`/api/user/compiler-metrics?jobId=${result.value.id}`,undefined,{cookie:user.cookie});assert.equal(metrics.value.jobResult.successRate,100);assert.equal(metrics.value.availability.registered,1);assert.equal(metrics.value.availability.platforms.find(row=>row.platform===platform).registered,1);
    console.log(`${platform} ${item.language}: real server tool compilation and isolated execution passed; only ${nodeId} counted as worker.`);
   }

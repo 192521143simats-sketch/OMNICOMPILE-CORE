@@ -9,3 +9,11 @@ it('requires a server tool service and honest assistance negotiation rather than
  expect(node.profile.runtimes.java).toBe(false);
  expect(evaluateNode({...node,executionLocation:'CLOUD'},requirements,{toolServiceAvailable:true}).eligible).toBe(false);
 });
+it('sizes assisted device memory from the serialized task while preserving contribution limits',()=>{
+ const android={...node,profile:{...node.profile,workerType:'ANDROID' as const,contributionPolicy:{enabled:true,maxMemoryBytes:16*1024*1024,wifiOnly:true,allowBackground:false}},resources:{...node.resources!,memoryMeasurementAvailable:true,freeMemoryBytes:1024**3,batteryPercent:76,networkType:'WIFI' as const,thermalState:'NORMAL' as const,lifecycleState:'FOREGROUND' as const}};
+ const task={capability:'c' as const,operation:'c_compile',maxDurationMs:30000,maxMemoryBytes:536870912,assistedPayloadBytes:1024};
+ expect(evaluateNode(android,task,{toolServiceAvailable:true}).eligible).toBe(true);
+ expect(evaluateNode(android,{...task,assistedPayloadBytes:3*1024*1024},{toolServiceAvailable:true}).eligible).toBe(false);
+ expect(evaluateNode(android,{...task,assistedPayloadBytes:-1},{toolServiceAvailable:true}).eligible).toBe(false);
+ expect(evaluateNode(android,task,{toolServiceAvailable:false}).eligible).toBe(false);
+});

@@ -8,7 +8,7 @@ export type TaskRequirements={
   capability:RequiredCapability;minLogicalCores?:number;minFreeMemoryBytes?:number;requireNativeCSource?:boolean;
   networkId?:string;taskKind?:string;operation?:string;operatingSystem?:string;architecture?:string;toolchainVersion?:string;
   maxDurationMs?:number;maxCpuPercent?:number;maxMemoryBytes?:number;deadlineAt?:string;affinityNodeId?:string;
-  executionMode?:ExecutionMode;
+  executionMode?:ExecutionMode;assistedPayloadBytes?:number;
 };
 export type NodePerformance={sampleCount:number;averageExecutionTimeMs:number;successRate:number};
 export type SchedulableNode={
@@ -33,8 +33,14 @@ function validHistory(history:NodePerformance|undefined):history is NodePerforma
 
 export function evaluateNode(node:SchedulableNode,requirements:TaskRequirements,context:SchedulingContext={}):CandidateEvaluation{
   const nativeLanguage=["c","python","java"].includes(requirements.capability),assisted=nativeLanguage&&node.profile.operations.serverAssistedCompilation===true&&!(node.profile.workerType==="NATIVE"&&node.profile.operations.nativeCompilation&&node.profile.runtimes[requirements.capability as "c"|"python"|"java"]&&node.profile.toolchains[requirements.capability as "c"|"python"|"java"].available);
-  if(assisted&&(requirements.maxMemoryBytes===undefined||Number.isFinite(requirements.maxMemoryBytes)&&requirements.maxMemoryBytes>=0))requirements={...requirements,maxMemoryBytes:32*1024*1024};
+  const inputBytes=requirements.assistedPayloadBytes;
+  const invalidInput=inputBytes!==undefined&&(!Number.isSafeInteger(inputBytes)||inputBytes<0||inputBytes>8_000_000);
+  // Match the Android agent's eight-times serialized-input working-memory rule.
+  // This estimates incremental device protocol work, excluding the server compiler
+  // and the client's runtime/OS heap; it never overrides a device contribution cap.
+  if(assisted&&(requirements.maxMemoryBytes===undefined||Number.isFinite(requirements.maxMemoryBytes)&&requirements.maxMemoryBytes>=0))requirements={...requirements,maxMemoryBytes:inputBytes===undefined||invalidInput?32*1024*1024:Math.max(1024*1024,inputBytes*8)};
   const reasons:string[]=[],nowMs=context.nowMs??Date.now(),maxAge=context.maxResourceAgeMs??30_000;
+  if(invalidInput)reasons.push('invalid assisted task input size');
   if(assisted&&!context.toolServiceAvailable)reasons.push("Server compiler tool service is unavailable");
   const androidDefaults=node.profile.workerType==="ANDROID"?{minBatteryPercent:25,wifiOnly:true,thermalProtection:true,allowBackground:false}:{};
   const contributionResult=contributionPolicySchema.safeParse({...androidDefaults,...(node.contributionPolicy??node.profile.contributionPolicy??{})});

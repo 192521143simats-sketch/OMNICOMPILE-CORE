@@ -76,6 +76,11 @@
       "id": "PUBLIC_TRANSPORT",
       "status": "VERIFIED",
       "details": "Operator Cloudflare origin configured; public 25 page / 10 API and authenticated WSS checks passed. Keep the operator tunnel running."
+    },
+    {
+      "id": "ASSISTED_DEVICE_MEMORY",
+      "status": "VERIFIED",
+      "details": "Task-sized assisted protocol memory honors Android 16 MiB contribution caps. Nine language/platform cases and four C units across three logical platforms passed; physical phone reconnect/execution remains unverified. Evidence: docs/ANDROID_ASSISTED_ELIGIBILITY.md."
     }
   ]
 }
